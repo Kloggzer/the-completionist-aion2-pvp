@@ -83,9 +83,9 @@ export const STEP: Record<Key, number> = Object.fromEntries(
 /** DPS gain in percent for adding `d`. */
 export const gain = (s: State, d: Totals, a: Assume = ASSUME) => (dps(s, d, a) / dps(s, {}, a) - 1) * 100
 
-/** Gain in percent per one unit of each stat. */
-export function marginals(s: State, a: Assume = ASSUME): Record<Key, number> {
-  const out = {} as Record<Key, number>
-  for (const k of Object.keys(STEP) as Key[]) out[k] = gain(s, { [k]: STEP[k] }, a) / STEP[k]
+/** Gain in percent per one unit of each stat, at the state shifted by `at` (e.g. minus the Daevanion stats). */
+export function marginals(s: State, a: Assume = ASSUME, at: Totals = {}): Record<Key, number> {
+  const out = {} as Record<Key, number>, d0 = dps(s, at, a)
+  for (const k of Object.keys(STEP) as Key[]) out[k] = (dps(s, { ...at, [k]: (at[k] || 0) + STEP[k] }, a) / d0 - 1) * 100 / STEP[k]
   return out
 }

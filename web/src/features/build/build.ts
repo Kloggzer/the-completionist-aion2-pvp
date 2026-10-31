@@ -143,11 +143,14 @@ export function model(char = charKey()): Model {
 }
 
 /** Values per unit for the Daevanion optimizer from the model, scaled so a 1.5 % combat speed corner keeps its 16
- *  (the other offensive stats relative to it); only with gear or a measured fight. */
+ *  (the other offensive stats relative to it); only with gear or a measured fight. Taken at the character without
+ *  its Daevanion stats, so the ideal board does not move when the current board changes. */
 unitHook.fn = () => {
   const char = charKey()
   if (!snap(char) && !measured(char)) return null
-  const d = data(), mg = model(char).marg
+  const d = data(), md = model(char)
+  const noDae = Object.fromEntries(Object.entries(md.by.dae).map(([k, v]) => [k, -(v as number)])) as Totals
+  const mg = marginals(md.state, assume(), noDae)
   if (!d || !(mg.speed > 0)) return null
   const scale = 16 / (mg.speed * 1.5), out: Record<string, number> = {}
   for (const s of d.stats) { const k = keyOfName(s.key); if (k && mg[k] != null) out[s.key] = Math.max(0, mg[k]) * scale }
