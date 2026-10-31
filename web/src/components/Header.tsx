@@ -1,4 +1,4 @@
-import { AppWindow, Globe, Pin, Settings, X, MousePointer2 } from 'lucide-react'
+import { AppWindow, Download, Globe, Pin, Settings, X, MousePointer2 } from 'lucide-react'
 import { G, S, U, V, bump, hasState, manual, useApp, type Any } from '@/core/state'
 import { host } from '@/core/host'
 import { selectMap, mapName } from '@/core/data'
@@ -48,6 +48,12 @@ export function Header() {
       {maps.length > 0 && <AppSelect value={U.map} options={maps} onChange={k => selectMap(k)} tip={t('hdr.map')} className="h-7 max-w-52" />}
       <span data-drag className="h-full min-w-4 flex-1 cursor-grab" />
       <Status />
+      {V.update && <button data-update disabled={V.update.busy}
+        data-tip={V.update.busy ? t('upd.busy') : t(V.update.auto ? 'upd.auto' : 'upd.page', { v: V.update.version })}
+        onClick={() => { if (V.update.auto) { V.update.busy = true; bump() } host({ type: 'updateNow' }) }}
+        className="flex h-7 flex-none items-center gap-1 rounded-md bg-gold/15 px-2 text-[12px] font-semibold text-gold transition-colors hover:bg-gold/25 disabled:animate-pulse [&_svg]:size-3.5">
+        <Download />{V.update.busy ? '…' : t('upd.btn', { v: V.update.version })}
+      </button>}
       {S.ct && <IconBtn on data-tip={withKey(t('hdr.click'), 'click')} onClick={() => host({ type: 'clickThrough' })}><MousePointer2 /></IconBtn>}
       {S.site && <IconBtn on data-tip={withKey(t('hdr.site'), 'site')} onClick={() => host({ type: 'site', on: false, map: U.map })}><Globe /></IconBtn>}
       {S.dock && <IconBtn on={S.dock.dock !== 'auto'} data-tip={t(S.dock.window ? 'dock.isWindow' : 'dock.isOverlay') + '\n' + t(S.dock.dock === 'auto' ? 'dock.auto' : 'dock.manual')}

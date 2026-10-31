@@ -4,6 +4,7 @@ import { DEF_UI, S, U, V, setU, bump, manual, type Any } from './state'
 import { emit } from './bus'
 import { setStartView } from './data'
 import { lang, t } from './i18n'
+import { toast } from './toast'
 
 const norm = (st: Any) => Object.assign({ levels: {}, souls: {} }, st || {})
 
@@ -22,6 +23,15 @@ onHost('init', m => {
   emit('init')
   bump()
 })
+// newer release (host: Updater.cs): header button; auto = the portable exe can swap itself
+onHost('update', m => {
+  const known = V.update?.version === m.version
+  V.update = { version: m.version, page: m.page, auto: !!m.auto, busy: V.update?.busy && known }
+  if (!known) toast(t('upd.toast'), m.version, 1, true)
+  bump()
+})
+onHost('updateFailed', () => { if (V.update) V.update.busy = false; toast(t('upd.failed'), t('upd.failedSub')); bump() })
+
 onHost('settings', m => {
   const was = manual()
   S.settings = m.settings

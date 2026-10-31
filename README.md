@@ -15,6 +15,10 @@
 > Das verstößt sehr wahrscheinlich gegen die Nutzungsbedingungen von Aion 2 – **Sperre des Accounts möglich**.
 > Nutzung **komplett auf eigenes Risiko**, ohne Support oder Gewähr. Nicht von NCSoft.
 >
+> **Updates:** the portable `TheCompletionist.exe` (from v1.1.2) checks this repo's releases at start and every 6 hours
+> and shows an update button in the header: one click downloads, replaces the exe and restarts. Turn off "online
+> updates" in the settings to skip the check.
+>
 > The clean, public version without PvP features lives at
 > [Kloggzer/the-completionist-aion2](https://github.com/Kloggzer/the-completionist-aion2).
 

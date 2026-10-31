@@ -44,6 +44,9 @@ sealed class OverlayForm : Form
     readonly NotifyIcon tray = new();
     readonly System.Windows.Forms.Timer topTimer = new() { Interval = 2000 };
     readonly System.Windows.Forms.Timer saveTimer = new() { Interval = 1500 };
+    // update check (Updater.cs): at the start and every 6 hours; the newest release found, if newer
+    readonly System.Windows.Forms.Timer updTimer = new() { Interval = 6 * 3600 * 1000 };
+    Updater.Info? update;
     // While click-through is on, the header stays clickable: Cursor.Position polling (no input hook).
     readonly System.Windows.Forms.Timer ctTimer = new() { Interval = 80 };
     bool ctHeader;
@@ -640,10 +643,12 @@ sealed class OverlayForm : Form
         switch ((string?)m["type"])
         {
             case "ready":
+                if (!uiReady) { Updater.Cleanup(); CheckUpdate(); updTimer.Tick += (_, _) => CheckUpdate(); updTimer.Start(); }
                 uiReady = true;
                 Post(new { type = "init", settings = SettingsView(), state, replay = replayDir != null, view = startView, status = new { state = status.state, text = status.text } });
                 if (dataOk is { } d) Post(new { type = "dataReady", ok = d });
                 PostDock();
+                PostUpdate();
                 break;
             case "drag": Native.BeginDrag(Handle); break;
             case "resize":
@@ -746,6 +751,7 @@ sealed class OverlayForm : Form
             case "pickState": PickStatePath(); break;
             case "site": SetSiteMode((bool?)m["on"] ?? !siteMode, (string?)m["map"], (string?)m["search"]); break;
             case "openUrl": OpenExternal((string?)m["url"] ?? ""); break;
+            case "updateNow": ApplyUpdate(); break;
             case "quit": Close(); break;
             case "lang":
                 var de = (string?)m["lang"] == "de";
@@ -885,9 +891,38 @@ sealed class OverlayForm : Form
         settings.Save();
     }
 
+    /// Ask GitHub for a newer release (not with online updates off, not in replays) and tell the page.
+    async void CheckUpdate()
+    {
+        if (!settings.OnlineUpdates || replayDir != null) return;
+        if (await Updater.Check(Version) is not { } info) return;
+        update = info;
+        PostUpdate();
+    }
+
+    void PostUpdate()
+    {
+        if (uiReady && update is { } info) Post(new { type = "update", version = info.Version, page = info.Page, auto = Updater.CanSelfUpdate && info.Exe != null });
+    }
+
+    /// Update button: portable exe swaps itself and restarts, anything else opens the release page.
+    async void ApplyUpdate()
+    {
+        if (update is not { } info) return;
+        if (!Updater.CanSelfUpdate || info.Exe == null) { OpenExternal(info.Page); return; }
+        try { await Updater.Apply(info.Exe); } // the new exe closes this one (single instance)
+        catch (Exception e)
+        {
+            Log("Update fehlgeschlagen: " + e.Message);
+            Post(new { type = "updateFailed" });
+            OpenExternal(info.Page);
+        }
+    }
+
     static void OpenExternal(string url)
     {
-        if (Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == "https" && (u.Host.EndsWith("aion2maps.com") || u.Host is "npcap.com" or "www.npcap.com"))
+        if (Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == "https" && (u.Host.EndsWith("aion2maps.com") || u.Host is "npcap.com" or "www.npcap.com"
+            || u.Host == "github.com" && u.AbsolutePath.StartsWith("/" + Updater.Repo + "/")))
             Process.Start(new ProcessStartInfo(u.ToString()) { UseShellExecute = true });
     }
 
