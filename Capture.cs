@@ -1,0 +1,331 @@
+using System.Text.Json;
+using SharpPcap;
+using SharpPcap.LibPcap;
+
+namespace PetOverlay;
+
+// Passive only: reads copies of the game's packets via Npcap, never touches the game process.
+abstract class PetSource : IDisposable
+{
+    readonly Dictionary<string, TcpStream> streams = new();
+    readonly Queue<(DateTime at, DateTime ts, byte[] data)> pending = new();
+    HashSet<int> ports = new();
+    protected readonly object Sync = new();
+    protected int LinkType = 1;
+
+    public event Action<PetList, DateTime>? PetListReceived;
+    public event Action<List<(uint id, uint val, byte tier, long ts)>, bool>? AchievementsReceived; // items, full list (login)
+    public event Action<uint, int, DateTime>? SoulsReceived;
+    public event Action<string, string>? StatusChanged; // (live|waiting|off|error|replay, text)
+    public event Action<uint>? CharIdReceived;
+    public event Action<string>? CharNameReceived;
+    public event Action<float, float, float, DateTime, int>? PositionReceived; // map x, map z, height (metres), source opcode
+    // No own position while flying/running (the server only reports it on combat/skills). New mobs, players and objects
+    // spawn ~35-60 m around the player, so the centroid of the last spawns estimates it (follows flying well; the
+    // particle filter of PositionTracker was more accurate on average but lagged behind fast movement). Map x, z, height, σ.
+    public event Action<float, float, float, float, DateTime>? PositionEstimated;
+    // World objects (gather nodes, chests, ...): 0x3436 spawn in range, 0x3536 gone (04 = used/opened, 01 = out of range).
+    public event Action<uint, uint, float, float, float>? ObjectSpawned; // entity, EnvObj id, map x, map z, height
+    public event Action<uint, int>? ObjectRemoved;                       // entity, reason
+    // 0x0140 on every map change (login, teleport, instance): u32 map id (aion2maps map_id, e.g. 1110 = Altgard;
+    // instances/dungeons have their own ids). 0x2336 carries the new position: 6 bytes, x, y, z float32 cm.
+    public event Action<uint>? MapChanged;
+    // Field bosses (ids given by the UI): 0x4136 spawn carries the NpcData id after the entity varint + 3 bytes;
+    // 0x4236 = entity gone: varint entity, 00, reason (03 = died in combat, 01 = out of range).
+    public event Action<uint, bool>? BossEvent; // npc id, died (false = seen/spawned)
+    public event Action<uint, List<(uint id, bool alive, float x, float z, long ts)>>? BossTable;
+    // Weekly usage counters at login (0xacff): id -> used this period; id 2 = daily dungeon entries (14 per week).
+    public event Action<Dictionary<byte, uint>, long>? UsageReceived;
+    // Odyle energy (0x0c61 type 0c/01): regenerating energy and the bonus pool from Odyle items.
+    public event Action<int, int>? OdyleReceived;
+    // Entry charges (0x0c61 type 04): u32 content id, u8 charges left. Verified: 4 = Nightmare, 8 = Dimensional Invasion.
+    public event Action<uint, int>? ChargeReceived;
+    // Black Cloud Merchant offer (0x9156) whenever its window/tab opens: tab id, offered items.
+    public event Action<int, List<MerchantItem>>? MerchantReceived;
+    // Other players (PvP overlay, PlayerFrames): spawn in range (0x4536), moves (0x1a37 family), gone (0x4736),
+    // killed (0x048d, killer also out of range), arena roster at match start (0x19e3), own character (0x3336) and own
+    // combat power (0x5636).
+    public event Action<PlayerSpawn>? PlayerSpawned;
+    public event Action<uint, float, float, float>? PlayerMoved; // entity, x, y, z (cm)
+    public event Action<uint, int>? PlayerGone;                  // entity, reason (PlayerFrames.Gone)
+    public event Action<uint, uint, int, string>? PlayerKilled;   // victim (player around or self), killer entity, server, name
+    public event Action<List<RosterEntry>>? RosterReceived;
+    public event Action<OwnInfo>? OwnInfoReceived;
+    public event Action<int>? OwnCpReceived;
+    public event Action<long>? ApReceived; // own Abyss points (0xa9ff), after every kill credit
+    public event Action<List<(uint Uid, uint Id, long Count)>>? InventoryReceived; // own inventory update (0x1b56): loot
+    public event Action<float, float, float>? OwnPvpPos; // own position incl. arenas (PlayerFrames.OwnFix), cm
+    // Own party / alliance: members (full list = 0x92, else single members 0xd92 / 0x2292); 0x1f92 = party left.
+    public event Action<List<PartyMember>, bool>? PartyReceived;
+    public event Action? PartyLeft;
+    readonly HashSet<uint> players = new();
+    byte[]? lastBossTable;
+    public HashSet<uint> TrackedNpcs { get; set; } = new();
+    readonly Dictionary<uint, uint> bossEntities = new();
+    readonly HashSet<uint> objects = new();
+    readonly PositionTracker tracker;
+    readonly Queue<(DateTime ts, float x, float y, float z)> spawns = new();
+    DateTime lastOwnPos, lastEstimate;
+    public byte[]? OwnId { get; set; }
+
+    protected PetSource()
+    {
+        // aion2maps: x = X/100, z = Y/100. Only the tracker's exact fixes are used; the estimate is the spawn centroid.
+        tracker = new((x, y, z, op, ts) =>
+        {
+            lastOwnPos = ts;
+            if (op == 0x2336) spawns.Clear(); // teleport: the old surroundings say nothing about the new place
+            PositionReceived?.Invoke(x, y, z, ts, op);
+        }, (_, _, _, _, _) => { });
+    }
+
+    protected void SetStatus(string state, string text) => StatusChanged?.Invoke(state, text);
+
+    // Server->client segments of the game's connections feed the frame decoder; packets of not-yet-known
+    // connections wait 15 s, because the socket table lags behind the connection start (login frame!).
+    protected void Packet(DateTime ts, byte[] data, bool buffer = true)
+    {
+        if (Packets.Parse(data, LinkType) is not { } s) return;
+        if (ports.Contains(s.DstPort))
+        {
+            var key = $"{s.Src}:{s.SrcPort}>{s.DstPort}";
+            if (!streams.TryGetValue(key, out var st)) streams[key] = st = new TcpStream();
+            st.Add(s.Seq, s.Flags, data.AsSpan(s.Offset, s.Length), (op, body) => Frame(op, body, ts));
+        }
+        else if (buffer && !ports.Contains(s.SrcPort) && pending.Count < 50000)
+            pending.Enqueue((DateTime.UtcNow, ts, data));
+    }
+
+    protected void SetPorts(HashSet<int> now)
+    {
+        bool added = !now.IsSubsetOf(ports);
+        ports.UnionWith(now);
+        while (pending.Count > 0 && DateTime.UtcNow - pending.Peek().at > TimeSpan.FromSeconds(15)) pending.Dequeue();
+        if (!added) return;
+        var items = pending.ToArray();
+        pending.Clear();
+        foreach (var (at, ts, data) in items) Packet(ts, data, DateTime.UtcNow - at < TimeSpan.FromSeconds(15));
+    }
+
+    void Frame(int op, byte[] body, DateTime ts)
+    {
+        if (OwnId != null) tracker.Feed(op, body, ts, OwnId); // own position: exact fixes (its estimate is not used)
+        PlayerFrame(op, body);
+        if (op == Frames.OpPetList && PetFrames.ParseList(body) is { } list)
+            PetListReceived?.Invoke(list, ts);
+        else if (op == 0x0191 && (lastBossTable == null || !body.AsSpan().SequenceEqual(lastBossTable)))
+        {
+            lastBossTable = body; // sent every 3 s, usually unchanged
+            if (PetFrames.ParseBossTable(body) is { } t) BossTable?.Invoke(t.map, t.list);
+        }
+        else if (op == 0x0140 && body.Length >= 4)
+        {
+            tracker.MapChanged();
+            MapChanged?.Invoke(BitConverter.ToUInt32(body, 0));
+        }
+        else if (op == 0x9156 && PetFrames.ParseMerchant(body) is { } merch)
+            MerchantReceived?.Invoke(merch.tab, merch.items);
+        else if (op == 0x0c61 && body.Length == 8 && body[1] == 0x04)
+            ChargeReceived?.Invoke(BitConverter.ToUInt32(body, 2), body[6]);
+        else if (op == 0x0c61 && body.Length == 7 && body[1] == 0x00)
+            ChargeReceived?.Invoke(BitConverter.ToUInt32(body, 2), 0); // short form: none left (Nightmare 1 -> 0 verified)
+        else if (op == 0x0c61 && body.Length >= 6 && body[1] == 0x0c && body[2] == 0x01)
+        {
+            // u8 ?, 0c, 01, varint id, varint energy, varint bonus, … (verified: 60 → bonus 135+10 after using a +10 item; 540/160)
+            try
+            {
+                int o = 3;
+                PetFrames.Varint(body, ref o);
+                int energy = PetFrames.Varint(body, ref o), bonus = PetFrames.Varint(body, ref o);
+                if (energy is >= 0 and <= 2000 && bonus is >= 0 and <= 1_000_000) OdyleReceived?.Invoke(energy, bonus);
+            }
+            catch (IndexOutOfRangeException) { }
+        }
+        else if (op == 0xacff && body.Length >= 9 && body.Length == 1 + body[0] * 5 + 8)
+        {
+            // u8 n; n × {u8 id, u32 used}; u64 server time ms
+            var usage = new Dictionary<byte, uint>();
+            for (int i = 0; i < body[0]; i++) usage[body[1 + i * 5]] = BitConverter.ToUInt32(body, 2 + i * 5);
+            UsageReceived?.Invoke(usage, BitConverter.ToInt64(body, 1 + body[0] * 5));
+        }
+        else if (op is 0x8356 or 0x8456 && PetFrames.ParseProgress(body) is { Count: > 0 } ach)
+            AchievementsReceived?.Invoke(ach, op == 0x8356);
+        else if (op == Frames.OpPetSouls && PetFrames.ParseSouls(body) is { } gains)
+            foreach (var (pet, g) in gains) SoulsReceived?.Invoke(pet, g, ts);
+        else if (op == 0x3336 && PetFrames.CharId(body) is { } id)
+        {
+            OwnId = id;
+            CharIdReceived?.Invoke(PetFrames.VarintValue(id));
+            if (PetFrames.CharName(body) is { } name) CharNameReceived?.Invoke(name);
+        }
+        else if (op is 0x4136 or 0x4536 && PetFrames.SpawnPosition(body) is { } sp)
+        {
+            OnSpawn(ts, sp.x, sp.y, sp.z);
+            if (op != 0x4136 || TrackedNpcs.Count == 0) return;
+            int o = 0;
+            uint ent = (uint)PetFrames.Varint(body, ref o);
+            if (o + 7 <= body.Length && BitConverter.ToUInt32(body, o + 3) is var npc && TrackedNpcs.Contains(npc))
+            {
+                bossEntities[ent] = npc;
+                BossEvent?.Invoke(npc, false);
+            }
+        }
+        else if (op == 0x4236 && bossEntities.Count > 0 && body.Length >= 3)
+        {
+            int o = 0;
+            uint ent = (uint)PetFrames.Varint(body, ref o);
+            if (o + 1 < body.Length && bossEntities.Remove(ent, out var npc)) BossEvent?.Invoke(npc, body[o + 1] == 3);
+        }
+        else if (op == 0x3436 && PetFrames.ObjectSpawn(body) is { } obj)
+        {
+            objects.Add(obj.ent);
+            ObjectSpawned?.Invoke(obj.ent, obj.env, obj.x / 100, obj.y / 100, obj.z / 100);
+            OnSpawn(ts, obj.x, obj.y, obj.z);
+        }
+        else if (op == 0x3536 && body.Length >= 2)
+        {
+            int o = 0;
+            uint ent = (uint)PetFrames.Varint(body, ref o);
+            if (o < body.Length && objects.Remove(ent)) ObjectRemoved?.Invoke(ent, body[o]);
+        }
+    }
+
+    void PlayerFrame(int op, byte[] body)
+    {
+        if (op is 0x2a38 or 0x2336 && OwnId != null && PlayerFrames.OwnFix(op, body, OwnId) is { } me) OwnPvpPos?.Invoke(me.x, me.y, me.z);
+        if (PlayerFrames.MoveOffset(op) is >= 0 and var skip)
+        {
+            if (players.Count > 0 && PlayerFrames.Move(body, skip, out uint ent, out var p) && players.Contains(ent))
+                PlayerMoved?.Invoke(ent, p.x, p.y, p.z);
+        }
+        else if (op == 0x4536 && PlayerFrames.ParsePlayer(body) is { } pl)
+        {
+            players.Add(pl.Ent);
+            PlayerSpawned?.Invoke(pl);
+        }
+        else if (op == 0x4736 && PlayerFrames.Gone(body) is { } gone && players.Remove(gone.ent)) PlayerGone?.Invoke(gone.ent, gone.reason);
+        else if (op == 0x048d && PlayerFrames.ParseKill(body) is { } kill
+                 && (players.Contains(kill.victim) || OwnId != null && kill.victim == PetFrames.VarintValue(OwnId)))
+            PlayerKilled?.Invoke(kill.victim, kill.killer, kill.server, kill.name);
+        else if (op == 0x19e3 && body.Length > 64 && PlayerFrames.ParseRoster(body) is { } roster) RosterReceived?.Invoke(roster);
+        else if (op == 0x3336 && PlayerFrames.ParseOwn(body) is { } own) OwnInfoReceived?.Invoke(own);
+        else if (op == 0x5636 && PlayerFrames.OwnCp(body) is > 0 and var cp) OwnCpReceived?.Invoke(cp);
+        else if (op == 0xa9ff && PlayerFrames.Ap(body) is >= 0 and var ap) ApReceived?.Invoke(ap);
+        else if (op == 0x1b56 && PlayerFrames.Inventory(body) is { Count: > 0 } inv) InventoryReceived?.Invoke(inv);
+        else if (op is 0x92 or 0xd92 or 0x2292 && PlayerFrames.ParseParty(body) is { Count: > 0 } party) PartyReceived?.Invoke(party, op == 0x92);
+        else if (op == 0x1f92 && body.Length == 1) PartyLeft?.Invoke();
+        else if (op == 0x0140) players.Clear();
+    }
+
+    void OnSpawn(DateTime ts, float x, float y, float z)
+    {
+        spawns.Enqueue((ts, x, y, z));
+        // 10 s / 2 spawns incl. world objects: ~90 % coverage, median error ~19 m (measured on a 30 min capture).
+        while (spawns.Count > 0 && ts - spawns.Peek().ts > TimeSpan.FromSeconds(10)) spawns.Dequeue();
+        if (ts - lastOwnPos < TimeSpan.FromSeconds(20) || ts - lastEstimate < TimeSpan.FromSeconds(1) || spawns.Count < 2) return;
+        lastEstimate = ts;
+        float sx = 0, sy = 0, sz = 0;
+        foreach (var e in spawns) { sx += e.x; sy += e.y; sz += e.z; }
+        int n = spawns.Count;
+        PositionEstimated?.Invoke(sx / n / 100, sy / n / 100, sz / n / 100, 25, ts);
+    }
+
+    public abstract void Start();
+    public virtual void Dispose() { }
+}
+
+sealed class LiveCapture(string processName) : PetSource
+{
+    ILiveDevice? device;
+    System.Threading.Timer? poll;
+    bool? running;
+
+    public override void Start()
+    {
+        try
+        {
+            var local = LocalAddress();
+            device = LibPcapLiveDeviceList.Instance.FirstOrDefault(d => d.Addresses.Any(a => Equals(a.Addr?.ipAddress, local)))
+                ?? throw new InvalidOperationException($"Kein Npcap-Adapter mit IP {local} gefunden.");
+            device.OnPacketArrival += (_, e) =>
+            {
+                var raw = e.GetPacket();
+                lock (Sync) Packet(raw.Timeval.Date, raw.Data.ToArray());
+            };
+            device.Open(new DeviceConfiguration { Mode = DeviceModes.MaxResponsiveness, ReadTimeout = 200, BufferSize = 16 << 20 });
+            LinkType = (int)device.LinkType;
+            device.Filter = "tcp and not net 127.0.0.0/8";
+            device.StartCapture();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            var msg = ex is DllNotFoundException || ex.InnerException is DllNotFoundException
+                ? L.T("Npcap nicht gefunden – bitte Npcap installieren.", "Npcap not found – please install Npcap.") : ex.Message;
+            SetStatus("error", msg);
+            return;
+        }
+        poll = new System.Threading.Timer(_ => Poll(), null, 0, 1000);
+    }
+
+    void Poll()
+    {
+        HashSet<int> now;
+        bool run;
+        try { now = Native.GamePorts(processName, out run); }
+        catch { return; }
+        lock (Sync) SetPorts(now);
+        if (run == running) return;
+        running = run;
+        SetStatus(run ? "live" : "waiting", run ? L.T("Live – Aion 2 erkannt", "Live – Aion 2 detected") : L.T("Warte auf Aion 2 …", "Waiting for Aion 2 …"));
+    }
+
+    static System.Net.IPAddress LocalAddress()
+    {
+        // UDP connect sends nothing; it only asks the routing table which local address would be used.
+        using var s = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork,
+            System.Net.Sockets.SocketType.Dgram, System.Net.Sockets.ProtocolType.Udp);
+        s.Connect("8.8.8.8", 53);
+        return ((System.Net.IPEndPoint)s.LocalEndPoint!).Address;
+    }
+
+    public override void Dispose()
+    {
+        poll?.Dispose();
+        try { device?.StopCapture(); device?.Close(); } catch { }
+    }
+}
+
+// Plays a capture_logger.py recording (game.pcap + connections.jsonl) through the same decoder.
+sealed class ReplayCapture(string dir, double speed) : PetSource
+{
+    public override void Start() => Task.Run(() =>
+    {
+        try
+        {
+            var conns = File.ReadLines(Path.Combine(dir, "connections.jsonl"))
+                .Select(l => JsonDocument.Parse(l).RootElement)
+                .Where(c => c.GetProperty("proto").GetString() == "tcp"
+                            && c.TryGetProperty("rport", out var rp) && rp.GetInt32() is not (0 or 80 or 443)
+                            && !(c.GetProperty("remote").GetString() ?? "").StartsWith("127."))
+                .Select(c => c.GetProperty("lport").GetInt32()).ToHashSet();
+            var packets = Packets.ReadPcap(Path.Combine(dir, "game.pcap"), out LinkType);
+            SetStatus("replay", $"Replay: {Path.GetFileName(dir.TrimEnd('\\', '/'))}");
+            lock (Sync) SetPorts(conns);
+            // Replay clock: capture time / speed, idle gaps capped at 5 s.
+            DateTime? prev = null;
+            var due = DateTime.UtcNow;
+            foreach (var (ts, data) in packets)
+            {
+                if (speed > 0 && prev is { } p && ts > p)
+                {
+                    due += TimeSpan.FromTicks((long)Math.Min((ts - p).Ticks / speed, TimeSpan.TicksPerSecond * 5));
+                    if (due - DateTime.UtcNow is { TotalMilliseconds: > 15 } wait) Thread.Sleep(wait);
+                }
+                prev = ts;
+                lock (Sync) Packet(ts, data, false);
+            }
+            SetStatus("replay", L.T("Replay fertig: ", "Replay finished: ") + $"{Path.GetFileName(dir.TrimEnd('\\', '/'))}");
+        }
+        catch (Exception ex) { SetStatus("error", L.T("Replay fehlgeschlagen: ", "Replay failed: ") + ex.Message); }
+    });
+}

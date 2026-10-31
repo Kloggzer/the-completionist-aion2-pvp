@@ -1,0 +1,21 @@
+# build output
+bin/
+obj/
+publish/
+# personal network captures (contain your own game traffic)
+captures/
+# downloaded aion2.app pages (regenerable with tools/fetch_achievements.py)
+data/cache_aion2app/
+__pycache__/
+*.tmp
+/ui/
+web/node_modules/
+data/snapshot.zip
+web/src/private/
+installer/Output/
+daevanion.json
+arcana.json
+gear.json
+bosses.json
+itemnames.json
+dist-share/

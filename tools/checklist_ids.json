@@ -1,0 +1,43 @@
+{
+  "_info": "Checklist mapping for Aion 2 Global/EU, derived from capture 20261006-205450 (frames5.jsonl) + aion2.app quest DB. 'status': verified = seen in traffic and/or matches DB text; guessed = plausible, not confirmed. Achievement counters are cumulative per character: count today/this week = current counter - baseline stored at the first 0x8356 after the reset (or 0 if the record timestamp is older than the last reset).",
+  "resets": {
+    "daily": {"utc": "07:00", "berlin_summer": "09:00 CEST", "berlin_winter": "08:00 CET", "status": "verified",
+      "evidence": "S2C 0x23E2 at login = u64 ms 2026-10-07 07:00Z (next daily reset); 0x56E2 group type 1 last=2026-10-06 07:00:01Z next=2026-10-07 07:00Z; 0x1C8D tail 2x u64 = next reset",
+      "sources": ["https://game8.co/games/Aion-2/archives/628475", "https://www.aion2timers.com/daily-reset/", "https://expcarry.com/de/aion-2-taegliche-woechentliche-checkliste"]},
+    "weekly": {"day": "Wednesday", "utc": "07:00", "berlin_summer": "Mi 09:00 CEST", "berlin_winter": "Mi 08:00 CET", "status": "verified",
+      "evidence": "0x56E2 group type 2 last=Wed 2026-09-30 07:00:01Z next=Wed 2026-10-07 07:00Z",
+      "sources": ["https://metabot.gg/en/aion-2/guides/daily-weekly-checklist", "https://www.aion2timers.com/daily-reset/"]},
+    "monthly": {"utc": "1st of month 07:00", "status": "guessed", "evidence": "0x8E56 id 1262 next reset 2026-11-01 07:00Z"}
+  },
+  "protocol": {
+    "0x8356": "login snapshot per character: varint n + n x {u32 id, u32 counter, u64 ts_ms, u8 tier}. Arrives again on character switch -> reset overlay state.",
+    "0x8456": "live update, same record format",
+    "0x1C8D": "duty-mission board at login: u32 0, u32 5 (daily limit or remaining? guessed), varint n, n x {u32 slot, u32 quest_id, u32 journal_ref, u32 0, u8 state (1=offered, 4=accepted), u8 n_rewards, n_rewards x 15 B}, tail 2 x u64 next reset",
+    "0x098D": "quest journal at login: varint n, n x {u32 quest_id, u8 state (2=active, 3=partial, 4=objectives done), u8 step, u8[6] objective counts, u32 journal_ref, u64 0, u8 n_rewards, n_rewards x 15 B}",
+    "0x8E56": "limit counters with reset time: u16 0, varint n, n x {u32 id, u32 value, u64 next_reset_ms}. Seen once (21:25:08) after some UI action, ids 1169=4,1172=0,1209=4,1210=16,1211=7 (daily/weekly), 1254=0 (never), 1262=1 (monthly)",
+    "0x56E2": "reset-group table: n x {u32 group, u8 type (1 daily, 2 weekly, 3/4 season), u64 last_reset, u64 next_reset, u8 n, entries {u32 group, u32 entry_id 201xxxx, u32 count}}; all counts 0 in capture - meaning unknown (missions/pass?)"
+  },
+  "items": {
+    "duty_quest": {"ids": [400100300], "quest_ids": "Asmodian DutyMission 2302010-2303132 (Elyos 1302010-1303132)", "how": "achievement 'Pflicht-Quests: Missionen' counter via 0x8356/0x8456, delta since daily reset; board/accepted quests via 0x1C8D, progress via 0x098D", "limit": 5, "status": "verified (id/text); daily delta logic guessed"},
+    "emergency_supply": {"ids": [400100500], "how": "achievement 'Versorgungsgesuche: Notfall' counter delta since daily reset", "status": "verified id, not observed changing"},
+    "weekly_supply": {"ids": [400100600], "how": "achievement 'Versorgungsgesuche: Woechentlich' counter delta since weekly reset", "status": "verified id, not observed changing"},
+    "pve_pvp_weekly_quests": {"ids": [400100400], "quest_ids": "DutyScroll 2302400-2302599, 2303400-2303499, 2309000-2309189; PvP-like: 2309027, 2309067, 2309183-2309189", "how": "achievement 'Pflicht-Quests: Schriftrollen' counter delta since weekly reset; split PvE/PvP only via 0x098D quest ids", "limit": "12 PvE + 20 PvP", "status": "id verified; PvP split guessed"},
+    "expedition_dungeons": {"ids": "43x100100/43x100200 for x=0..5 (Kraohoehle, Draupnir, Uruguguschlucht, Vakrons Luftinsel, Feuertempel, Grimmhornhoehle: Erkundung/Eroberung clears), 436100100 (Abgrundsveredelung: Ludra)", "how": "DungeonClear achievement counters, delta since weekly reset", "status": "guessed (Expedition = Erkundung/Eroberung, cf. 440101000 'Expeditions-Eroberung')"},
+    "daily_dungeons": {"ids": [423100100, 423100200, 424100100, 424100200], "how": "Versiegelte Dungeons / Garnison clear counters, delta since weekly reset", "limit": 14, "status": "guessed - unclear which content MeinMMO calls Daily Dungeons"},
+    "invasion": {"ids": [420101700], "how": "'Nimm an Dimensionalen Invasionen teil' counter (participation, proxy for key use)", "status": "guessed"},
+    "shugo_festa": {"ids": [422100100], "how": "'Nimm an der Shugofesta teil' counter (participation, proxy for key use)", "status": "guessed"},
+    "substance_morph": {"ids": [], "candidates": "0x8E56 id 1209 (=4) and 1210 (=16)", "status": "guessed, values match 4/char + 16/server"},
+    "odyle_energy": {"ids": [], "candidates": "0x0BE3 login frame {u8 n, n x (u32 id, u32 value)}: 2001=560, 2002=0, 4001=200", "status": "guessed, no live update seen"},
+    "ascension_trial": {"ids": [], "status": "not found"},
+    "battlefield_wins": {"ids": [], "status": "not found (410100900 'Besiege 5 Spieler' is kills only)"},
+    "sanctuary_raid": {"ids": [], "status": "not found"},
+    "nightmare": {"ids": [], "status": "not found"},
+    "shugo_keys_nightmare_tickets_invasion_keys": {"ids": [], "status": "not found - probably inventory items, needs a capture with a marked key use"}
+  },
+  "other_ranges": {
+    "110xxxxxx/115xxxxxx/125xxxxxx/128xxxxxx/175xxxxxx": "binary 0/1 flags with timestamp, not quest ids (aion2.app quest ids are 7-digit); 125010xxx flips live when discovering places -> exploration/discovery",
+    "240xxxxxx-244xxxxxx": "unknown counters; 240111000=5 and 240210900=5 set 2026-10-06 10:35",
+    "820xxxxxx": "linked to 0x24E3 records 20044/20045",
+    "920430700-920432300": "cycling counters 0..10 tied to achievement events (kills, gathering, dungeon clears) - likely mission/pass progress"
+  }
+}

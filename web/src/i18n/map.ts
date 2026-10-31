@@ -1,0 +1,33 @@
+// Map canvas, radar, instances.
+export default {
+  de: {
+    'map.instCountdown': 'Instanz / Dungeon – keine Karte.\nOverlay wird in {n} s ausgeblendet …',
+    'map.instHidden': 'Instanz / Dungeon – keine Karte. Die App springt zurück, sobald du sie verlässt.',
+    'map.instStay': 'Instanz / Dungeon – keine Karte. Das Overlay bleibt offen, weil es nicht auf dem Spiel-Bildschirm liegt.',
+    'map.radar': 'Radar', 'map.radarTip': 'Radar: Karte folgt deiner Position',
+    'map.mini': 'Mini-Radar', 'map.miniTip': 'Mini-Radar: kleines Fenster direkt auf deinem Charakter – bleibt sichtbar, wenn das Overlay ausgeblendet ist',
+    'map.miniUnlock': 'Mini-Radar lösen: verschieben, Größe, Reichweite', 'map.miniLock': 'Mini-Radar fixieren (click-through)',
+    'map.miniCenter': 'Mini-Radar auf Charakter zentrieren',
+    'map.zoomIn': 'Hineinzoomen', 'map.zoomOut': 'Herauszoomen', 'map.center': 'Auf mich zentrieren',
+    'map.noPos': 'Noch keine Position. Sie kommt beim Login/Teleport und bei Kämpfen/Skills – normale Bewegung sendet das Spiel nicht.',
+    'map.offMap': 'Deine Position liegt außerhalb von {map} – oben die richtige Karte wählen.',
+    'map.hudMob': 'Mob', 'map.hudSpot': 'Spot', 'map.hudCube': 'Cube',
+    'map.posAgo': 'Position vor {ago}', 'map.posOld': ' – aktualisiert sich bei Kampf/Skills',
+    'map.tipCube': 'Hidden Cube', 'map.tipFound': 'gefunden ✓', 'map.tipOneOf': 'einer von {n} möglichen Orten', 'map.named': 'Named',
+  },
+  en: {
+    'map.instCountdown': 'Instance / dungeon – no map.\nHiding the overlay in {n} s …',
+    'map.instHidden': 'Instance / dungeon – no map. The app comes back as soon as you leave it.',
+    'map.instStay': 'Instance / dungeon – no map. The overlay stays open because it is not on the game screen.',
+    'map.radar': 'Radar', 'map.radarTip': 'Radar: map follows your position',
+    'map.mini': 'Mini radar', 'map.miniTip': 'Mini radar: small window right on your character – stays visible when the overlay is hidden',
+    'map.miniUnlock': 'Unlock mini radar: move, resize, range', 'map.miniLock': 'Lock mini radar (click-through)',
+    'map.miniCenter': 'Centre mini radar on character',
+    'map.zoomIn': 'Zoom in', 'map.zoomOut': 'Zoom out', 'map.center': 'Centre on me',
+    'map.noPos': 'No position yet. It arrives on login/teleport and during combat/skills – the game does not send normal movement.',
+    'map.offMap': 'Your position is outside {map} – pick the right map above.',
+    'map.hudMob': 'Mob', 'map.hudSpot': 'Spot', 'map.hudCube': 'Cube',
+    'map.posAgo': 'Position {ago} ago', 'map.posOld': ' – updates during combat/skills',
+    'map.tipCube': 'Hidden Cube', 'map.tipFound': 'found ✓', 'map.tipOneOf': 'one of {n} possible spots', 'map.named': 'Named',
+  },
+}
