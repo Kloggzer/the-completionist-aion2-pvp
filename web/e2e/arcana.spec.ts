@@ -9,6 +9,9 @@ test.skip(!hasCache() || !fs.existsSync(path.join(PUB, 'arcana.json')) || !fs.ex
 
 test('class skills with their card, card blocks, drops and the filters', async ({ page }) => {
   await openApp(page, { ui: { tab: 'arc', dae: { cls: '3' } } })
+  // the lists sit behind a disclosure, the advice comes first
+  await expect(page.locator('[data-arc-skill]')).toHaveCount(0)
+  await page.locator('[data-disclosure="arc.all"] button').first().click()
   await expect(page.locator('[data-arc-skill]')).toHaveCount(22)
   const dead = page.locator('[data-arc-skill="Deadshot"]')
   await expect(dead).toContainText('Zielpfeil')
@@ -29,4 +32,15 @@ test('class skills with their card, card blocks, drops and the filters', async (
   expect(g).toBeGreaterThan(5)
   expect(g).toBeLessThan(22)
   await expect(page.locator('[data-arc-skill="Defiance"]')).toHaveCount(0)
+})
+
+test('advice: best dungeon stage, the cards, farm list and Transmute', async ({ page }) => {
+  await openApp(page, { ui: { tab: 'arc', dae: { cls: '2' } } })
+  await expect(page.locator('[data-arc-best]')).toContainText(/Deus Research Base|Shattered Arkanis/)
+  await expect(page.locator('[data-arc-chalice]')).toHaveCount(1)
+  await expect(page.locator('[data-arc-slot]')).toHaveCount(5)
+  await expect(page.locator('[data-farm]')).toHaveCount(4)
+  await page.locator('[data-more="arc.farm"]').click()
+  await expect(page.locator('[data-farm]')).toHaveCount(8)
+  await expect(page.locator('[data-tm]')).toHaveCount(4)
 })

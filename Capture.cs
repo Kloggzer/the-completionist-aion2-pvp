@@ -46,7 +46,8 @@ abstract class PetSource : IDisposable
     public event Action<int, List<MerchantItem>>? MerchantReceived;
     /// Own Daevanion boards (0x26e2 at login): board id -> open node ids.
     public event Action<Dictionary<int, uint[]>>? DaevanionReceived;
-    /// Own Daevanion nodes bought (0x03e5, 0x28e2) or reset (0x2be2) while playing: (bought, reset).
+    /// Own Daevanion nodes bought (0x03e5, 0x28e2) or reset (0x2be2; 0x29e2 = a whole board, as its Start node id)
+    /// while playing: (bought, reset).
     public event Action<uint[], uint[]>? DaevanionChanged;
     /// Spent Daevanion points per pool (0x2ee2, on every buy / reset): pool -> points.
     public event Action<Dictionary<int, int>>? DaevanionPoints;
@@ -191,6 +192,8 @@ abstract class PetSource : IDisposable
             DaevanionChanged?.Invoke([one], []);
         else if (op == 0x2be2 && PetFrames.ParseDaeNode(body) is { } reset)
             DaevanionChanged?.Invoke([], [reset]);
+        else if (op == 0x29e2 && PetFrames.ParseDaeBoardReset(body) is { } boards)
+            DaevanionChanged?.Invoke([], boards);
         else if (op == 0x26e2 && PetFrames.ParseDaevanion(body) is { } dae)
         {
             daeBoardIds = dae.Keys.ToHashSet();

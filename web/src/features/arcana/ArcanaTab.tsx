@@ -1,9 +1,10 @@
 import { useApp } from '@/core/state'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
-import { BADGE, BarInfo, BarRight, CHIP, CHIP_ON, Columns, Empty, Foot, Hint, Note, Page, ROW, ROWS, Sect } from '@/components/kit'
+import { BADGE, BarInfo, BarRight, CHIP, CHIP_ON, Columns, Disclosure, Empty, Foot, Hint, Note, Page, Panel, ROW, ROWS, Sect, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { className, data as daeData } from '@/features/daevanion/daevanion'
+import { advise } from './advise'
 import { GRADES, KINDS, arcClass, arcData, arcSave, arcSettings, arcSkills, classId, skillName, type ArcData, type ArcSkill, type Kind } from './arcana'
 
 const TIER_DOT = ['bg-red/70', 'bg-dim/60', 'bg-cyan/80', 'bg-gold'] as const
@@ -75,6 +76,76 @@ function Drops({ d }: { d: ArcData }) {
   </>
 }
 
+const sign = (v: number) => (v >= 0 ? '+' : '−') + fmt(Math.round(Math.abs(v) * 1000) / 10) + ' %'
+/** "almost every clear" / "1 in 4 clears" from the chance of an upgrade per clear. */
+const every = (p: number) => { const n = Math.round(1 / Math.max(p, 1e-3)); return n <= 1 ? t('arc.adv.every1') : t('arc.adv.every', { n }) }
+const enName = (cls: string, en: string) => {
+  const s = daeData()?.classes[cls]?.skills.find(x => x.en === en)
+  return s && lang() === 'de' ? s.de : en
+}
+
+/** For the own character: the cards and their worth, where to farm, Transmute. */
+function Advice({ d, cls }: { d: ArcData; cls: string }) {
+  const a = advise(d, cls)
+  if (!a) return null
+  const best = a.farm[0], tm = a.transmute
+  const chalice = tm.filter(x => x.kind === 'Chalice').sort((x, y) => y.mean - x.mean)[0]
+  const tmBest = [...tm].sort((x, y) => y.mean - x.mean)
+  return <>
+    {a.m.state !== 'cards' && <Hint tone="cyan">{t(a.m.state === 'loading' ? 'arc.adv.loading' : 'arc.adv.noLive')}</Hint>}
+    {best && <Panel title={t('arc.adv.title')} sub={t('arc.adv.sub')} data-arc-advice>
+      <div className="px-2.5 pb-2 text-[12.5px]" data-arc-best>
+        {rich(t('arc.adv.best', { d: best.dungeon, st: t('arc.adv.st', { n: best.stage }), g: sign(best.gain), n: every(best.p) }))}
+        {chalice && <div className="mt-1" data-arc-chalice={chalice.mean > 0.001 ? 'yes' : 'no'}>
+          {rich(t(chalice.mean > 0.001 ? 'arc.adv.chaliceYes' : 'arc.adv.chaliceNo', {
+            picks: chalice.picks.map(i => enName(cls, a.m.names[i])).join(' + '), g: sign(chalice.mean), p: Math.round(chalice.p * 100), mats: chalice.mats, kinah: fmt(chalice.kinah),
+          }))}
+        </div>}
+      </div>
+    </Panel>}
+    <Panel title={t('arc.adv.cards')} sub={t('arc.adv.cardsSub')} data-arc-cards>
+      <div className={ROWS}>
+        {a.slots.map(s => (
+          <div key={s.kind} data-arc-slot={s.kind} className={cn(ROW, 'gap-1.5')}>
+            <span className="w-[74px] flex-none text-muted-foreground">{kindName(s.kind)}</span>
+            {s.card ? <>
+              <span className={cn('w-20 flex-none truncate text-[11.5px]', GRADE_TEXT[s.card.grade])}>{gradeName(s.card.grade)} +{s.card.enchant}</span>
+              <span className="min-w-0 flex-1 truncate text-[11.5px]" data-tip={s.card.set ? t('arc.adv.set', { s: s.card.set.name, n: s.card.set.count }) : undefined}>
+                {s.card.skills.map(x => `${enName(cls, x.name)} +${x.level}`).join(' · ')}
+              </span>
+            </> : <span className="min-w-0 flex-1 truncate text-dim">{t('arc.adv.empty')}</span>}
+            <span className="w-16 flex-none text-right font-semibold text-gold tabular-nums" data-tip={t('arc.adv.worthTip')}>{s.card ? sign(s.cur) : '—'}</span>
+          </div>
+        ))}
+      </div>
+    </Panel>
+    <Panel title={t('arc.adv.farm')} sub={t('arc.adv.farmSub')} data-arc-farm>
+      <div className={ROWS}>
+        <TopN id="arc.farm" items={a.farm} n={4} more={k => t('arc.moreN', { n: k })} render={f => (
+          <div key={f.dungeon + f.stage} data-farm={f.dungeon + ' ' + f.stage} className={cn(ROW, 'gap-1.5')}>
+            <span className="min-w-0 flex-1 truncate">{f.dungeon} <span className="text-muted-foreground">{t('arc.stage', { n: f.stage })}</span></span>
+            <span className="flex-none text-right text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-tip={t('arc.adv.pTip')}>{every(f.p)}</span>
+            <span className="w-16 flex-none text-right font-semibold text-gold tabular-nums" data-tip={t('arc.adv.gainTip')}>{sign(f.gain)}</span>
+          </div>
+        )} />
+      </div>
+    </Panel>
+    <Panel title={t('arc.adv.tm')} sub={t('arc.adv.tmSub')} data-arc-tm>
+      <div className={ROWS}>
+        <TopN id="arc.tm" items={tmBest} n={4} more={k => t('arc.moreN', { n: k })} render={x => (
+          <div key={x.kind + x.n} data-tm={x.kind + x.n} className={cn(ROW, 'gap-1.5')}>
+            <span className="w-[74px] flex-none text-muted-foreground">{kindName(x.kind)}</span>
+            <span className="min-w-0 flex-1 truncate text-[11.5px]">{x.picks.map(i => enName(cls, a.m.names[i])).join(' + ')}</span>
+            <span className="w-24 flex-none text-right text-[11px] text-dim tabular-nums">{t('arc.adv.cost', { n: x.mats, k: fmt(x.kinah / 1e6) })}</span>
+            <span className="w-14 flex-none text-right text-[11.5px] text-muted-foreground tabular-nums" data-tip={t('arc.adv.betterTip')}>{Math.round(x.p * 100)} %</span>
+            <span className={cn('w-16 flex-none text-right font-semibold tabular-nums', x.mean > 0 ? 'text-gold' : 'text-red')} data-tip={t('arc.adv.meanTip')}>{sign(x.mean)}</span>
+          </div>
+        )} />
+      </div>
+    </Panel>
+  </>
+}
+
 export function ArcanaTab() {
   useApp()
   const d = arcData(), dae = daeData()
@@ -96,6 +167,9 @@ export function ArcanaTab() {
   </>
   return (
     <Page w="rows" bar={bar}>
+      <Advice d={d} cls={cls} />
+      <Panel>
+      <Disclosure id="arc.all" title={t('arc.sect.all')} sub={t('arc.allSub')}>
       <Hint>{t('arc.hint')}</Hint>
       <Columns>
         <div>
@@ -108,6 +182,8 @@ export function ArcanaTab() {
         <div>{(kind === 'all' ? KINDS : [kind]).map(k => <CardBlock key={k} d={d} k={k} skills={all} />)}</div>
         <div><Drops d={d} /></div>
       </Columns>
+      </Disclosure>
+      </Panel>
       <Foot>{t('arc.foot', { date: d.date })}</Foot>
     </Page>
   )

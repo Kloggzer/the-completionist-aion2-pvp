@@ -118,12 +118,20 @@ export const TYPICAL: Totals = {
   tol: 23.5, pveTol: 11.5, pvpTol: 19, statusChance: 2.5, statusRes: 2.5,
 }
 
+/** Stats whose class / level base the website does not show (its gear and main stat lines give a level-cap Templar
+ *  about 480 Accuracy, 310 Crit, 100 Evasion): with gear from the page they are at least TYPICAL's, or accuracy and
+ *  evasion nodes look like they fix 30-40 % misses and crit nodes like they start from 0 %. */
+export const SHEET_BASE: Key[] = ['acc', 'crit', 'eva', 'critRes']
+
 /** A skill as the model sees it. `flat` per level (index 0 = level 1); `fx` its stat table per level (passives). */
 export type ModelSkill = {
   flat?: number[]; pct?: number; pvp?: [number, number]; cd?: number; heal?: boolean
   /** Crit from the skill's specializations: from level `at` on it always crits, or `add` % more crit chance (game
    *  data: "Critical Hit on hit", "lands as a Critical Hit", "+30% Skill Critical Hit"). */
   crit?: { at: number; add?: number }[]
+  /** Other specializations the model counts, from level `at` on: own cooldown shorter by `cdCut` s ("-10s cooldown"),
+   *  stats while the skill's effect runs (`fx`, times uptime: "+10% PvE Damage Tolerance … on skill use"). */
+  spec?: { at: number; cdCut?: number; fx?: [Key, number][] }[]
   fx?: { keys: (Key | null)[]; lv: number[][]; cond?: boolean }
   /** Rotation weight (0 = not used): share of the base damage; set by `rotation`. */
   w: number
@@ -133,6 +141,10 @@ export type Ctx = { mode: Mode; a: Assume; skills: ModelSkill[] }
 const v = (t: Totals, k: Key) => t[k] || 0
 const at = <T>(arr: T[], lv: number) => arr[Math.max(0, Math.min(arr.length - 1, Math.round(lv) - 1))]
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x))
+// rate from a stat difference without a cliff at 0: linear far above (per100 % per 100 points), fading out over about
+// SOFT points around the threshold (the real targets differ, so a little accuracy over the assumed evasion still counts)
+const SOFT = 150
+const soft = (d: number, per100: number) => (d / SOFT > 30 ? d : SOFT * Math.log1p(Math.exp(d / SOFT))) * per100 / 100
 
 /** Totals plus what the skills' effect tables give at their levels. */
 export function withSkillFx(t: Totals, lv: number[], ctx: Ctx): Totals {
@@ -141,6 +153,9 @@ export function withSkillFx(t: Totals, lv: number[], ctx: Ctx): Totals {
     if (!s.fx || lv[i] < 1) return
     const row = at(s.fx.lv, lv[i]), up = s.fx.cond ? ctx.a.uptime : 1
     s.fx.keys.forEach((k, c) => { if (k) out[k] = v(out, k) + row[c] * up })
+  })
+  ctx.skills.forEach((s, i) => {
+    for (const x of s.spec || []) if (lv[i] >= x.at) for (const [k, a] of x.fx || []) out[k] = v(out, k) + a * ctx.a.uptime
   })
   return out
 }
@@ -162,7 +177,7 @@ export function rates(t: Totals, ctx: Ctx) {
     double: clamp(v(t, 'double') - a.tgtDoubleRes, 0, 100) / 100,
     perfect: clamp(v(t, 'perfect'), 0, 100) / 100,
     multi: clamp(v(t, 'multi'), 0, 100) / 100,
-    miss: clamp((a.tgtEva - acc) * a.missPer100 / 100, 0, a.missCap) / 100,
+    miss: clamp(soft(a.tgtEva - acc, a.missPer100), 0, a.missCap) / 100,
     cdr: Math.min(0.6, v(t, 'cdr') / 100),
   }
 }
@@ -179,12 +194,14 @@ export function output(t: Totals, lv: number[], ctx: Ctx) {
   }
   ctx.skills.forEach((s, i) => {
     if (!s.w || !s.flat || lv[i] < 1) return
+    // a shorter cooldown: the skill comes more often
+    const cut = (s.spec || []).reduce((n, x) => n + (lv[i] >= x.at ? x.cdCut || 0 : 0), 0), often = s.cd && cut ? s.cd / Math.max(1, s.cd - cut) : 1
     let flat = at(s.flat, lv[i]), pct = s.pct || 0
     // PvP: the second value set (known at the points cap, level 10), the flat part scaled by level
     const ref = s.flat[9] ?? s.flat[s.flat.length - 1]
     if (pvp && s.pvp) { flat *= ref ? s.pvp[0] / ref : 1; pct = s.pvp[1] }
     // w is the skill's share at level 10 and base Attack; the hit at its level and Attack scales it
-    const part = s.w * (flat + pct / 100 * A) / ((pvp && s.pvp ? s.pvp[0] : ref) + pct / 100 * a.atkBase || 1) * (s.heal ? 1 : critOf(s, lv[i]))
+    const part = s.w * (flat + pct / 100 * A) / ((pvp && s.pvp ? s.pvp[0] : ref) + pct / 100 * a.atkBase || 1) * (s.heal ? 1 : critOf(s, lv[i])) * often
     if (s.heal) heal += part
     else if (s.cd) dmg += part / (1 - r.cdr)
     else filler += part
@@ -214,7 +231,7 @@ export function ehp(t: Totals, ctx: Ctx) {
   const cr = clamp(a.attCrit - critRes * a.critPer100 / 100, 0, a.critCap) / 100
   const cm = Math.max(1, a.attCritMult - v(t, 'critTol') / 100)
   const eva = (v(t, 'eva') + (pvp ? v(t, 'pvpEva') : v(t, 'pveEva'))) * (1 + v(t, 'evaPct') / 100) + v(t, 'block') * (1 + v(t, 'blockPct') / 100)
-  const avoid = clamp((eva - a.attAcc) * a.missPer100 / 100, 0, 30) / 100
+  const avoid = clamp(soft(eva - a.attAcc, a.missPer100), 0, 30) / 100
   const end = clamp(v(t, 'endurance'), 0, 100) / 100
   const multi = Math.max(0, a.attMulti - v(t, 'multiRes')) / 100
   // being controlled (stun, knockdown …) costs extra damage: the attacker's chance minus the own resist

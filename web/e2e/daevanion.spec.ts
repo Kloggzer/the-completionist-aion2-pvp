@@ -19,7 +19,10 @@ test('without character data: class, points and goal give a plan on the boards',
   for (let i = 0; i < 3; i++) await pve.getByRole('button', { name: '+10', exact: true }).click()
   await expect(pve.locator('output')).toHaveText('30')
   await expect(page.locator('[data-result="pve"]')).toBeVisible()
-  expect(await page.locator('[data-node="new"]').count()).toBeGreaterThan(5)
+  // the board the plan spends the most on shows its new nodes
+  const spent = await page.locator('[data-board-tab]').evaluateAll(els => els.map(e => Number(e.querySelector('span')?.textContent?.split('/')[0] || 0)))
+  await page.locator('[data-board-tab]').nth(spent.indexOf(Math.max(...spent))).click()
+  await expect.poll(() => page.locator('[data-node="new"]').count()).toBeGreaterThan(5)
   // exactly the player's points: 30 of 30
   await expect(page.getByText('30/30 Punkte verplant')).toBeVisible()
   // in-game frames: on while the tab is open, the host gets every board with its marks

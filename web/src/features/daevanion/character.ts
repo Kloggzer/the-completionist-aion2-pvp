@@ -30,7 +30,9 @@ export const amount = (s: unknown) => Number(String(s ?? '').replace(/[+%,\s]/g,
 
 export type Line = { key: Key | null; id: string; name: string; value: number }
 export type Item = { slot: string; name: string; lines: Line[] }
-export type Gear = { at: number; items: Item[]; stats: Line[] }
+/** An equipped arcana card: kind (Chalice, Parchment …), grade (the page's "Legend" = Epic), its soul-bound skills. */
+export type ArcCard = { slot: string; kind: string; name: string; grade: string; enchant: number; set?: { id: string; name: string; count: number }; skills: { name: string; level: number }[] }
+export type Gear = { at: number; items: Item[]; stats: Line[]; arcana?: ArcCard[] }
 
 /** plaync item detail -> Item. Weapon attack = the middle of its range, plus the enhance bonus ("extra"). */
 export function parseItem(slot: { slotPosName?: string }, d: Record<string, unknown>): Item {
@@ -44,6 +46,18 @@ export function parseItem(slot: { slotPosName?: string }, d: Record<string, unkn
   }
   add(d.mainStats, true); add(d.subStats, false); add(d.magicStoneStat, false)
   return { slot: String(slot.slotPosName ?? ''), name: String(d.name ?? ''), lines }
+}
+
+/** plaync item detail of an arcana slot -> ArcCard (null for other slots). */
+export function parseArcana(slot: { slotPosName?: string; enchantLevel?: number }, d: Record<string, unknown>): ArcCard | null {
+  if (!/^Arcana/.test(String(slot.slotPosName ?? ''))) return null
+  const set = d.set as { id?: string; name?: string; equippedCount?: number } | undefined, g = String(d.grade ?? '')
+  return {
+    slot: String(slot.slotPosName), kind: String(d.categoryName ?? ''), name: String(d.name ?? ''), grade: g === 'Legend' ? 'Epic' : g,
+    enchant: Number(d.enchantLevel ?? slot.enchantLevel ?? 0) || 0,
+    set: set?.id ? { id: set.id, name: String(set.name ?? ''), count: Number(set.equippedCount ?? 0) || 0 } : undefined,
+    skills: (Array.isArray(d.subSkills) ? d.subSkills : []).map((x: { name?: string; level?: number }) => ({ name: String(x?.name ?? ''), level: Number(x?.level ?? 0) || 0 })),
+  }
 }
 
 /** plaync info answer -> converted main / deity stat lines (cooldown lines are negative: −0.5 % = +0.5 reduction). */

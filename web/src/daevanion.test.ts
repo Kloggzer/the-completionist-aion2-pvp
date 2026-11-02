@@ -243,6 +243,14 @@ describe.skipIf(!has)('Daevanion data and plan', () => {
     reset()
   })
 
+  it('entered points are the budget, not the nodes open now', () => {
+    const c = D.classes['2'], open = { 5: c.boards['5'].nodes.filter(n => n[3] === 1).slice(0, 40).map(n => n[0] * 32 + n[1]) }
+    set({}, { daeLive: { Standard: { at: 1, cls: '2', level: 45, open, spentMax: { ariel: 80 } } } })
+    expect(poolInput(D, '2', 'ariel', 'respec', 30).total).toBe(30)
+    expect(poolInput(D, '2', 'ariel', 'add', 30).budget).toBe(0)
+    reset()
+  })
+
   it('skill level without Daevanion = website level minus the open skill nodes', () => {
     const c = D.classes['7'], si = c.skills.findIndex(s => s.en === 'Bolt')
     const open: Record<string, number[]> = {}
@@ -332,5 +340,9 @@ describe('Daevanion nodes bought / reset while playing (0x03e5, 0x28e2, 0x2be2)'
     expect(l).toMatchObject({ at: 6, game: 6 })
     expect(applyNodes(l0, [710124], []).open).toEqual(l0.open) // another class: ignored
     expect(l0.open[1]).toEqual([pos(9, 7)]) // not changed in place
+  })
+  it('a reset Start node (0x29e2) clears the whole board', () => {
+    const l = applyNodes({ at: 1, cls: '2', level: 45, open: { 1: [pos(8, 9)], 5: [pos(8, 7), pos(8, 6)] } }, [], [250113])
+    expect(l.open).toEqual({ 1: [pos(8, 9)], 5: [] })
   })
 })

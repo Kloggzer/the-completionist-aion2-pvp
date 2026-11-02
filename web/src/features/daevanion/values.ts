@@ -119,8 +119,19 @@ export function modelCtx(c: ClassData, cls: string, mode: Mode, w: Weights): Ctx
     if (add) return [{ at: +lv, add: +add[1] }]
     return /Critical Hit on hit|lands as a Critical Hit/.test(x) ? [{ at: +lv }] : []
   }))
+  // other specializations: own cooldown cuts, tolerance buffs on skill use (only for skills in the rotation)
+  const specOf = (s: Skill): NonNullable<ModelSkill['spec']> => Object.entries(s.spec || {}).flatMap(([lv, what]) => what.flatMap((x): NonNullable<ModelSkill['spec']> => {
+    const cd = /^-(\d+)s cooldown$/.exec(x)
+    if (cd) return [{ at: +lv, cdCut: +cd[1] }]
+    const fx: [Key, number][] = []
+    for (const [re, k] of [[/\+(\d+)% PvE Damage Tolerance/, 'pveTol'], [/\+(\d+)% PvP Damage Tolerance/, 'pvpTol']] as const) {
+      const m = re.exec(x)
+      if (m) fx.push([k, +m[1]])
+    }
+    return fx.length ? [{ at: +lv, fx }] : []
+  }))
   const skills: ModelSkill[] = c.skills.map((s, i) => ({
-    crit: s.active ? critOf(s) : undefined,
+    crit: s.active ? critOf(s) : undefined, spec: s.active && use[i] ? specOf(s) : undefined,
     flat: s.active ? s.dmg?.flat : undefined, pct: s.dmg?.pct, pvp: s.dmg?.pvp as [number, number] | undefined, cd: s.cd, heal: s.dmg?.kind === 'heal',
     fx: s.fx && use[i] ? { keys: s.fx.cols.map(x => FX_KEY[x] ?? null), lv: s.fx.lv, cond: s.cond } : undefined, w: rw[i],
   }))

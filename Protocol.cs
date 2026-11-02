@@ -429,6 +429,18 @@ static class PetFrames
         for (int k = 0; k < b[0]; k++) d[b[1 + k * 3]] = BitConverter.ToUInt16(b, 2 + k * 3);
         return d;
     }
+    // 0x29e2: whole boards reset: u8 n, n x u32 Start node id of the board (board * 10000 + 113)
+    public static uint[]? ParseDaeBoardReset(byte[] b)
+    {
+        if (b.Length < 5 || b.Length != 1 + b[0] * 4) return null;
+        var ids = new uint[b[0]];
+        for (int k = 0; k < ids.Length; k++)
+        {
+            ids[k] = BitConverter.ToUInt32(b, 1 + k * 4);
+            if (ids[k] / 10000 is < 11 or > 109 || ids[k] % 10000 != 113) return null;
+        }
+        return ids;
+    }
     public static uint? ParseDaeNode(byte[] b)
     {
         if (b.Length != 6 || BitConverter.ToUInt16(b, 0) != 0) return null;

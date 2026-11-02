@@ -18,8 +18,8 @@ import { lang, t } from '@/core/i18n'
 import { toast } from '@/core/toast'
 import { LIVE, NONE_HINT, ago, charKey, gameClass, gameLevel, getJson, profile as srcProfile, resolve, watch, type Profile } from './source'
 import { buildGraph, type Graph, type Plan } from './optimize'
-import { TYPICAL, evaluate, type Key, type Mode, type Totals } from './model'
-import { gearTotals, parseCp, parseItem, parseStats, type Gear } from './character'
+import { SHEET_BASE, TYPICAL, evaluate, type Key, type Mode, type Totals } from './model'
+import { gearTotals, parseArcana, parseCp, parseItem, parseStats, type Gear } from './character'
 import { CLASS_DEF, DEFAULT_BASE, POOL_MODE, modelCtx, nodeEffects, type ClassData, type DaeData, type Pool, type RawNode, type Weights } from './values'
 import { breakdown, evalSet, solve, type SolveIn, type SolveOut } from './solve'
 
@@ -127,7 +127,8 @@ export function applyNodes(l: Live, bought: number[], reset: number[], at = Date
   const open = Object.fromEntries(Object.entries(l.open).map(([k, v]) => [k, [...v]]))
   const at_ = (id: number) => { const i = id % 10000; return { slot: String(Math.floor(id / 10000) % 10), p: pos(Math.floor((i - 1) / 15) + 1, (i - 1) % 15 + 1), cls: String(Math.floor(id / 100000)) } }
   for (const id of bought) { const x = at_(id); if (x.cls !== l.cls || id % 10000 === 113) continue; open[x.slot] ||= []; if (!open[x.slot].includes(x.p)) open[x.slot].push(x.p) }
-  for (const id of reset) { const x = at_(id); if (x.cls !== l.cls) continue; open[x.slot] = (open[x.slot] || []).filter(p => p !== x.p) }
+  // a reset Start node (0x29e2) = the whole board reset
+  for (const id of reset) { const x = at_(id); if (x.cls !== l.cls) continue; open[x.slot] = id % 10000 === 113 ? [] : (open[x.slot] || []).filter(p => p !== x.p) }
   return { ...l, open, at, game: at }
 }
 
@@ -184,17 +185,24 @@ export async function loadLive(char = charKey(), quiet = false) {
     for (const b of info?.daevanion?.boardList || []) if (b.open && b.openNodeCount > 0) boards[b.id] = await getJson(boardUrl(p, b.id))
     const l = parseLive(info, boards)
     if (!l) throw new Error('empty')
-    const old = live(char), cp = parseCp(info)
+    let old = live(char)
+    const cp = parseCp(info)
     l.cp = [...(old?.cp || []), ...(cp != null ? [[l.at, cp] as [number, number]] : [])].slice(-20)
     try {
       const eq = await getJson(equipUrl(p))
       l.skills = parseSkills(eq)
-      const items = []
-      for (const s of eq?.equipment?.equipmentList || []) items.push(parseItem(s, await getJson(itemUrl(p, s))))
-      l.gear = { at: l.at, items, stats: parseStats(info) }
+      const items = [], arcana = []
+      for (const s of eq?.equipment?.equipmentList || []) {
+        const it = await getJson(itemUrl(p, s)), a = parseArcana(s, it)
+        items.push(parseItem(s, it))
+        if (a) arcana.push(a)
+      }
+      l.gear = { at: l.at, items, stats: parseStats(info), arcana }
     } catch { /* boards without skill levels / gear */ }
-    // the game's open nodes are newer than the website's: keep them, take level, skill levels, gear and CP from it
+    // the game's open nodes are newer than the website's: keep them, take level, skill levels, gear and CP from it.
+    // Read again now: nodes bought / reset in the game during the loads above must not be lost
     U.daeLive ||= {}
+    old = live(char)
     U.daeLive[char] = old?.game && old.cls === l.cls ? { ...old, level: l.level ?? old.level, skills: l.skills, webOpen: l.open, gear: l.gear, cp: l.cp }
       : { ...l, ...(old?.cls === l.cls ? { spent: old.spent, spentMax: old.spentMax } : {}) }
     saveUi(['daeLive'])
@@ -263,6 +271,8 @@ export function charTotals(d: DaeData, cls: string, char = charKey()) {
   const typical: Totals = mine?.gear ? {} : TYPICAL
   const all: Totals = { ...typical }
   for (const [k, a] of Object.entries(page)) all[k as Key] = (mine?.gear ? 0 : typical[k as Key] || 0) + (a as number)
+  // the class / level base the page does not show: gear (without the open nodes) at least TYPICAL's
+  if (mine?.gear) { const g = gearTotals(mine.gear); for (const k of SHEET_BASE) all[k] = (all[k] || 0) + Math.max(0, (TYPICAL[k] || 0) - (g[k] || 0)) }
   return { page, own, typical, all: { ...all, ...own } as Totals, open, live: mine }
 }
 
@@ -321,8 +331,10 @@ export function poolInput(d: DaeData, cls: string, pool: Pool, mode: Mode2, poin
   refs.forEach((x, i) => { if (isOpen(l, x.slot, x.n)) cur.add(i) })
   let spentNow = 0
   for (const i of cur) spentNow += g.nodes[i].cost
-  // fewer points than spent (nothing entered yet): the spent ones, also as the game counts them (0x2ee2)
-  const total = Math.max(points, spentNow, l?.spent?.[pool] ?? 0, l?.spentMax?.[pool] ?? 0), budget = mode === 'respec' ? total : total - spentNow
+  // the entered points; nothing entered: the spent ones, also as the game counts them (0x2ee2). Never from the
+  // current boards once entered: a node bought or reset would change the budget and so the plan
+  const total = points > 0 ? points : Math.max(spentNow, l?.spent?.[pool] ?? 0, l?.spentMax?.[pool] ?? 0)
+  const budget = mode === 'respec' ? total : Math.max(0, total - spentNow)
   // pinned nodes ("slot:row*32+col" -> 1 want / -1 never), per class
   const pin: Record<string, number> = settings().pin[cls] || {}, want: number[] = [], ban: number[] = []
   refs.forEach((x, i) => { const v = pin[pinKey(x)]; if (v === 1) want.push(i); else if (v === -1 && !(mode === 'add' && cur.has(i))) ban.push(i) })
@@ -358,6 +370,7 @@ function ask(key: string, inp: SolveIn) {
 const memo: Partial<Record<Mode2, { key: string; res: PoolPlan[] }>> = {}
 /** Every pool for the current settings (memoized per mode: the tab re-renders often). The quick greedy plan shows at
  *  once, the searched one replaces it when the worker is done (without a worker: searched right away). */
+const lastPlan = new Map<string, Plan>()
 export function plans(mode: Mode2 = settings().mode): PoolPlan[] {
   const d = data()
   if (!d) return []
@@ -372,7 +385,11 @@ export function plans(mode: Mode2 = settings().mode): PoolPlan[] {
     const k = JSON.stringify([x.inp.base, x.inp.lv, x.inp.budget, x.inp.locked, x.inp.want, x.inp.ban, x.inp.w, x.inp.pctW, x.inp.ctx.mode, x.inp.ctx.a, x.inp.ctx.skills.map(z => z.w), x.slots])
     ask(k, x.inp)
     const o = done.get(k)
-    const plan = toPlan(o ?? solve({ ...x.inp, iters: 0, rounds: 1 }))
+    // while the search runs: the pool's last finished plan for the same points (a quick greedy one would show other
+    // nodes for a moment, and following it would flip nodes on and off); other points: the quick one
+    const lk = mode + p + x.slots + '|' + x.inp.budget + '|' + x.inp.locked.length, prev = lastPlan.get(lk)
+    const plan = o ? toPlan(o) : prev ?? toPlan(solve({ ...x.inp, iters: 0, rounds: 1 }))
+    if (o) lastPlan.set(lk, plan)
     if (mode === 'respec') {
       const nodes = x.inp.boards.flatMap(b => b.nodes), t: Totals = { ...prior?.t }, lv = prior ? [...prior.lv] : d.classes[cls].skills.map(() => 0)
       for (const i of plan.owned) { for (const [kk, a] of nodes[i].eff || []) t[kk] = (t[kk] || 0) + a; if (nodes[i].skill != null) lv[nodes[i].skill!]++ }

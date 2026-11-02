@@ -143,8 +143,10 @@ sealed class BoardOverlay : Form
             // only a full search sets the stored grid: the small fit at the grid (for drawing) must never move it, or it
             // walks off step by step (that happened: 149 -> 176 px over a few board switches)
             if (res.full && Plausible(res.hit.Pitch / k, rc.Size)) { grid = res.hit with { Pitch = res.hit.Pitch / k }; SaveGrid(rc.Size, grid); }
+            // drawn where this board fit when it came up, and kept there while it stays open: the fit moves by a few
+            // pixels when nodes light up or go dark, and the frames must stay put while points are spent
             var changed = hit == null || hit.Slot != res.hit.Slot;
-            hit = res.hit; // drawn where this board fits best
+            if (changed) hit = res.hit;
             if (Bounds != rc) Bounds = rc;
             if (!Visible) Show();
             Native.KeepOnTop(Handle);
