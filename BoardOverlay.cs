@@ -18,13 +18,17 @@ sealed class BoardOverlay : Form
     readonly Func<Rectangle?> appRect;
     readonly Func<string> process;
     int idle;                  // ticks without a board
-    // The grid once found stays where it is (capture pixels, for this client size): later ticks only ask which board
-    // is open there, so the frames never move. A full search runs only without a grid (every FullEvery ticks) or when
-    // nothing fitted at the grid for LostAfter ticks (UI scale changed).
+    // The grid once found stays where it is (capture pixels, base pitch, for this client size; saved, so it is known
+    // right away after a restart): later ticks only ask which board is open there (cheap, every 0.4 s), so a board
+    // switch shows within a tick. Only a full search sets the grid; the fit at the grid is for drawing only. A full search runs only without a grid (every FullEvery ticks) or when
+    // nothing fitted at the grid for LostAfter ticks (about a minute: UI scale changed). The marks stay through up
+    // to KeepMisses ticks without a fit (the switch animation), then they hide.
     BoardVision.Hit? grid;
     Size gridFor;
-    const int FullEvery = 4, LostAfter = 40;
-    readonly System.Windows.Forms.Timer timer = new() { Interval = 700 };
+    int misses;
+    const int FullEvery = 4, LostAfter = 150, KeepMisses = 4;
+    readonly System.Windows.Forms.Timer timer = new() { Interval = 400 };
+    static readonly string GridFile = Path.Combine(Settings.DataDir, "daevanion-grid.json");
     List<Board> boards = new();
     BoardVision.Hit? hit;      // in capture pixels
     int factor = 1;            // capture pixels per analysed pixel
@@ -105,7 +109,7 @@ sealed class BoardOverlay : Form
         try
         {
             var layouts = boards.Select(b => new BoardVision.Layout(b.Slot, b.Cells)).ToList();
-            if (gridFor != rc.Size) { grid = null; gridFor = rc.Size; }
+            if (gridFor != rc.Size) { grid = LoadGrid(rc.Size); gridFor = rc.Size; }
             var fixedGrid = grid;
             idle++;
             bool full = fixedGrid == null ? idle % FullEvery == 1 : idle > LostAfter && idle % FullEvery == 1;
@@ -115,23 +119,32 @@ sealed class BoardOverlay : Form
                 using var bmp = new Bitmap(rc.Width, rc.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 using (var gr = Graphics.FromImage(bmp)) gr.CopyFromScreen(rc.Location, Point.Empty, rc.Size);
                 var (lum, w, h, f) = BoardVision.Luminance(bmp);
-                if (BoardVision.Mean(lum) < 2) return (black: true, hit: (BoardVision.Hit?)null, f);
+                if (BoardVision.Mean(lum) < 2) return (black: true, hit: (BoardVision.Hit?)null, f, full: false);
                 var mask = new Rectangle(app.X / f, app.Y / f, app.Width / f, app.Height / f);
                 BoardVision.Hit? x = null;
+                bool byFull = false;
                 if (layouts.Count > 0 && fixedGrid != null) x = BoardVision.AtPlace(lum, w, h, layouts, fixedGrid.Pitch / f, fixedGrid.Sx / f, fixedGrid.Sy / f, mask);
-                if (x == null && layouts.Count > 0 && full) x = BoardVision.Find(lum, w, h, layouts, null, true, mask);
-                return (black: false, hit: x == null ? null : x with { Pitch = x.Pitch * f, Sx = x.Sx * f, Sy = x.Sy * f }, f);
+                if (x == null && layouts.Count > 0 && full) { x = BoardVision.Find(lum, w, h, layouts, null, true, mask); byFull = x != null; }
+                return (black: false, hit: x == null ? null : x with { Pitch = x.Pitch * f, Sx = x.Sx * f, Sy = x.Sy * f }, f, full: byFull);
             });
             if (!timer.Enabled) return;
             factor = res.f;
             if (res.black) { hit = null; Hide(); State("black"); return; }
-            if (res.hit == null) { hit = null; Hide(); State("search"); return; }
-            idle = 0;
-            // keep the grid: only the board (slot) can change at the same place
-            grid ??= res.hit;
-            if (Math.Abs(res.hit.Pitch - grid.Pitch) > grid.Pitch * 0.02 || Math.Abs(res.hit.Sx - grid.Sx) > grid.Pitch * 0.1 || Math.Abs(res.hit.Sy - grid.Sy) > grid.Pitch * 0.1) grid = res.hit;
+            if (res.hit == null)
+            {
+                if (hit != null && ++misses <= KeepMisses) return; // a moment without a fit: keep the marks
+                hit = null; Hide(); State("search"); return;
+            }
+            idle = 0; misses = 0;
+            // keep the grid: only the board (slot) changes at the same place; a bigger board (or a moved grid) gives the
+            // more exact placement
+            var board = boards.FirstOrDefault(b => b.Slot == res.hit.Slot);
+            double k = board == null ? 1 : new BoardVision.Layout(board.Slot, board.Cells).Scale;
+            // only a full search sets the stored grid: the small fit at the grid (for drawing) must never move it, or it
+            // walks off step by step (that happened: 149 -> 176 px over a few board switches)
+            if (res.full && Plausible(res.hit.Pitch / k, rc.Size)) { grid = res.hit with { Pitch = res.hit.Pitch / k }; SaveGrid(rc.Size, grid); }
             var changed = hit == null || hit.Slot != res.hit.Slot;
-            hit = grid with { Slot = res.hit.Slot };
+            hit = res.hit; // drawn where this board fits best
             if (Bounds != rc) Bounds = rc;
             if (!Visible) Show();
             Native.KeepOnTop(Handle);
@@ -143,6 +156,27 @@ sealed class BoardOverlay : Form
     }
 
     public Action<string>? OverlayLog;
+
+    /// Base pitch within 5-9 % of the client height (3840x2160: 149 px = 6.9 %).
+    static bool Plausible(double pitch, Size size) => pitch > size.Height * 0.05 && pitch < size.Height * 0.09;
+
+    /// The grid for a client size, as found last time (capture pixels; base pitch).
+    static BoardVision.Hit? LoadGrid(Size size)
+    {
+        try
+        {
+            var j = JsonNode.Parse(File.ReadAllText(GridFile));
+            if ((int?)j?["w"] != size.Width || (int?)j?["h"] != size.Height) return null;
+            var g = new BoardVision.Hit("", (double?)j["pitch"] ?? 0, (double?)j["sx"] ?? 0, (double?)j["sy"] ?? 0, 0, 0);
+            return Plausible(g.Pitch, size) ? g : null;
+        }
+        catch { return null; }
+    }
+    static void SaveGrid(Size size, BoardVision.Hit g)
+    {
+        try { File.WriteAllText(GridFile, new JsonObject { ["w"] = size.Width, ["h"] = size.Height, ["pitch"] = g.Pitch, ["sx"] = g.Sx, ["sy"] = g.Sy }.ToJsonString()); }
+        catch { }
+    }
 
     protected override void OnPaint(PaintEventArgs e)
     {

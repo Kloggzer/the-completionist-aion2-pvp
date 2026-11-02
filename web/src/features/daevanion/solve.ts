@@ -8,13 +8,17 @@
 import { buildGraph, connectOrder, optimize, type Graph } from './optimize'
 import { evaluate, score, type Ctx, type Eval, type Key, type Totals } from './model'
 
-export type PoolNode = { r: number; c: number; cost: number; start?: boolean; eff?: [Key, number][]; skill?: number }
+/** `pct`: the node gives a percent stat (preferred in the choice by SolveIn.pctW). */
+export type PoolNode = { r: number; c: number; cost: number; start?: boolean; eff?: [Key, number][]; skill?: number; pct?: boolean }
 export type SolveIn = {
   boards: { b: number; nodes: PoolNode[] }[]
   /** Totals and skill levels (per skill index) without this pool's Daevanion nodes. */
   base: Totals; lv: number[]
   ctx: Ctx; w: number
   budget: number; locked: number[]
+  /** Percent nodes weigh this much more in the choice (player setting: they scale, flat values fade); the plan's
+   *  numbers stay the model's. */
+  pctW?: number
   /** Pinned by the player: nodes the plan must have (with the cheapest path to them), nodes it must not buy. */
   want?: number[]; ban?: number[]
   iters?: number; rounds?: number
@@ -50,7 +54,7 @@ export function linearize(inp: SolveIn, ref: Set<number>) {
     if (!n.eff?.length) return 0
     const t2: Totals = { ...t }, sign = ref.has(i) ? -1 : 1
     for (const [k, a] of n.eff) t2[k] = (t2[k] || 0) + sign * a
-    return Math.max(0, sign * (S(t2, lv) - s0))
+    return Math.max(0, sign * (S(t2, lv) - s0)) * (n.pct ? inp.pctW ?? 1 : 1)
   })
   // skill curves: f(k) = what k levels of this pool give on top of the levels outside it, the rest at `ref`
   const size = inp.lv.map(() => 0), own = inp.lv.map(() => 0)

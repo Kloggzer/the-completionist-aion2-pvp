@@ -15,13 +15,21 @@ namespace PetOverlay;
 // still match.
 static class BoardVision
 {
-    public sealed record Layout(string Slot, (int r, int c)[] Cells);
+    public sealed record Layout(string Slot, (int r, int c)[] Cells)
+    {
+        /// The game draws every board in the same frame, so the pitch is the frame over the board's width; the base pitch
+        /// is that of a 13-cell board (Triniel). Checked at 3840x2160: 11 cells (Nezekan-Vaizel) 176.4 px, 13 cells
+        /// (Triniel) 149.4 px, 15 cells (Ariel, Azphel, Brawler) 129.5 px.
+        public double Scale => 13.0 / Math.Max(Cells.Max(x => x.c) - Cells.Min(x => x.c) + 1, Cells.Max(x => x.r) - Cells.Min(x => x.r) + 1);
+    }
     public sealed record Hit(string Slot, double Pitch, double Sx, double Sy, double Score, double Contrast);
 
     /// Working height of the analysed image (the capture is scaled down to it).
     public const int WorkH = 540;
     /// Below this score the board window counts as closed.
     public const double MinScore = 2.2, MinContrast = 2;
+    /// At the known grid less evidence is needed (locked boards are drawn darker, transitions blur for a moment).
+    public const double PlaceScore = 1.4, PlaceContrast = 1.2;
 
     /// Luminance of `bmp` scaled down by an integer factor so that its height is about WorkH; returns (lum, w, h, scale).
     public static (byte[] lum, int w, int h, int f) Luminance(Bitmap bmp)
@@ -95,14 +103,15 @@ static class BoardVision
     static (double score, double contrast) Score(long[] ii, int w, int h, HashSet<int> set, int r0, int r1, int c0, int c1, double p, double sx, double sy, Rectangle mask)
     {
         double a = p * 0.35, sn = 0, sn2 = 0, sh = 0, sh2 = 0;
-        int nn = 0, nh = 0;
+        int nn = 0, nh = 0, outside = 0;
         for (int r = r0; r <= r1; r++)
             for (int c = c0; c <= c1; c++)
             {
                 double x = sx + (c - 8) * p, y = sy + (r - 8) * p;
                 if (mask.Contains((int)x, (int)y)) continue; // covered by the app window
                 double v = Box(ii, w, h, x, y, a);
-                if (double.IsNaN(v)) continue; // outside the image
+                if (double.IsNaN(v)) { outside++; continue; } // outside the image
+
                 if (set.Contains(r * 32 + c))
                 {
                     sn += v; sn2 += v * v; nn++;
@@ -115,7 +124,8 @@ static class BoardVision
                 }
                 else { sh += v; sh2 += v * v; nh++; }
             }
-        if (nn < 12 || nh < 4) return (double.NegativeInfinity, 0);
+        // a board mostly off the image is no match (a blown-up small board would fit any corner)
+        if (nn < 12 || nh < 4 || outside > (r1 - r0 + 1) * (c1 - c0 + 1) / 5) return (double.NegativeInfinity, 0);
         double mn = sn / nn, mh = sh / nh, vn = sn2 / nn - mn * mn, vh = sh2 / nh - mh * mh;
         return ((mn - mh) / Math.Sqrt((vn + vh) / 2 + 0.25), mn - mh);
     }
@@ -129,26 +139,34 @@ static class BoardVision
         var prep = layouts.Select(l =>
         {
             var set = l.Cells.Select(x => x.r * 32 + x.c).ToHashSet();
-            return (l, set, r0: l.Cells.Min(x => x.r), r1: l.Cells.Max(x => x.r), c0: l.Cells.Min(x => x.c), c1: l.Cells.Max(x => x.c));
+            return (l, set, r0: l.Cells.Min(x => x.r), r1: l.Cells.Max(x => x.r), c0: l.Cells.Min(x => x.c), c1: l.Cells.Max(x => x.c), k: l.Scale);
         }).ToList();
-        Hit? Search(double pLo, double pHi, double pStep, double sx0, double sy0, double span, double step)
+        // best placement per board (base pitch p, each board at p * its scale)
+        Dictionary<string, Hit> Search(IEnumerable<(Layout l, HashSet<int> set, int r0, int r1, int c0, int c1, double k)> which, double pLo, double pHi, double pStep, double sx0, double sy0, double span, double step)
         {
-            Hit? best = null;
+            var best = new Dictionary<string, Hit>();
+            var list = which.ToList();
             for (double p = pLo; p <= pHi; p *= 1 + pStep)
                 for (double sx = sx0 - span; sx <= sx0 + span; sx += step)
                     for (double sy = sy0 - span; sy <= sy0 + span; sy += step)
-                        foreach (var (l, set, r0, r1, c0, c1) in prep)
+                        foreach (var (l, set, r0, r1, c0, c1, k) in list)
                         {
-                            var (s, con) = Score(ii, w, h, set, r0, r1, c0, c1, p, sx, sy, mask);
-                            if (best == null || s > best.Score) best = new Hit(l.Slot, p, sx, sy, s, con);
+                            var (s, con) = Score(ii, w, h, set, r0, r1, c0, c1, p * k, sx, sy, mask);
+                            // a high score without real contrast is noise (flat areas), not a board
+                            if (con >= MinContrast && (!best.TryGetValue(l.Slot, out var b) || s > b.Score)) best[l.Slot] = new Hit(l.Slot, p * k, sx, sy, s, con);
                         }
             return best;
         }
-        Hit? Refine(Hit c)
+        // refine one board's candidate: around it in pitch and position, half a pixel at the end
+        Hit? Refine(Hit c0)
         {
-            // half a pixel steps around the coarse hit, then once more around the best
-            var a = Search(c.Pitch * 0.97, c.Pitch * 1.031, 0.01, c.Sx, c.Sy, Math.Max(3, c.Pitch / 5), 1);
-            return a == null ? null : Search(a.Pitch * 0.99, a.Pitch * 1.011, 0.005, a.Sx, a.Sy, 1.5, 0.5);
+            var one = prep.Where(x => x.l.Slot == c0.Slot).ToList();
+            if (one.Count == 0) return null;
+            double k = one[0].k, pb = c0.Pitch / k;
+            var a = Search(one, pb * 0.97, pb * 1.031, 0.01, c0.Sx, c0.Sy, Math.Max(3, c0.Pitch / 5), 1).Values.FirstOrDefault();
+            if (a == null) return null;
+            double ab = a.Pitch / k;
+            return Search(one, ab * 0.99, ab * 1.011, 0.005, a.Sx, a.Sy, 1.5, 0.5).Values.FirstOrDefault();
         }
         bool Good(Hit? x) => x != null && x.Score >= MinScore && x.Contrast >= MinContrast;
 
@@ -158,15 +176,23 @@ static class BoardVision
             if (Good(again)) return again;
         }
         if (!full) return null;
+        // coarse: the best candidate of every board; each one refined; the best real fit wins (a blown-up small board
+        // may outscore the right one in the coarse pass and then fail)
         double p0 = 0.0691 * h;
-        var coarse = Search(p0 * 0.75, p0 * 1.3, 0.04, w / 2.0 - 0.167 * h, 0.542 * h, p0 * 2.5, Math.Max(2, p0 / 6));
-        if (coarse == null) return null;
-        var fine = Refine(coarse);
-        return Good(fine) ? fine : null;
+        var coarse = Search(prep, p0 * 0.75, p0 * 1.3, 0.04, w / 2.0 - 0.167 * h, 0.542 * h, p0 * 2.5, Math.Max(2, p0 / 6));
+        Hit? win = null;
+        foreach (var c in coarse.Values.OrderByDescending(x => x.Score))
+        {
+            var fine = Refine(c);
+            if (Good(fine) && (win == null || fine!.Score > win.Score)) win = fine;
+        }
+        return win;
     }
 
     /// Which board fits at a known placement (the grid does not move: every board has its start node at the same spot,
-    /// the pitch changes only with the resolution or UI scale); null = none (window closed).
+    /// the base pitch `p` changes only with the resolution or UI scale; each board at its Scale); null = none. The placement may be off
+    /// by a hair (it was found on a small board): each board is looked for within ±2 % pitch and ±3 px of it, which the
+    /// big boards (13 and 15 cells wide) need. The hit carries the refined placement.
     public static Hit? AtPlace(byte[] lum, int w, int h, IReadOnlyList<Layout> layouts, double p, double sx, double sy, Rectangle mask = default)
     {
         var ii = Integral(Edges(lum, w, h), w, h);
@@ -174,10 +200,17 @@ static class BoardVision
         foreach (var l in layouts)
         {
             var set = l.Cells.Select(x => x.r * 32 + x.c).ToHashSet();
-            var (sc, con) = Score(ii, w, h, set, l.Cells.Min(x => x.r), l.Cells.Max(x => x.r), l.Cells.Min(x => x.c), l.Cells.Max(x => x.c), p, sx, sy, mask);
-            if (best == null || sc > best.Score) best = new Hit(l.Slot, p, sx, sy, sc, con);
+            int r0 = l.Cells.Min(x => x.r), r1 = l.Cells.Max(x => x.r), c0 = l.Cells.Min(x => x.c), c1 = l.Cells.Max(x => x.c);
+            double pb = p * l.Scale; // this board's pitch
+            for (double q = pb * 0.98; q <= pb * 1.0201; q += pb * 0.005)
+                for (double x = sx - 3; x <= sx + 3; x += 1)
+                    for (double y = sy - 3; y <= sy + 3; y += 1)
+                    {
+                        var (sc, con) = Score(ii, w, h, set, r0, r1, c0, c1, q, x, y, mask);
+                        if (best == null || sc > best.Score) best = new Hit(l.Slot, q, x, y, sc, con);
+                    }
         }
-        return best != null && best.Score >= MinScore && best.Contrast >= MinContrast ? best : null;
+        return best != null && best.Score >= PlaceScore && best.Contrast >= PlaceContrast ? best : null;
     }
 
     /// Score of one layout at a given placement (diagnosis).

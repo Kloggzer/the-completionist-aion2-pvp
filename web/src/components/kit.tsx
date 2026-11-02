@@ -1,6 +1,8 @@
 // Shared building blocks of every view: one page frame, one top bar, one section header, one tile, one flat row, one
-// chip, one bar. Spacing scale: 4 px gaps (gap-1), 6 px outer padding (px-1.5), 10 px text inset (px-2.5). Type
-// scale: section 10.5 px caps, title 12.5 px semibold, text 12.5 px, sub 11.5 px muted, meta 11 px. Radius: rounded-sm.
+// chip, one bar, and the primitives below (Seg, Chip, Stepper, Panel, Disclosure, TopN, PanelTabs on Base UI).
+// Spacing scale: 4 px gaps (gap-1), 6 px outer padding (px-1.5), 10 px text inset (px-2.5). Type scale: section
+// 10.5 px caps, title 12.5 px semibold, text 12.5 px, sub 11.5 px muted, meta 11 px. Radius: rounded-md for controls
+// and panels, rounded-sm for small marks.
 // Icons: 14 px (size-3.5) in rows and bars, 28 px / stroke 1.5 in tile icon columns, 18 px in bell / step columns.
 //
 // Responsive system (container queries, never the viewport: the overlay can be any size):
@@ -21,7 +23,12 @@
 import { Fragment, useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import { Bell, BellOff, ChevronRight, Minus, Plus, type LucideIcon } from 'lucide-react'
 import { host } from '@/core/host'
+import { U, bump, saveUi, useApp } from '@/core/state'
 import { cn } from '@/lib/utils'
+import { Toggle } from '@/components/ui/toggle'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress as ProgressPrimitive } from '@base-ui/react/progress'
 
 // ---------------------------------------------------------------- text + layout classes
 
@@ -75,7 +82,7 @@ export function Columns({ children, className }: { children: ReactNode; classNam
 }
 
 /** Tile: bordered box with title / sub / bar / footer slots (use the classes above inside). */
-export const TILE = 'flex min-w-0 flex-col overflow-hidden rounded-sm border bg-card px-1.5 pt-1 pb-0.5 text-left'
+export const TILE = 'flex min-w-0 flex-col overflow-hidden rounded-md border bg-card px-1.5 pt-1 pb-0.5 text-left'
 /** Tile anatomy, the same in every grid so tiles in a row line up: a one-line title (full text in the tooltip), a sub
  *  text that always takes exactly two lines, then bar + footer pinned to the bottom (T_FOOT). */
 export const T_TITLE = cn(TITLE, 'truncate')
@@ -100,8 +107,8 @@ export const ROWS = 'border-t border-border/40'
 export const ROW_ICON = 'grid w-[22px] flex-none place-items-center [&_svg]:size-3.5'
 
 /** Toggle chip (filters) – same look in every bar, 24 px high like the dropdowns. */
-export const CHIP = 'inline-flex h-6 flex-none items-center gap-1 rounded-sm border px-2 text-[12px] whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground [&_svg]:size-3.5'
-export const CHIP_ON = 'border-gold/55 bg-gold/10 text-foreground'
+export const CHIP = 'inline-flex h-6 flex-none items-center gap-1 rounded-md border border-border/80 bg-white/[0.02] px-2 text-[12px] whitespace-nowrap text-muted-foreground transition-colors hover:border-border hover:bg-white/[0.05] hover:text-foreground [&_svg]:size-3.5'
+export const CHIP_ON = 'border-gold/45 bg-gold/[0.12] text-gold hover:border-gold/60 hover:bg-gold/[0.16] hover:text-gold'
 
 /** Small count badge (tab bar, headers). */
 export const BADGE = 'rounded-sm bg-accent px-1 text-[11px] font-semibold not-italic text-muted-foreground tabular-nums'
@@ -134,10 +141,13 @@ export function More({ onClick, children, tip }: { onClick: () => void; children
 /** Thin progress bar, frac 0..1. cyan = unlocking, gold = levelling / filling up, green = progress/done, red = overflowing. */
 export function Bar({ frac, tone = 'green', className }: { frac: number; tone?: 'cyan' | 'gold' | 'green' | 'red' | 'dim'; className?: string }) {
   const fill = { cyan: 'bg-cyan', gold: 'bg-gold', red: 'bg-red', dim: 'bg-dim', green: frac >= 1 ? 'bg-green' : 'bg-linear-to-r from-green to-cyan' }[tone]
+  const pct = Math.min(100, Math.max(0, frac * 100))
   return (
-    <div className={cn('my-1 h-[3px] flex-none overflow-hidden bg-white/[0.07]', className)}>
-      <i className={cn('block h-full', fill)} style={{ width: Math.min(100, Math.max(0, frac * 100)) + '%' }} />
-    </div>
+    <ProgressPrimitive.Root value={pct} className={cn('my-1 flex-none', className)}>
+      <ProgressPrimitive.Track className="block h-[3px] overflow-hidden rounded-full bg-white/[0.07]">
+        <ProgressPrimitive.Indicator className={cn('block h-full rounded-full transition-[width]', fill)} />
+      </ProgressPrimitive.Track>
+    </ProgressPrimitive.Root>
   )
 }
 
@@ -211,7 +221,7 @@ export function BellBtn({ on, onClick, tip, className }: { on: boolean; onClick:
 /** Hint box (login hints etc.). */
 export function Hint({ children, tone = 'gold' }: { children: ReactNode; tone?: 'gold' | 'cyan' }) {
   return (
-    <div className={cn('mx-1.5 mt-1.5 rounded-sm border px-2.5 py-1.5 text-[12px] leading-snug text-muted-foreground',
+    <div className={cn('mx-1.5 mt-1.5 rounded-md border px-2.5 py-1.5 text-[12px] leading-snug text-muted-foreground',
       tone === 'gold' ? 'border-gold/30 bg-gold/[0.06]' : 'border-cyan/25 bg-cyan/[0.05]')}>{children}</div>
   )
 }
@@ -242,6 +252,125 @@ export function TextEntry({ value, onChange, onSubmit, onCancel, placeholder, cl
       onChange={e => onChange(e.target.value)} onClick={e => e.stopPropagation()}
       onKeyDown={e => { if (e.key === 'Enter') onSubmit(); else if (e.key === 'Escape') onCancel?.() }}
       className={cn('h-7 min-w-0 rounded-sm border bg-background/60 px-2 text-[12.5px] text-foreground outline-none placeholder:text-dim focus:border-gold/60', className)} />
+  )
+}
+
+// ---------------------------------------------------------------- primitives (Base UI) with the house look
+// Design language "calm & compact": the density of the overlay, softer corners (rounded-md), panels as slightly raised
+// cards, gold only for selection / the one action that matters, segmented controls instead of rows of chips.
+// Progressive disclosure: a view shows its answer first (a number, a board, a list of the top few); details sit in a
+// <Disclosure> or behind "show all" and are remembered (U.open) – never everything at once.
+
+/** Segmented control (one of a few options): Base UI ToggleGroup. `item` adds attributes per option (tests, tips). */
+export function Seg<T extends string>({ value, onChange, options, size = 'md', className, item }: {
+  value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode; tip?: string }[]; size?: 'sm' | 'md'; className?: string
+  item?: (v: T) => Record<string, string | undefined>
+}) {
+  return (
+    <ToggleGroup value={[value]} onValueChange={(v: unknown[]) => { if (v.length) onChange(v[v.length - 1] as T) }} spacing={0}
+      className={cn('flex-none rounded-md border bg-background/40 p-px', className)}>
+      {options.map(o => (
+        <ToggleGroupItem key={o.value} value={o.value} data-tip={o.tip} {...item?.(o.value)}
+          className={cn('rounded-[5px]! border-0 px-2 font-normal text-muted-foreground hover:bg-white/5 hover:text-foreground data-[pressed]:bg-gold/[0.14] data-[pressed]:font-medium data-[pressed]:text-gold',
+            size === 'sm' ? 'h-5 min-w-0 px-1.5 text-[10.5px]' : 'h-[22px] min-w-0 text-[11.5px]')}>
+          {o.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  )
+}
+
+/** On / off chip (filters, single switches): Base UI Toggle. */
+export function Chip({ on, onChange, children, tip, className, ...rest }: {
+  on: boolean; onChange: (on: boolean) => void; children: ReactNode; tip?: string; className?: string
+} & Record<`data-${string}`, string | undefined>) {
+  return (
+    <Toggle pressed={on} onPressedChange={onChange} data-tip={tip} {...rest}
+      className={cn(CHIP, 'font-normal data-[pressed]:border-gold/45 data-[pressed]:bg-gold/[0.12] data-[pressed]:text-gold', className)}>
+      {children}
+    </Toggle>
+  )
+}
+
+/** −/value/+ with optional big steps (shown only where there is room). */
+export function Stepper({ value, onChange, min = 0, max = 999, big, className, ...rest }: {
+  value: number; onChange: (v: number) => void; min?: number; max?: number; big?: number; className?: string
+} & Record<`data-${string}`, string | undefined>) {
+  const set = (v: number) => onChange(Math.max(min, Math.min(max, v)))
+  const b = 'grid h-[22px] min-w-[22px] flex-none place-items-center rounded-[5px] px-1 text-[11px] text-muted-foreground tabular-nums transition-colors hover:bg-white/[0.07] hover:text-gold disabled:pointer-events-none disabled:opacity-30 [&_svg]:size-3'
+  return (
+    <span className={cn('flex flex-none items-center rounded-md border bg-background/40 p-px', className)} {...rest}>
+      {big && <button className={cn(b, 'hidden @min-[420px]:grid')} disabled={value <= min} onClick={() => set(value - big)}>−{big}</button>}
+      <button className={b} aria-label="−1" disabled={value <= min} onClick={() => set(value - 1)}><Minus /></button>
+      <output className="min-w-9 text-center text-[12.5px] font-semibold text-foreground tabular-nums">{value}</output>
+      <button className={b} aria-label="+1" disabled={value >= max} onClick={() => set(value + 1)}><Plus /></button>
+      {big && <button className={cn(b, 'hidden @min-[420px]:grid')} disabled={value >= max} onClick={() => set(value + big)}>+{big}</button>}
+    </span>
+  )
+}
+
+/** Raised block (card) with an optional header line: title, sub text, action at the right. */
+export function Panel({ title, sub, right, children, className, ...rest }: {
+  title?: ReactNode; sub?: ReactNode; right?: ReactNode; children: ReactNode; className?: string
+} & Record<`data-${string}`, string | undefined>) {
+  return (
+    <section className={cn('mx-1.5 mt-1.5 overflow-hidden rounded-md border bg-card shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]', className)} {...rest}>
+      {(title || right) && <Sect sub={sub} right={right} className="pt-1.5">{title}</Sect>}
+      {children}
+    </section>
+  )
+}
+
+/** Details on demand: a header line that opens / closes its content; open state remembered under `id` (U.open). */
+export function Disclosure({ id, title, sub, children, defaultOpen = false, right }: {
+  id: string; title: ReactNode; sub?: ReactNode; children: ReactNode; defaultOpen?: boolean; right?: ReactNode
+}) {
+  useApp()
+  const open = (U.open?.[id] as boolean | undefined) ?? defaultOpen
+  const toggle = () => { U.open = { ...U.open, [id]: !open }; saveUi(['open']); bump() }
+  return (
+    <div data-disclosure={id} data-open={open ? 'on' : 'off'}>
+      <div className="flex min-h-7 items-center gap-1.5 px-2.5 pt-1.5">
+        <button onClick={toggle} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10.5px] font-semibold tracking-wider text-dim uppercase hover:text-muted-foreground [&_svg]:size-3.5">
+          <ChevronRight className={cn('flex-none transition-transform', open && 'rotate-90')} />
+          <span className="flex-none">{title}</span>
+          {sub && <span className="min-w-0 truncate font-normal tracking-normal normal-case">{sub}</span>}
+        </button>
+        {right}
+      </div>
+      {open && children}
+    </div>
+  )
+}
+
+/** The first `n` items, the rest behind "show all (k more)"; remembered under `id`. */
+export function TopN<T>({ id, items, n, render, more }: { id: string; items: T[]; n: number; render: (x: T, i: number) => ReactNode; more: (k: number) => string }) {
+  useApp()
+  const all = !!U.open?.[id], shown = all ? items : items.slice(0, n)
+  return <>
+    {shown.map(render)}
+    {items.length > n && (
+      <button data-more={id} onClick={() => { U.open = { ...U.open, [id]: !all }; saveUi(['open']); bump() }}
+        className="flex w-full items-center gap-1 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-gold [&_svg]:size-3">
+        <ChevronRight className={cn('transition-transform', all && '-rotate-90')} />{all ? '−' : more(items.length - n)}
+      </button>
+    )}
+  </>
+}
+
+/** Tabs for the detail areas of a view (line style, Base UI Tabs); the choice is remembered under `id`. */
+export function PanelTabs<T extends string>({ id, tabs, children }: {
+  id: string; tabs: { value: T; label: ReactNode }[]; children: (v: T) => ReactNode
+}) {
+  useApp()
+  const v = (tabs.some(x => x.value === U.open?.[id]) ? U.open[id] : tabs[0].value) as T
+  return (
+    <Tabs value={v} onValueChange={(x: unknown) => { U.open = { ...U.open, [id]: x }; saveUi(['open']); bump() }} className="gap-0">
+      <TabsList variant="line" className="mx-1.5 h-8 w-auto justify-start gap-0 border-b px-0" data-panels>
+        {tabs.map(x => <TabsTrigger key={x.value} value={x.value} data-panel={x.value} className="flex-none px-2.5 text-[12px] data-active:text-gold after:bg-gold!">{x.label}</TabsTrigger>)}
+      </TabsList>
+      {children(v)}
+    </Tabs>
   )
 }
 

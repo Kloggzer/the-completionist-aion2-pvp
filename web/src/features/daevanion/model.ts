@@ -7,9 +7,13 @@
 //               damage = hit × (damage boost + PvE + boss | PvP) × crit × Double × Perfect × multi-hit × positional
 //               DPS    = Σ skills in the rotation (hit / cooldown, cooldowns shortened by CDR, cap 60 %) × combat speed
 //             Caps from the game texts (aion2data stats.json): crit rate 50 %, evasion 30 %, cooldown 60 %.
-//   ehp     = effective HP against one reference hit: HP / expected damage taken (defense takes off 10 % of its value
-//             per hit in PvE, 1 % in PvP; damage tolerance cancels the attacker's damage boost; crit resist, endurance,
-//             evasion / block).
+//   ehp     = effective HP against one reference hit: HP / expected damage taken (defense minus the attacker's
+//             penetration takes off 10 % of its value per hit in PvE, 1 % in PvP; damage tolerance works against the
+//             attacker's matching damage boost (general / PvE / PvP) and shrinks the damage bucket; crit resist,
+//             endurance, evasion / block; status effect resist against being controlled, which costs extra damage).
+//             Status effect chance: own control hits, worth extra damage (mostly in PvP).
+//   The reference character and the attacker are the game's own totals at the level cap (aion2data power-stats.json:
+//   every permanent system, Daevanion taken out), not guesses.
 //   score   = w · ln(output / output0) + (1 − w) · ln(ehp / ehp0): percent damage and percent EHP on one scale.
 //
 // Everything the character page does not show is an assumption (ASSUME, per mode) the tab lists with its source and
@@ -24,12 +28,14 @@ export const K = [
   // defense
   'hp', 'hpPct', 'def', 'defPct', 'pveDef', 'bossDef', 'pvpDef', 'eva', 'pveEva', 'pvpEva', 'evaPct', 'block', 'blockPct',
   'critRes', 'pvpCritRes', 'critResPct', 'critTol', 'tol', 'pveTol', 'bossTol', 'pvpTol', 'endurance', 'multiRes',
+  // status effects (control): own chance (offense), resist (defense)
+  'statusChance', 'statusRes',
 ] as const
 export type Key = typeof K[number]
 export type Totals = Partial<Record<Key, number>>
-export const OFF_KEYS = new Set<Key>(K.slice(0, K.indexOf('heal') + 1))
+export const OFF_KEYS = new Set<Key>([...K.slice(0, K.indexOf('heal') + 1), 'statusChance'])
 
-/** Daevanion board stat (plaync effect name) -> model key; missing = not in the model (MP, status effects). */
+/** Daevanion board stat (plaync effect name) -> model key; missing = not in the model (MP). */
 export const DAE_KEY: Record<string, Key> = {
   'Combat Speed': 'speed', 'Attack Bonus': 'atkBonus', 'Critical Hit Resist': 'critRes', 'Critical Hit': 'crit',
   'Cooldown Reduction': 'cdr', 'Defense Bonus': 'def', 'HP': 'hp', 'Damage Tolerance': 'tol', 'Damage Boost': 'dmg',
@@ -39,6 +45,7 @@ export const DAE_KEY: Record<string, Key> = {
   'PvP Damage Boost': 'pvp', 'Evasion Bonus': 'eva', 'Accuracy Bonus': 'acc', 'PvE Damage Boost': 'pve', 'Boss Attack': 'bossAtk',
   'PvE Attack': 'pveAtk', 'PvE Defense': 'pveDef', 'PvE Accuracy': 'pveAcc', 'PvE Evasion': 'pveEva', 'Boss Defense': 'bossDef',
   'PvE Damage Tolerance': 'pveTol', 'Boss Damage Boost': 'boss', 'Boss Damage Tolerance': 'bossTol',
+  'Status Effect Chance': 'statusChance', 'Status Effect Resist': 'statusRes',
 }
 /** Column of a skill's level table (aion2data skill page) -> model key; others are not in the model. */
 export const FX_KEY: Record<string, Key> = {
@@ -46,7 +53,7 @@ export const FX_KEY: Record<string, Key> = {
   'PvP Damage Tolerance %': 'pvpTol', 'Double Chance %': 'double', 'Defense %': 'defPct', 'Perfect Chance %': 'perfect',
   'Critical Damage Boost %': 'critDmg', 'Critical Hit': 'crit', 'Front Attack Damage Boost %': 'posDmg',
   'Back Attack Damage Boost %': 'posDmg', 'Endurance %': 'endurance', 'Attack %': 'atkPct', 'Critical Hit Resist': 'critRes',
-  'Heal Boost %': 'heal',
+  'Heal Boost %': 'heal', 'Status Effect Resist %': 'statusRes', 'Status Effect Chance %': 'statusChance',
 }
 
 export type Assume = {
@@ -68,32 +75,55 @@ export type Assume = {
   uptime: number
   /** Healers: share of healing in the output (0 = damage only). */
   healShare: number
-  /** Incoming reference hit: raw damage, the attacker's damage boost, crit chance and factor, accuracy, multi-hit. */
-  hitRaw: number; attBoost: number; attCrit: number; attCritMult: number; attAcc: number; attMulti: number
+  /** Incoming reference hit: raw damage, the attacker's general and mode (PvE / PvP) damage boost, penetration, crit
+   *  chance and factor, accuracy, multi-hit. */
+  hitRaw: number; attDmg: number; attBoost: number; attPen: number; attCrit: number; attCritMult: number; attAcc: number; attMulti: number
+  /** Control: the attacker's status effect chance (%) and how much more damage a controlled character takes (0.5 =
+   *  +50 %); own base control chance (%), the target's resist (%) and what a controlled target is worth (damage). */
+  attStatus: number; ccTaken: number; ownStatus: number; tgtStatusRes: number; ccDmg: number
 }
-const COMMON = { atkBase: 3000, hpBase: 12000, defBase: 1500, bucket: 100, critPer100: 6.5, critCap: 50, critMult: 1.5, missPer100: 6.5,
+// Character level parts from aion2data power-stats.json (HP 5,702-6,202, Defense Bonus 450); the pure Attack floor
+// only matters while the page shows no weapon.
+// bucket: the damage boost bucket without the counted sources; endgame characters already carry well over 100 % from
+// titles, arcana, buffs (mmoherald: +1 % damage boost = +0.3-0.35 % damage, +1 % crit damage = +0.4-0.6 %), so 200.
+const COMMON = { atkBase: 1000, hpBase: 5950, defBase: 450, bucket: 200, critPer100: 6.5, critCap: 50, critMult: 1.5, missPer100: 6.5,
   missCap: 80, doubleMult: 2, perfectMult: 1.1, multiMult: 1.15, posShare: 0.7, filler: 0.25, uptime: 0.5, attCritMult: 1.5, attMulti: 10 }
+// Control (ccTaken / ccDmg): PvP is decided by control (a controlled player takes about twice the damage, a
+// controlled target is a kill), bosses knock down and stun – estimates set after player feedback.
+// PvP attacker = a player with the level-cap totals (aion2data power-stats: Damage Boost 21.5-28.5 %, PvP Damage Boost
+// 39-43 %, Penetration 1,900, Status Effect Chance 10.5 %); a boss: estimates.
 export const ASSUME: Record<Mode, Assume> = {
-  pve: { ...COMMON, tgtCritRes: 530, tgtDoubleRes: 30, tgtEva: 1200, healShare: 0, hitRaw: 10000, attBoost: 30, attCrit: 20, attAcc: 1500 },
-  pvp: { ...COMMON, tgtCritRes: 600, tgtDoubleRes: 20, tgtEva: 1000, healShare: 0, hitRaw: 6000, attBoost: 30, attCrit: 30, attAcc: 1200 },
+  pve: { ...COMMON, tgtCritRes: 530, tgtDoubleRes: 30, tgtEva: 1200, healShare: 0, hitRaw: 10000, attDmg: 15, attBoost: 20, attPen: 0, attCrit: 20, attAcc: 1500,
+    attStatus: 20, ccTaken: 0.3, ownStatus: 0, tgtStatusRes: 50, ccDmg: 0.02 },
+  pvp: { ...COMMON, tgtCritRes: 600, tgtDoubleRes: 20, tgtEva: 1000, healShare: 0, hitRaw: 6000, attDmg: 25, attBoost: 41, attPen: 1900, attCrit: 30, attAcc: 1200,
+    attStatus: 35, ccTaken: 1, ownStatus: 20, tgtStatusRes: 10.5, ccDmg: 0.6 },
 }
 /** Where each assumption comes from (i18n key suffix: dae.src.<value>). */
 export const ASSUME_SRC: Record<keyof Assume, string> = {
-  atkBase: 'est', hpBase: 'est', defBase: 'est', bucket: 'mmo', critPer100: 'mmo', critCap: 'game', critMult: 'mmo',
+  atkBase: 'est', hpBase: 'a2d', defBase: 'a2d', bucket: 'mmo', critPer100: 'mmo', critCap: 'game', critMult: 'mmo',
   tgtCritRes: 'mmo', tgtDoubleRes: 'mmo', tgtEva: 'mmo', missPer100: 'mmo', missCap: 'mmo', doubleMult: 'est',
   perfectMult: 'mmo', multiMult: 'est', posShare: 'mmo', filler: 'est', uptime: 'est', healShare: 'est',
-  hitRaw: 'est', attBoost: 'est', attCrit: 'est', attCritMult: 'mmo', attAcc: 'est', attMulti: 'est',
+  hitRaw: 'est', attDmg: 'a2d', attBoost: 'a2d', attPen: 'a2d', attCrit: 'est', attCritMult: 'mmo', attAcc: 'est', attMulti: 'est',
+  attStatus: 'est', ccTaken: 'est', ownStatus: 'est', tgtStatusRes: 'a2d', ccDmg: 'est',
 }
 
-/** Character sheet used while the page gives no gear: a typical level-45 character in the ranges of the mmoherald
- *  guide (shown as an estimate in the tab, every number replaceable). Without it crit, Double etc. would sit at 0 and
- *  their Daevanion nodes look worthless. */
-export const TYPICAL: Totals = { atk: 3500, wpn: 20, atkBonus: 400, atkPct: 15, crit: 1000, critPct: 5, critDmg: 30, dmg: 30, pve: 30,
-  boss: 10, pvp: 20, double: 50, perfect: 20, multi: 15, speed: 25, cdr: 10, acc: 1300, hp: 8000, def: 1500, critRes: 300, eva: 900, block: 300 }
+/** Character sheet used while the page gives no gear: a level-cap character WITHOUT its Daevanion boards (the plan adds
+ *  those), from the game's totals (aion2data power-stats.json, middle of each range, the Daevanion part taken out; HP
+ *  and Defense without the character level part, which hpBase / defBase add). Not in that list (arcana, soul binding,
+ *  deity points: crit, Double, speed, accuracy, attack increase): estimates. Every number replaceable in the tab. */
+export const TYPICAL: Totals = {
+  atk: 1739, atkBonus: 223, wpn: 10, atkPct: 10, crit: 700, critPct: 5, dmg: 18.5, pve: 10, pvp: 33, double: 30, perfect: 5, multi: 5,
+  speed: 5, cdr: 5, acc: 1300, pveAtk: 76, bossAtk: 70, pvpAtk: 4, pvpCrit: 10, pvpAcc: 40,
+  hp: 9041, hpPct: 22.5, def: 13959, pveDef: 410, bossDef: 600, pvpDef: 110, eva: 900, pvpEva: 20, block: 275, critRes: 212, pvpCritRes: 5,
+  tol: 23.5, pveTol: 11.5, pvpTol: 19, statusChance: 2.5, statusRes: 2.5,
+}
 
 /** A skill as the model sees it. `flat` per level (index 0 = level 1); `fx` its stat table per level (passives). */
 export type ModelSkill = {
   flat?: number[]; pct?: number; pvp?: [number, number]; cd?: number; heal?: boolean
+  /** Crit from the skill's specializations: from level `at` on it always crits, or `add` % more crit chance (game
+   *  data: "Critical Hit on hit", "lands as a Critical Hit", "+30% Skill Critical Hit"). */
+  crit?: { at: number; add?: number }[]
   fx?: { keys: (Key | null)[]; lv: number[][]; cond?: boolean }
   /** Rotation weight (0 = not used): share of the base damage; set by `rotation`. */
   w: number
@@ -141,6 +171,12 @@ export function rates(t: Totals, ctx: Ctx) {
 export function output(t: Totals, lv: number[], ctx: Ctx) {
   const a = ctx.a, pvp = ctx.mode === 'pvp', A = attackOf(t, ctx), r = rates(t, ctx)
   let dmg = 0, heal = 0, filler = 0, wsum = 0
+  // crit per skill: the general rate, raised by the skill's own specializations at its level
+  const critOf = (s: ModelSkill, lv: number) => {
+    let c = r.crit
+    for (const x of s.crit || []) if (lv >= x.at) c = x.add == null ? 1 : Math.min(1, c + x.add / 100)
+    return 1 + c * (r.critMult - 1)
+  }
   ctx.skills.forEach((s, i) => {
     if (!s.w || !s.flat || lv[i] < 1) return
     let flat = at(s.flat, lv[i]), pct = s.pct || 0
@@ -148,18 +184,20 @@ export function output(t: Totals, lv: number[], ctx: Ctx) {
     const ref = s.flat[9] ?? s.flat[s.flat.length - 1]
     if (pvp && s.pvp) { flat *= ref ? s.pvp[0] / ref : 1; pct = s.pvp[1] }
     // w is the skill's share at level 10 and base Attack; the hit at its level and Attack scales it
-    const part = s.w * (flat + pct / 100 * A) / ((pvp && s.pvp ? s.pvp[0] : ref) + pct / 100 * a.atkBase || 1)
+    const part = s.w * (flat + pct / 100 * A) / ((pvp && s.pvp ? s.pvp[0] : ref) + pct / 100 * a.atkBase || 1) * (s.heal ? 1 : critOf(s, lv[i]))
     if (s.heal) heal += part
     else if (s.cd) dmg += part / (1 - r.cdr)
     else filler += part
     wsum += s.w
   })
-  if (!wsum) dmg = A // no rotation known: damage follows Attack
+  if (!wsum) dmg = A * critOf({ w: 0 }, 0) // no rotation known: damage follows Attack
   const bucket = (a.bucket + v(t, 'dmg') + (pvp ? v(t, 'pvp') : v(t, 'pve') + v(t, 'boss'))) / 100
-  const mult = (1 - r.miss) * (1 + r.crit * (r.critMult - 1)) * (1 + r.double * (a.doubleMult - 1)) *
+  const mult = (1 - r.miss) * (1 + r.double * (a.doubleMult - 1)) *
     (1 + r.perfect * (a.perfectMult - 1)) * (1 + r.multi * (a.multiMult - 1)) * (1 + v(t, 'posDmg') / 100 * a.posShare)
+  // own control hits: the share that lands (chance against the target's resist) is worth ccDmg more damage
+  const cc = clamp(a.ownStatus + v(t, 'statusChance') - a.tgtStatusRes, 0, 100) / 100
   const speed = 1 + v(t, 'speed') / 100
-  return { dmg: (dmg + filler) * bucket * mult * speed, heal: heal * (1 + v(t, 'heal') / 100) * speed / (1 - r.cdr) }
+  return { dmg: (dmg + filler) * bucket * mult * speed * (1 + cc * a.ccDmg), heal: heal * (1 + v(t, 'heal') / 100) * speed / (1 - r.cdr) }
 }
 
 /** Effective HP against the reference hit. */
@@ -167,9 +205,11 @@ export function ehp(t: Totals, ctx: Ctx) {
   const a = ctx.a, pvp = ctx.mode === 'pvp'
   const hp = (a.hpBase + v(t, 'hp')) * (1 + v(t, 'hpPct') / 100)
   const def = (a.defBase + v(t, 'def')) * (1 + v(t, 'defPct') / 100) + (pvp ? v(t, 'pvpDef') : v(t, 'pveDef') + v(t, 'bossDef'))
-  const hit = Math.max(a.hitRaw * 0.05, a.hitRaw - def * (pvp ? 0.01 : 0.1))
-  const tol = v(t, 'tol') + (pvp ? v(t, 'pvpTol') : v(t, 'pveTol') + v(t, 'bossTol'))
-  const bucket = (100 + Math.max(0, a.attBoost - tol)) / 100
+  const hit = Math.max(a.hitRaw * 0.05, a.hitRaw - Math.max(0, def - a.attPen) * (pvp ? 0.01 : 0.1))
+  // tolerance works against the attacker's matching boost (general against general, PvE / PvP against its mode) and on
+  // below it, without a cliff: the damage bucket shrinks by every point, floored at 20 %
+  const modeTol = pvp ? v(t, 'pvpTol') : v(t, 'pveTol') + v(t, 'bossTol')
+  const bucket = Math.max(0.2, (100 + a.attDmg - v(t, 'tol') + a.attBoost - modeTol) / 100)
   const critRes = (v(t, 'critRes') + (pvp ? v(t, 'pvpCritRes') : 0)) * (1 + v(t, 'critResPct') / 100)
   const cr = clamp(a.attCrit - critRes * a.critPer100 / 100, 0, a.critCap) / 100
   const cm = Math.max(1, a.attCritMult - v(t, 'critTol') / 100)
@@ -177,7 +217,9 @@ export function ehp(t: Totals, ctx: Ctx) {
   const avoid = clamp((eva - a.attAcc) * a.missPer100 / 100, 0, 30) / 100
   const end = clamp(v(t, 'endurance'), 0, 100) / 100
   const multi = Math.max(0, a.attMulti - v(t, 'multiRes')) / 100
-  const taken = (1 - avoid) * hit * bucket * (1 + cr * (cm - 1)) * (1 - end / 2) * (1 + multi * (a.multiMult - 1))
+  // being controlled (stun, knockdown …) costs extra damage: the attacker's chance minus the own resist
+  const ccIn = clamp(a.attStatus - v(t, 'statusRes'), 0, 100) / 100
+  const taken = (1 - avoid) * hit * bucket * (1 + cr * (cm - 1)) * (1 - end / 2) * (1 + multi * (a.multiMult - 1)) * (1 + ccIn * a.ccTaken)
   return hp / taken
 }
 

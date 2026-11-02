@@ -29,8 +29,9 @@ export type Live = {
   gear?: Gear; cp?: [number, number][]
   /** Open nodes from the game (time); `webOpen` = the website's open nodes that go with `skills`. */
   game?: number; webOpen?: Record<string, number[]>
-  /** Spent points per pool as the game reports them (0x2ee2). */
-  spent?: Partial<Record<Pool, number>>
+  /** Spent points per pool as the game reports them (0x2ee2), and the highest ever seen: a pool's points never shrink,
+   *  so that is at least its total (the game does not send the free points); a reset does not change the plan. */
+  spent?: Partial<Record<Pool, number>>; spentMax?: Partial<Record<Pool, number>>
 }
 
 fetch('daevanion.json').then(r => r.json()).then(d => { G.dae = d; bump() }).catch(() => { G.dae = false; bump() })
@@ -44,7 +45,7 @@ export function settings(): Any {
   U.dae ||= {}
   const s = U.dae
   s.mode ||= 'respec'
-  for (const k of ['off', 'use', 'base', 'assume', 'ignore', 'heal', 'pmode', 'own', 'open', 'pin', 'done']) s[k] ||= {}
+  for (const k of ['off', 'use', 'base', 'assume', 'ignore', 'heal', 'pmode', 'own', 'open', 'pin', 'done', 'pctW']) s[k] ||= {}
   s.free ??= 0; s.ariel ??= 0; s.pvp ??= 0
   return s
 }
@@ -70,6 +71,7 @@ export const weights = (cls: string): Weights => {
   return {
     off: s.off[cls] ?? CLASS_DEF[cls]?.off ?? 0.5, mode: { ...POOL_MODE, ...s.pmode }, use: s.use[cls] || {}, base: s.base[cls] || {},
     assume: s.assume[cls] || {}, ignore: s.ignore[cls] || [], heal: s.heal[cls] ?? CLASS_DEF[cls]?.heal ?? 0,
+    pctW: s.pctW?.[cls] ?? 1.5,
   }
 }
 
@@ -116,7 +118,7 @@ export function parseGame(boards: Record<string, number[]>, prev: Live | undefin
   return {
     at, cls, level: same ? prev!.level : gameLevel(), open, game: at,
     ...(same && prev!.skills ? { skills: prev!.skills, webOpen: prev!.webOpen ?? prev!.open } : {}),
-    ...(same ? { gear: prev!.gear, cp: prev!.cp } : {}),
+    ...(same ? { gear: prev!.gear, cp: prev!.cp, spent: prev!.spent, spentMax: prev!.spentMax } : {}),
   }
 }
 
@@ -145,11 +147,18 @@ function applyGame() {
   bump()
 }
 onHost('daeGame', m => { gameBoards = m.boards; applyGame() })
-// spent points per pool from the game (0x2ee2 on every buy / reset; pool 1 = Nezekan–Triniel)
+// spent points per pool from the game (0x2ee2 at login and on every buy / reset). Pools as checked against a login
+// capture: 1 = Nezekan–Triniel (93 + 107 + 105 + 111 = 416), 2 = Ariel (71), 3 = Azphel (0).
+const GAME_POOL: Record<string, Pool> = { 1: 'pve', 2: 'ariel', 3: 'pvp' }
 onHost('daePoints', m => {
-  const char = charKey(), l = U.daeLive?.[char], v = m.pools?.['1']
-  if (!l || typeof v !== 'number') return
-  U.daeLive[char] = { ...l, spent: { ...l.spent, pve: v } }
+  const char = charKey(), l = U.daeLive?.[char]
+  if (!l || !m.pools) return
+  const spent = { ...l.spent }, spentMax = { ...l.spentMax }
+  for (const [k, v] of Object.entries(m.pools)) if (GAME_POOL[k] && typeof v === 'number') {
+    spent[GAME_POOL[k]] = v
+    spentMax[GAME_POOL[k]] = Math.max(spentMax[GAME_POOL[k]] ?? 0, v)
+  }
+  U.daeLive[char] = { ...l, spent, spentMax }
   saveUi(['daeLive']); bump()
 })
 // nodes bought / reset in the game while playing (0x03e5 / 0x28e2 / 0x2be2): the current boards follow at once
@@ -186,7 +195,8 @@ export async function loadLive(char = charKey(), quiet = false) {
     } catch { /* boards without skill levels / gear */ }
     // the game's open nodes are newer than the website's: keep them, take level, skill levels, gear and CP from it
     U.daeLive ||= {}
-    U.daeLive[char] = old?.game && old.cls === l.cls ? { ...old, level: l.level ?? old.level, skills: l.skills, webOpen: l.open, gear: l.gear, cp: l.cp } : l
+    U.daeLive[char] = old?.game && old.cls === l.cls ? { ...old, level: l.level ?? old.level, skills: l.skills, webOpen: l.open, gear: l.gear, cp: l.cp }
+      : { ...l, ...(old?.cls === l.cls ? { spent: old.spent, spentMax: old.spentMax } : {}) }
     saveUi(['daeLive'])
     // fresh boards: the ticked steps are owned now
     if (!old?.game && settings().done[char]?.length) save({ done: { ...settings().done, [char]: [] } })
@@ -274,6 +284,8 @@ export function skillBases(c: ClassData, l: Live | undefined, w: Weights) {
 
 export type PoolPlan = {
   pool: Pool; mode: Mode; slots: string[]; g: Graph; refs: Ref[]; inp: SolveIn
+  /** The search key (its inputs). */
+  key: string
   /** Owned now (website) incl. starts, and the plan; `pending` while the worker still searches. */
   cur: Set<number>; plan: Plan; pending: boolean
   /** Points spent now, total points (entered, at least spentNow), points the plan may use (respec: all, add: the free ones). */
@@ -281,20 +293,27 @@ export type PoolPlan = {
 }
 
 /** Solver input of a pool. `points` = the character's total points of this pool (what the game shows). */
-export function poolInput(d: DaeData, cls: string, pool: Pool, mode: Mode2, points: number) {
+/** Stats and skill levels the plans of the pools before this one add ("respec": the pools are planned one after the
+ *  other on the character without any Daevanion, so the plan never depends on the boards the character has now). */
+export type Prior = { t: Totals; lv: number[] }
+
+export function poolInput(d: DaeData, cls: string, pool: Pool, mode: Mode2, points: number, prior?: Prior) {
   const c = d.classes[cls], w = weights(cls), ct = charTotals(d, cls), l = ct.live
   const slots = poolSlots(c, pool, l?.level ?? gameLevel()), refs: Ref[] = []
   const ctx = modelCtx(c, cls, w.mode[pool], w)
-  // the character without this pool's Daevanion nodes
+  // respec: the character without any Daevanion node, plus the plans of the pools before (prior); add: without this
+  // pool's nodes, the other pools as they are (adding builds on the boards the character has)
   const base: Totals = { ...ct.all }
-  for (const [k, a] of Object.entries(ct.open[pool].t)) base[k as Key] = (base[k as Key] || 0) - (a as number)
+  for (const p of mode === 'respec' ? POOLS : [pool]) for (const [k, a] of Object.entries(ct.open[p].t)) base[k as Key] = (base[k as Key] || 0) - (a as number)
+  if (mode === 'respec') for (const [k, a] of Object.entries(prior?.t || {})) base[k as Key] = (base[k as Key] || 0) + (a as number)
   const nodae = skillBases(c, l, w)
-  const lv = c.skills.map((_, si) => nodae[si].lv + POOLS.filter(p => p !== pool).reduce((n, p) => n + ct.open[p].lv[si], 0))
+  const lv = c.skills.map((_, si) => nodae[si].lv + (mode === 'respec' ? prior?.lv[si] ?? 0 : POOLS.filter(p => p !== pool).reduce((n, p) => n + ct.open[p].lv[si], 0)))
   const boards = slots.map(slot => ({
     b: +slot,
     nodes: c.boards[slot].nodes.map(n => {
       refs.push({ slot, n })
-      return { r: n[0], c: n[1], cost: n[2], start: n[3] === 0 || undefined, eff: nodeEffects(n, d.stats, w.ignore), skill: n[3] === 2 ? n[4] as number : undefined }
+      const pct = n[3] === 1 && (n[4] as [number, number][]).some(([si]) => d.stats[si].pct) || undefined
+      return { r: n[0], c: n[1], cost: n[2], start: n[3] === 0 || undefined, eff: nodeEffects(n, d.stats, w.ignore), skill: n[3] === 2 ? n[4] as number : undefined, pct }
     }),
   }))
   const g = buildGraph(boards.map(b => ({ b: b.b, nodes: b.nodes.map(n => ({ ...n, v: 0 })) })))
@@ -303,11 +322,11 @@ export function poolInput(d: DaeData, cls: string, pool: Pool, mode: Mode2, poin
   let spentNow = 0
   for (const i of cur) spentNow += g.nodes[i].cost
   // fewer points than spent (nothing entered yet): the spent ones, also as the game counts them (0x2ee2)
-  const total = Math.max(points, spentNow, l?.spent?.[pool] ?? 0), budget = mode === 'respec' ? total : total - spentNow
+  const total = Math.max(points, spentNow, l?.spent?.[pool] ?? 0, l?.spentMax?.[pool] ?? 0), budget = mode === 'respec' ? total : total - spentNow
   // pinned nodes ("slot:row*32+col" -> 1 want / -1 never), per class
   const pin: Record<string, number> = settings().pin[cls] || {}, want: number[] = [], ban: number[] = []
   refs.forEach((x, i) => { const v = pin[pinKey(x)]; if (v === 1) want.push(i); else if (v === -1 && !(mode === 'add' && cur.has(i))) ban.push(i) })
-  const inp: SolveIn = { boards, base, lv, ctx, w: w.off, budget, locked: mode === 'add' ? [...cur] : [], want, ban }
+  const inp: SolveIn = { boards, base, lv, ctx, w: w.off, budget, locked: mode === 'add' ? [...cur] : [], want, ban, pctW: w.pctW }
   return { pool, mode: ctx.mode, slots, g, refs, inp, cur, spentNow, total, budget }
 }
 
@@ -344,13 +363,22 @@ export function plans(mode: Mode2 = settings().mode): PoolPlan[] {
   if (!d) return []
   const s = settings(), cls = classId(), l = live()
   const key = JSON.stringify([mode, cls, s.free, s.ariel, s.pvp, weights(cls), s.own[charKey()], s.pin[cls], l?.at, l?.cls, l?.spent, gameLevel()])
-  const keys = POOLS.map(p => key + p)
-  if (memo[mode]?.key === key && memo[mode]!.res.every((r, k) => !r.pending || !done.has(keys[k]))) return memo[mode]!.res
-  const res = POOLS.map((p, k) => {
-    const x = poolInput(d, cls, p, mode, s[POOL_KEY[p]])
-    ask(keys[k], x.inp)
-    const o = done.get(keys[k])
-    return { ...x, plan: toPlan(o ?? solve({ ...x.inp, iters: 0, rounds: 1 })), pending: !o }
+  if (memo[mode]?.key === key && memo[mode]!.res.every(r => !r.pending || !done.has(r.key))) return memo[mode]!.res
+  // one pool after the other; a pool's search runs on exactly its inputs (key), so a change elsewhere (a node bought
+  // in the game while planning a respec) finds the same key and the same plan: no flicker, no new search
+  let prior: Prior | undefined
+  const res = POOLS.map(p => {
+    const x = poolInput(d, cls, p, mode, s[POOL_KEY[p]], prior)
+    const k = JSON.stringify([x.inp.base, x.inp.lv, x.inp.budget, x.inp.locked, x.inp.want, x.inp.ban, x.inp.w, x.inp.pctW, x.inp.ctx.mode, x.inp.ctx.a, x.inp.ctx.skills.map(z => z.w), x.slots])
+    ask(k, x.inp)
+    const o = done.get(k)
+    const plan = toPlan(o ?? solve({ ...x.inp, iters: 0, rounds: 1 }))
+    if (mode === 'respec') {
+      const nodes = x.inp.boards.flatMap(b => b.nodes), t: Totals = { ...prior?.t }, lv = prior ? [...prior.lv] : d.classes[cls].skills.map(() => 0)
+      for (const i of plan.owned) { for (const [kk, a] of nodes[i].eff || []) t[kk] = (t[kk] || 0) + a; if (nodes[i].skill != null) lv[nodes[i].skill!]++ }
+      prior = { t, lv }
+    }
+    return { ...x, key: k, plan, pending: !o }
   })
   memo[mode] = { key, res }
   return res

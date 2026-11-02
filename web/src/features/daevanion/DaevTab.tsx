@@ -1,18 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Ban, Check, ChevronDown, ChevronUp, Download, Loader2, MonitorUp, Pin, RefreshCw, RotateCcw, Save, Shield, Sparkles, Swords, Trash2 } from 'lucide-react'
-import { V, bump, useApp } from '@/core/state'
+import { U, V, bump, useApp } from '@/core/state'
 import { host } from '@/core/host'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
 import { Slider } from '@/components/ui/slider'
-import { Bar, BarInfo, BarRight, CHIP, CHIP_ON, Columns, Empty, Foot, Hint, Note, Page, ROW, ROWS, SECT_BTN, Sect, rich } from '@/components/kit'
+import { Bar, BarInfo, BarRight, CHIP, CHIP_ON, Chip, Disclosure, Empty, Foot, Hint, Note, Page, Panel, PanelTabs, ROW, ROWS, SECT_BTN, Sect, Seg, Stepper, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import {
   LIVE, NONE_HINT, advice, ago, logHits, setLog, breakdown, charKey, charTotals, classId, className, data, forgetLive, live, loadLive, loading,
   marginals, nodeWorth, numbers, overlayBoards, overlayState, pinKey, plans, POOL_KEY, profile, save, settings, skillBases, skillMarginals, toggleDone, togglePin, totals, weights, type PoolPlan,
 } from './daevanion'
 import { ASSUME, ASSUME_SRC, DAE_KEY, OFF_KEYS, type Assume, type Key, type Mode } from './model'
-import { assumeOf, defaultUse, type DaeData, type Pool, type Skill } from './values'
+import { CLASS_DEF, assumeOf, defaultUse, type ClassData, type DaeData, type Skill } from './values'
 
 const label = (o: { en: string; de: string }) => (lang() === 'de' ? o.de : o.en)
 const amount = (v: number, pct: boolean) => (v > 0 ? '+' : '') + (pct ? fmt(Math.round(v * 10) / 10) + ' %' : fmt(Math.round(v)))
@@ -32,73 +32,74 @@ function NumField({ value, onCommit, className, data: dk }: { value: number; onC
   )
 }
 
-/** −10 −1 value +1 +10; `spent` (website boards) shows what of it is spent and free. */
-function PointsEdit({ label: l, value, onChange, dataKey, spent }: { label: string; value: number; onChange: (v: number) => void; dataKey: string; spent?: number }) {
-  const b = 'h-6 min-w-7 flex-none rounded-sm border px-1 text-[11px] text-muted-foreground tabular-nums transition-colors hover:border-gold/50 hover:text-gold disabled:pointer-events-none disabled:opacity-30'
-  const set = (v: number) => onChange(Math.max(0, Math.min(999, v)))
+/** One point pool: name, spent / free (with character data), PvE / PvP, the points. */
+function PointsEdit({ label: l, value, onChange, dataKey, spent, mode, onMode }: {
+  label: string; value: number; onChange: (v: number) => void; dataKey: string; spent?: number; mode: Mode; onMode: (m: Mode) => void
+}) {
   return (
-    <div data-points={dataKey} className={cn(ROW, 'gap-1')}>
+    <div data-points={dataKey} className={cn(ROW, 'gap-1.5')}>
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="truncate text-muted-foreground">{l}</span>
+        <span className="truncate">{l}</span>
         {spent != null && spent > 0 && <span data-spent className="truncate text-[11px] text-dim tabular-nums">{t('dae.spentFree', { spent, free: Math.max(0, value - spent) })}</span>}
       </span>
-      {[10, 1].map(d => <button key={-d} className={b} disabled={value <= 0} onClick={() => set(value - d)}>−{d}</button>)}
-      <output className="min-w-9 text-center font-semibold text-foreground tabular-nums">{value}</output>
-      {[1, 10].map(d => <button key={d} className={b} onClick={() => set(value + d)}>+{d}</button>)}
+      <span data-pmode={dataKey} data-tip={t('dae.pmodeTip')}>
+        <Seg size="sm" value={mode} onChange={onMode} item={m => ({ 'data-pm': m })} options={[{ value: 'pve', label: 'PvE' }, { value: 'pvp', label: 'PvP' }]} />
+      </span>
+      <Stepper value={value} onChange={onChange} big={10} />
     </div>
   )
 }
 
 const PRESETS = [['dmg', 1], ['both', 0.6], ['def', 0.2]] as const
 
-/** Goal: presets, slider defense ↔ damage, PvE / PvP per pool. */
-function Goal({ cls, pools }: { cls: string; pools: Pool[] }) {
+/** Goal: presets (segmented) and the slider survival ↔ damage for fine tuning. */
+function Goal({ cls }: { cls: string }) {
   const w = weights(cls), [drag, setDrag] = useState<number | null>(null), v = drag ?? w.off, s = settings()
   const setOff = (x: number) => save({ off: { ...s.off, [cls]: x } })
-  return <>
-    <div className="flex flex-wrap gap-1 px-2.5 pb-1.5" data-presets>
-      {PRESETS.map(([k, x]) => <button key={k} data-preset={k} onClick={() => setOff(x)} className={cn(CHIP, Math.abs(w.off - x) < 0.001 && CHIP_ON)}>{t('dae.preset.' + k)}</button>)}
-    </div>
-    <div className="px-2.5 pb-1">
-      <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
-        <span className="w-20 flex-none">{t('dae.def')}</span>
+  const preset = PRESETS.find(([, x]) => Math.abs(w.off - x) < 0.001)?.[0] ?? ''
+  return (
+    <div className="px-2.5 pt-1.5 pb-2">
+      <Seg value={preset as 'dmg'} onChange={k => setOff(PRESETS.find(([x]) => x === k)![1])} item={k => ({ 'data-preset': k })}
+        options={PRESETS.map(([k]) => ({ value: k, label: t('dae.preset.' + k) }))} />
+      <div className="mt-2 flex items-center gap-2 text-[11.5px] text-muted-foreground">
+        <span className="flex-none">{t('dae.def')}</span>
         <Slider data-goal min={0} max={100} step={5} value={[Math.round(v * 100)]} className="flex-1"
           onValueChange={x => setDrag((Array.isArray(x) ? x[0] : x) / 100)}
           onValueCommitted={x => { setDrag(null); setOff((Array.isArray(x) ? x[0] : x) / 100) }} />
-        <span className="w-20 flex-none text-right">{t('dae.atk')}</span>
+        <span className="flex-none">{t('dae.atk')}</span>
+        <span className="w-12 flex-none text-right text-[11px] text-dim tabular-nums">{Math.round(v * 100)}:{Math.round((1 - v) * 100)}</span>
       </div>
-      <div className="mt-0.5 text-center text-[11px] text-dim tabular-nums">{t('dae.slider', { a: Math.round(v * 100), d: Math.round((1 - v) * 100) })}</div>
+      <div className="mt-2 flex items-center gap-2 text-[11.5px] text-muted-foreground" data-tip={t('dae.pctTip')}>
+        <span className="min-w-0 flex-1 truncate">{t('dae.pctW')}</span>
+        <Seg size="sm" value={String(w.pctW)} onChange={x => save({ pctW: { ...s.pctW, [cls]: +x } })} item={x => ({ 'data-pctw': x })}
+          options={[{ value: '1', label: t('dae.pct.1') }, { value: '1.5', label: t('dae.pct.15') }, { value: '2', label: t('dae.pct.2') }]} />
+      </div>
     </div>
-    <div className={ROWS}>
-      {pools.map(p => (
-        <div key={p} className={cn(ROW, 'gap-1')} data-pmode={p}>
-          <span className="min-w-0 flex-1 truncate text-muted-foreground">{t('dae.pool.' + p)}</span>
-          {(['pve', 'pvp'] as Mode[]).map(m => (
-            <button key={m} data-pm={m} onClick={() => save({ pmode: { ...s.pmode, [p]: m } })} className={cn(CHIP, 'h-5 px-1.5 text-[11px]', w.mode[p] === m && CHIP_ON)}>{m === 'pve' ? 'PvE' : 'PvP'}</button>
-          ))}
-        </div>
-      ))}
-    </div>
-  </>
+  )
 }
 
+/** Character: one line (who, where the data comes from, Combat Power), reload / forget at the right. */
 function LiveBlock() {
   const char = charKey(), p = profile(char), l = live(char), busy = loading.has(char)
   const cp = l?.cp || [], last = cp.at(-1), prev = cp.at(-2)
-  return <>
-    <Sect right={p && <>
-      <button className={SECT_BTN} disabled={busy} data-tip={t('dae.liveLoadTip')} onClick={() => loadLive(char)}>
-        {l ? <RefreshCw /> : <Download />}{busy ? t('dae.liveBusy') : l ? t('dae.liveReload') : t('dae.liveLoad')}
-      </button>
-      {l && <button className={SECT_BTN} onClick={() => forgetLive(char)}><Trash2 />{t('dae.liveForget')}</button>}
-    </>}>{t('dae.sect.live')}</Sect>
-    <Note>{!p ? t(NONE_HINT) : l ? `${p.name} · ${t(l.game ? 'dae.liveGame' : 'dae.live', { age: ago(l.at) })}` : p.name}</Note>
-    <PacketLog />
-    {last && <div data-cp className="px-2.5 pb-1 text-[12px] text-muted-foreground" data-tip={t('dae.cpTip')}>
-      {t('dae.cp')} <b className="font-semibold text-foreground tabular-nums">{fmt(last[1])}</b>
-      {prev && <span className={cn('ml-1.5 tabular-nums', tone(last[1] - prev[1]))}>{(last[1] >= prev[1] ? '+' : '') + fmt(last[1] - prev[1])} · {ago(prev[0])}</span>}
-    </div>}
-  </>
+  return (
+    <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-0.5 px-2.5 py-1 text-[12px]" data-live>
+      <span className="min-w-0 flex-1 truncate text-muted-foreground">
+        {!p ? t(NONE_HINT) : <><b className="font-semibold text-foreground">{p.name}</b>{l && <> · {t(l.game ? 'dae.liveGame' : 'dae.live', { age: ago(l.at) })}</>}</>}
+      </span>
+      {last && <span data-cp className="text-muted-foreground tabular-nums" data-tip={t('dae.cpTip')}>
+        {t('dae.cp')} <b className="font-semibold text-foreground">{fmt(last[1])}</b>
+        {prev && <span className={cn('ml-1', tone(last[1] - prev[1]))}>{(last[1] >= prev[1] ? '+' : '') + fmt(last[1] - prev[1])}</span>}
+      </span>}
+      {p && <span className="flex gap-0.5">
+        <button className={SECT_BTN} disabled={busy} data-tip={t('dae.liveLoadTip')} onClick={() => loadLive(char)}>
+          {l ? <RefreshCw /> : <Download />}{busy ? t('dae.liveBusy') : l ? t('dae.liveReload') : t('dae.liveLoad')}
+        </button>
+        {l && <button className={SECT_BTN} data-tip={t('dae.liveForget')} onClick={() => forgetLive(char)}><Trash2 /></button>}
+      </span>}
+      <PacketLog />
+    </div>
+  )
 }
 
 /** Research: frames with node ids, logged on their own while the tab is open (daevanion-packets.log); shown once some
@@ -159,89 +160,56 @@ function Tiles({ dmg, ehp, heal, sub }: { dmg: number; ehp: number; heal?: numbe
   )
 }
 
-/** Plan of a pool: what it gives (model numbers), the points, stat / skill changes, where the value comes from. */
-function Result({ p, d, cls }: { p: PoolPlan; d: DaeData; cls: string }) {
-  const now = totals(p, p.cur), next = totals(p, p.plan.owned)
+/** The answer first: what the plan of the shown board's pool gives (big numbers), points used, nodes to buy / reset. */
+function Summary({ p, d, cls, hasLive }: { p: PoolPlan; d: DaeData; cls: string; hasLive: boolean }) {
   const added = [...p.plan.owned].filter(i => !p.cur.has(i)).length, removed = [...p.cur].filter(i => !p.plan.owned.has(i)).length
-  const left = p.budget - p.plan.spent, nPlan = numbers(p, p.plan.owned), nNow = numbers(p, p.cur)
-  const stats = [...new Set([...now.stats.keys(), ...next.stats.keys()])]
-    .map(i => ({ i, st: d.stats[i], a: now.stats.get(i) || 0, b: next.stats.get(i) || 0 })).filter(x => x.a !== x.b)
-    .sort((x, y) => cat(x.st.key).localeCompare(cat(y.st.key)) || x.i - y.i)
-  const sk = d.classes[cls].skills
-  const skills = [...new Set([...now.skills.keys(), ...next.skills.keys()])]
-    .map(i => ({ i, a: now.skills.get(i) || 0, b: next.skills.get(i) || 0 })).filter(x => x.a !== x.b)
-    .sort((x, y) => y.b - x.b || label(sk[x.i]).localeCompare(label(sk[y.i])))
+  const nPlan = numbers(p, p.plan.owned), nNow = numbers(p, p.cur)
   const pool = p.slots.map(x => d.classes[cls].boards[x].name).join(' · ')
-  return <>
-    <Sect sub={<>{pool} · {p.mode === 'pve' ? 'PvE' : 'PvP'}</>} right={p.pending && <span data-pending className="flex items-center gap-1 text-[11px] text-dim"><Loader2 className="size-3 animate-spin" />{t('dae.searching')}</span>}>{t('dae.sect.result')}</Sect>
-    <div data-gain={p.pool}>
-      <div className="px-2.5 pb-0.5 text-[11px] text-dim">{t('dae.planGives')}</div>
-      <Tiles dmg={nPlan.dmg} ehp={nPlan.ehp} heal={nPlan.heal}
-        sub={p.spentNow > 0 ? { dmg: ((1 + nPlan.dmg / 100) / (1 + nNow.dmg / 100) - 1) * 100, ehp: ((1 + nPlan.ehp / 100) / (1 + nNow.ehp / 100) - 1) * 100 } : undefined} />
-    </div>
-    <div className="px-2.5">
-      <div className="mt-0.5 flex items-baseline justify-between gap-2 text-[12px]">
-        <span className="text-muted-foreground">{t('dae.used', { n: p.plan.spent, total: p.budget })}</span>
-        <span className="flex gap-2 text-[11.5px] tabular-nums">
-          {added > 0 && <span className="text-gold">{t('dae.add', { n: added })}</span>}
-          {removed > 0 && <span className="text-red">{t('dae.remove', { n: removed })}</span>}
-        </span>
+  return (
+    <Panel title={t('dae.sect.result')} sub={<>{pool} · {p.mode === 'pve' ? 'PvE' : 'PvP'}</>}
+      right={p.pending && <span data-pending className="flex items-center gap-1 text-[11px] text-dim"><Loader2 className="size-3 animate-spin" />{t('dae.searching')}</span>}>
+      <div data-gain={p.pool} data-result={p.pool}>
+        <Tiles dmg={nPlan.dmg} ehp={nPlan.ehp} heal={nPlan.heal}
+          sub={p.spentNow > 0 ? { dmg: ((1 + nPlan.dmg / 100) / (1 + nNow.dmg / 100) - 1) * 100, ehp: ((1 + nPlan.ehp / 100) / (1 + nNow.ehp / 100) - 1) * 100 } : undefined} />
       </div>
-      <Bar frac={p.budget ? p.plan.spent / p.budget : 0} tone="gold" />
-      {left > 0 && p.budget > 0 && <p className="text-[11px] text-dim">{t('dae.left', { n: left })}</p>}
-    </div>
-    {stats.length || skills.length ? (
-      <div data-result={p.pool} className="px-2.5 pt-1">
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(170px,100%),1fr))] gap-x-3">
-          {stats.map(({ i, st, a, b }) => (
-            <div key={i} data-tip={`${label(st)}: ${amount(a, st.pct) || 0} → ${amount(b, st.pct)}`}
-              className="flex min-h-6 min-w-0 items-center gap-1.5 border-b border-border/40 text-[12px]">
-              <i className={cn('size-1.5 flex-none rounded-full', CAT_DOT[cat(st.key)])} />
-              <span className="min-w-0 flex-1 truncate">{label(st)}</span>
-              <b className={cn('font-semibold tabular-nums', b > a ? 'text-green' : 'text-red')}>{amount(b - a, st.pct)}</b>
-            </div>
-          ))}
+      <div className="px-2.5 pb-2">
+        <div className="flex items-baseline justify-between gap-2 text-[12px]">
+          <span className="text-muted-foreground">{t('dae.used', { n: p.plan.spent, total: p.budget })}</span>
+          <span className="flex gap-2 text-[11.5px] tabular-nums">
+            {added > 0 && <span className="text-gold">{t('dae.add', { n: added })}</span>}
+            {removed > 0 && <span className="text-red">{t('dae.remove', { n: removed })}</span>}
+          </span>
         </div>
-        {skills.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {skills.map(({ i, a, b }) => (
-              <span key={i} data-tip={`${label(sk[i])}: +${a} → +${b}`}
-                className={cn('inline-flex h-5 items-center gap-1 rounded-sm border px-1.5 text-[11px]', b > a ? 'border-green/30 bg-green/[0.06]' : 'border-red/40 bg-red/[0.08]')}>
-                <SkillName sk={sk[i]} /><b className={cn('tabular-nums', b > a ? 'text-green' : 'text-red')}>{(b > a ? '+' : '') + (b - a)}</b>
-              </span>
-            ))}
-          </div>
-        )}
+        <Bar frac={p.budget ? p.plan.spent / p.budget : 0} tone="gold" />
+        <p className="text-[11px] text-dim">{hasLive ? t('dae.planGives') : rich(t('dae.noCharShort'))}</p>
       </div>
-    ) : <Note className="text-dim">{t('dae.nothing')}</Note>}
-    <Why p={p} d={d} cls={cls} />
-  </>
+    </Panel>
+  )
 }
 
-/** Where the plan's value comes from: per stat and skill what the plan loses without it. */
+/** Where the plan's value comes from: per stat and skill what the plan loses without it (panel). */
 function Why({ p, d, cls }: { p: PoolPlan; d: DaeData; cls: string }) {
-  const s = settings(), k = 'why' + p.pool, open = s.open[k] ?? true
-  if (!p.plan.owned.size || p.plan.owned.size <= p.g.starts.length) return null
+  if (!p.plan.owned.size || p.plan.owned.size <= p.g.starts.length) return <Note className="text-dim">{t('dae.nothing')}</Note>
   const b = breakdown(p.inp, p.plan.owned), w = p.inp.w
   const name = (key: Key) => { const st = d.stats.find(x => DAE_KEY[x.key] === key); return st ? label(st) : key }
   const rows = [
     ...b.stats.map(x => ({ id: 's' + x.k, text: name(x.k), dmg: x.dmg, ehp: x.ehp })),
     ...b.skills.map(x => ({ id: 'k' + x.si, text: <><SkillName sk={d.classes[cls].skills[x.si]} /> +{x.n}</>, dmg: x.dmg, ehp: x.ehp })),
   ].map(r => ({ ...r, v: w * r.dmg + (1 - w) * r.ehp })).filter(r => Math.abs(r.dmg) + Math.abs(r.ehp) > 0.001).sort((x, y) => y.v - x.v)
-  return <>
-    <Sect sub={t('dae.whySub')} right={<button className={SECT_BTN} onClick={() => save({ open: { ...s.open, [k]: !open } })}>{open ? <ChevronUp /> : <ChevronDown />}{t(open ? 'dae.hide' : 'dae.show')}</button>}>{t('dae.sect.why')}</Sect>
-    {open && <div data-why={p.pool}>
+  return (
+    <div data-why={p.pool}>
+      <Note className="text-dim">{t('dae.whySub')}</Note>
       <ValHead />
       <div className={ROWS}>
-        {rows.slice(0, 12).map(r => (
+        {rows.slice(0, 24).map(r => (
           <div key={r.id} className={cn(ROW, 'min-h-6 text-[12px]')}>
             <span className="min-w-0 flex-1 truncate">{r.text}</span>
             <Vals dmg={r.dmg} ehp={r.ehp} max={maxOf(rows)} />
           </div>
         ))}
       </div>
-    </div>}
-  </>
+    </div>
+  )
 }
 
 /** Node under the mouse in the order list: highlighted on its board. */
@@ -313,15 +281,17 @@ function Board({ p, d, cls, slot, numbers: nums }: { p: PoolPlan; d: DaeData; cl
       {idx.map(([r, i]) => {
         const n = r.n, st = n[3] === 0 ? 'start' : nodeState(p, i), no = nums ? step.get(i) : undefined, hot = V.daeHover === p.pool + i
         const key = pinKey(r), pin = pins[key], ticked = nums && st === 'new' && done.includes(key)
-        const tip = n[3] ? [nodeText(d, cls, p, i), worthText(worth[i]), t('dae.boardPts', { n: n[2] }), step.get(i) ? `#${step.get(i)}` : '', t(pin === 1 ? 'dae.pin.want' : pin === -1 ? 'dae.pin.never' : 'dae.pin.tip')].filter(Boolean).join(' · ') : 'Start'
+        // bought only to get through: worth (almost) nothing on its own
+        const path = (st === 'new' || st === 'own') && n[3] !== 0 && Math.abs(worth[i].dmg) < 0.02 && Math.abs(worth[i].ehp) < 0.02
+        const tip = n[3] ? [nodeText(d, cls, p, i), path ? t('dae.pathTip') : worthText(worth[i]), t('dae.boardPts', { n: n[2] }), step.get(i) ? `#${step.get(i)}` : '', t(pin === 1 ? 'dae.pin.want' : pin === -1 ? 'dae.pin.never' : 'dae.pin.tip')].filter(Boolean).join(' · ') : 'Start'
         const pos = { gridRow: n[0] - r0 + 1, gridColumn: n[1] - c0 + 1 }
         if (st === 'start') return <span key={i} data-node="start" data-tip={tip} style={pos} className="grid aspect-square place-items-center"><i className="size-1/2 rotate-45 rounded-[2px] bg-gold shadow-[0_0_10px_var(--color-gold)]" /></span>
         const c = n[3] === 1 ? cat(d.stats[(n[4] as [number, number][])[0][0]].key) : null
         const Icon = c === 'off' ? Swords : c === 'def' ? Shield : Sparkles
         return (
-          <button key={i} data-tip={tip} data-node={st} data-pin={pin === 1 ? 'want' : pin === -1 ? 'never' : undefined} style={pos} onClick={() => togglePin(cls, key)}
+          <button key={i} data-tip={tip} data-node={st} data-path={path ? 'on' : undefined} data-pin={pin === 1 ? 'want' : pin === -1 ? 'never' : undefined} style={pos} onClick={() => togglePin(cls, key)}
             className={cn('relative grid aspect-square cursor-pointer place-items-center overflow-hidden rounded-[4px] border-2 bg-background/70 transition-[opacity,filter] hover:brightness-125',
-              st === 'free' ? cn(GRADE[n[2]], pin === -1 ? 'opacity-25' : 'opacity-40 grayscale') : ticked ? 'border-green/80 opacity-60' : RING[st as keyof typeof RING],
+              st === 'free' ? cn(GRADE[n[2]], pin === -1 ? 'opacity-25' : 'opacity-40 grayscale') : ticked ? 'border-green/80 opacity-60' : path ? 'border-dashed border-gold/50 opacity-60 shadow-none' : RING[st as keyof typeof RING],
               n[2] <= 1 && n[3] === 1 && 'scale-[0.82]', hot && 'z-10 scale-125 ring-2 ring-foreground')}>
             {n[3] === 2 ? <SkillIcon sk={sk[n[4] as number]} className="size-full" />
               : <Icon className={cn('size-[55%]', c === 'off' ? 'text-red/85' : c === 'def' ? 'text-cyan/85' : 'text-dim', n[2] === 4 && 'size-[65%] text-gold')} strokeWidth={2.2} />}
@@ -345,33 +315,34 @@ function BoardSide({ p, d, cls, slot }: { p: PoolPlan; d: DaeData; cls: string; 
   const stats = [...tp.stats].sort((x, y) => cat(d.stats[x[0]].key).localeCompare(cat(d.stats[y[0]].key)) || x[0] - y[0])
   let spent = 0, max = 0
   p.refs.forEach((r, i) => { if (r.slot === slot) { max += p.g.nodes[i].cost; if (set.has(i)) spent += p.g.nodes[i].cost } })
-  const delta = (a: number, was: number, pct: boolean) => a !== was && <i className={cn('ml-1 text-[10.5px] not-italic', a > was ? 'text-green' : 'text-red')}>{amount(a - was, pct)}</i>
+  const hasNow = p.cur.size > p.g.starts.length
+  const delta = (a: number, was: number, pct: boolean) => hasNow && a !== was && <i className={cn('ml-1 text-[10.5px] not-italic', a > was ? 'text-green' : 'text-red')}>{amount(a - was, pct)}</i>
   const sub = (en: string, de: string) => lang() === 'de' && en !== de && <span className="truncate text-[10.5px] text-dim">{en}</span>
   return (
     <div data-board-side={b.name} className="min-w-0">
-      <div className="flex items-baseline justify-between rounded-sm border bg-card px-2.5 py-1.5">
+      <div className="flex items-baseline justify-between rounded-md border bg-card px-2.5 py-1.5">
         <b className="text-[13px] font-semibold">{b.name}</b><span className="text-[11px] text-dim tabular-nums">{t('dae.boardOf', { n: spent, max })}</span>
       </div>
       <p className="px-2.5 pt-1 text-[11.5px] text-muted-foreground">{rich(t('dae.poolPts', { pool: t('dae.pool.' + p.pool), n: [...p.plan.owned].reduce((x, i) => x + p.g.nodes[i].cost, 0) }))}</p>
       <Sect>{t('dae.sideSkills')}</Sect>
       {skills.length ? <div className={ROWS}>
-        {skills.map(([si, k]) => (
+        <TopN id="dae.side.skills" items={skills} n={5} more={k => t('dae.moreN', { n: k })} render={([si, k]) => (
           <div key={si} className={cn(ROW, 'min-h-8 gap-2')}>
             <SkillIcon sk={c.skills[si]} className="size-6 flex-none" />
             <span className="flex min-w-0 flex-1 flex-col leading-tight"><span className="truncate text-[12px]">{label(c.skills[si])}</span>{sub(c.skills[si].en, c.skills[si].de)}</span>
             <b className="font-semibold text-gold tabular-nums">+{k}{delta(k, tn.skills.get(si) || 0, false)}</b>
           </div>
-        ))}
+        )} />
       </div> : <Note className="text-dim">{t('dae.nothing')}</Note>}
       <Sect>{t('dae.sideStats')}</Sect>
       {stats.length ? <div className={ROWS}>
-        {stats.map(([i, a]) => (
+        <TopN id="dae.side.stats" items={stats} n={5} more={k => t('dae.moreN', { n: k })} render={([i, a]) => (
           <div key={i} className={cn(ROW, 'min-h-8 gap-2')}>
             <i className={cn('size-1.5 flex-none rounded-full', CAT_DOT[cat(d.stats[i].key)])} />
             <span className="flex min-w-0 flex-1 flex-col leading-tight"><span className="truncate text-[12px]">{label(d.stats[i])}</span>{sub(d.stats[i].en, d.stats[i].de)}</span>
             <b className="font-semibold text-gold tabular-nums">{amount(a, d.stats[i].pct)}{delta(a, tn.stats.get(i) || 0, d.stats[i].pct)}</b>
           </div>
-        ))}
+        )} />
       </div> : <Note className="text-dim">{t('dae.nothing')}</Note>}
     </div>
   )
@@ -387,24 +358,31 @@ function InGame({ d, cls, ps }: { d: DaeData; cls: string; ps: PoolPlan[] }) {
   const text = !on ? t('dae.ov.offText') : t('dae.ov.' + (st.state === 'off' ? 'search' : st.state), { board: st.slot ? d.classes[cls].boards[st.slot]?.name ?? '' : '' })
   const dot = !on ? 'bg-dim' : st.state === 'found' ? 'bg-green' : st.state === 'black' || st.state === 'error' ? 'bg-red' : 'bg-gold'
   return (
-    <div data-ingame={on ? st.state : 'off'} className="mx-1.5 mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-sm border bg-card px-2.5 py-1.5 text-[12px]">
+    <div data-ingame={on ? st.state : 'off'} className="mx-1.5 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border bg-background/40 px-2.5 py-1 text-[12px]">
       <MonitorUp className="size-3.5 flex-none text-muted-foreground" />
       <b className="font-semibold">{t('dae.ov.title')}</b>
       <span className="flex min-w-0 flex-1 items-center gap-1.5 text-muted-foreground"><i className={cn('size-1.5 flex-none rounded-full', dot)} /><span className="min-w-0">{text}</span></span>
       {on && st.state !== 'found' && st.state !== 'off' && <button className={SECT_BTN} data-tip={t('dae.ov.dumpTip')} onClick={() => host({ type: 'daeOverlayDump' })}><Save />{t('dae.ov.dump')}</button>}
-      <button data-ingame-toggle onClick={() => save({ overlay: !on })} className={cn(CHIP, 'h-5 px-1.5 text-[11px]', on && CHIP_ON)}>{t(on ? 'dae.ov.on' : 'dae.ov.off')}</button>
+      <Chip data-ingame-toggle on={on} onChange={x => save({ overlay: x })} className="h-5 px-1.5 text-[11px]">{t(on ? 'dae.ov.on' : 'dae.ov.off')}</Chip>
     </div>
   )
 }
 
+
+/** The board shown: the one open in the game (overlay), else the tile the player picked, else the first one usable. */
+function selectedSlot(c: ClassData, ps: PoolPlan[]) {
+  const s = settings(), poolOf = (slot: string) => ps.find(p => p.slots.includes(slot))
+  const slots = Object.keys(c.boards).sort((a, b) => c.boards[a].level - c.boards[b].level || +a - +b)
+  const want = V.daeBoardGame && poolOf(V.daeBoardGame) ? V.daeBoardGame : s.open.board
+  return slots.includes(want) && poolOf(want) ? want : slots.find(k => poolOf(k)) ?? slots[0]
+}
 
 /** Boards: one tile per board (planned / all points, unlock level), the chosen board big with its side
  *  panel. */
 function Boards({ d, cls, ps }: { d: DaeData; cls: string; ps: PoolPlan[] }) {
   const s = settings(), c = d.classes[cls], poolOf = (slot: string) => ps.find(p => p.slots.includes(slot))
   const slots = Object.keys(c.boards).sort((a, b) => c.boards[a].level - c.boards[b].level || +a - +b)
-  const want = V.daeBoardGame && poolOf(V.daeBoardGame) ? V.daeBoardGame : s.open.board
-  const sel = slots.includes(want) && poolOf(want) ? want : slots.find(k => poolOf(k)) ?? slots[0]
+  const sel = selectedSlot(c, ps)
   const p = poolOf(sel)
   const pts = (slot: string) => {
     const q = poolOf(slot)
@@ -413,16 +391,15 @@ function Boards({ d, cls, ps }: { d: DaeData; cls: string; ps: PoolPlan[] }) {
     else max = c.boards[slot].nodes.reduce((n, x) => n + x[2], 0)
     return { spent, max }
   }
-  return <>
-    <Sect sub={<Legend />}>{t('dae.sect.boards')}</Sect>
+  return <Panel title={t('dae.sect.boards')} sub={<Legend />} data-boards>
     <InGame d={d} cls={cls} ps={ps} />
     <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-1 px-1.5" data-board-tabs>
       {slots.map(k => {
         const b = c.boards[k], q = poolOf(k), x = pts(k)
         return (
           <button key={k} data-board-tab={b.name} disabled={!q} onClick={() => { V.daeBoardGame = null; save({ open: { ...s.open, board: k } }) }}
-            className={cn('flex min-w-0 flex-col rounded-sm border bg-card px-2 py-1 text-left transition-colors', q ? 'hover:border-gold/40' : 'opacity-45',
-              k === sel && 'border-gold bg-gold/[0.06] ring-1 ring-gold/50')}>
+            className={cn('flex min-w-0 flex-col rounded-md border bg-background/40 px-2 py-1 text-left transition-colors', q ? 'hover:border-gold/40' : 'opacity-45',
+              k === sel && 'border-gold/70 bg-gold/[0.07]')}>
             <b className="truncate text-[12px] font-semibold">{b.name}</b>
             <span className="text-[11px] font-semibold text-gold tabular-nums">{x.spent} / {x.max}</span>
             <span className="text-[10.5px] text-dim">{q ? t('dae.fromLv', { lv: b.level }) : t('dae.locked', { lv: b.level })}</span>
@@ -430,11 +407,14 @@ function Boards({ d, cls, ps }: { d: DaeData; cls: string; ps: PoolPlan[] }) {
         )
       })}
     </div>
-    {p && <div className="grid gap-2 px-1.5 pt-1.5 @min-[760px]:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+    {p && <div className="grid gap-2 px-1.5 py-1.5 @min-[760px]:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
       <Board p={p} d={d} cls={cls} slot={sel} numbers={s.mode === 'add'} />
-      <BoardSide p={p} d={d} cls={cls} slot={sel} />
+      <div className="min-w-0">
+        <BoardSide p={p} d={d} cls={cls} slot={sel} />
+        {s.mode === 'add' && <Order p={p} d={d} cls={cls} />}
+      </div>
     </div>}
-  </>
+  </Panel>
 }
 
 /** Recommendations from the boards the character has now: respec or add, nodes without value. */
@@ -442,14 +422,13 @@ function Advice({ d, cls }: { d: DaeData; cls: string }) {
   const list = advice(), s = settings()
   if (!list.length) return null
   return <>
-    <Sect>{t('dae.sect.advice')}</Sect>
-    <div data-advice className="flex flex-col gap-1 px-1.5">
+    <div data-advice className="flex flex-col gap-1 px-1.5 pt-1.5">
       {list.map(a => {
         // same points both ways: how much more a respec gives than only adding the free points (score ≈ percent)
         const more = Math.round((a.respec - a.add) * 10) / 10, worth = more >= 1
         const name = a.pool === 'pve' ? 'Nezekan–Triniel' : d.classes[cls].boards[a.pool === 'ariel' ? '5' : '6']?.name
         return (
-          <div key={a.pool} data-advice-pool={a.pool} className={cn('rounded-sm border px-2.5 py-1.5 text-[12px] leading-snug', worth ? 'border-gold/40 bg-gold/[0.06]' : 'border-border bg-card')}>
+          <div key={a.pool} data-advice-pool={a.pool} className={cn('rounded-md border px-2.5 py-1.5 text-[12px] leading-snug', worth ? 'border-gold/40 bg-gold/[0.06]' : 'border-border bg-card')}>
             <div className="flex items-baseline gap-2">
               <b className="font-semibold">{name}</b>
               {a.dead > 0 && <span className="ml-auto text-[11px] text-dim">{t('dae.adv.wasted', { n: a.deadPoints })}</span>}
@@ -468,7 +447,7 @@ function Advice({ d, cls }: { d: DaeData; cls: string }) {
   </>
 }
 
-const SWATCH = { own: 'border-green/80 bg-green/30', new: 'border-gold bg-gold/40', drop: 'border-red bg-red/30', free: 'border-white/20 bg-background' }
+const SWATCH = { own: 'border-green/80 bg-green/30', new: 'border-gold bg-gold/40', path: 'border-dashed border-gold/60 bg-transparent', drop: 'border-red bg-red/30', free: 'border-white/20 bg-background' }
 function Legend() {
   return <span className="flex flex-wrap gap-x-2.5">{(Object.keys(SWATCH) as (keyof typeof SWATCH)[]).map(k => (
     <span key={k} className="inline-flex items-center gap-1"><i className={cn('size-2 rounded-[2px] border', SWATCH[k])} />{t('dae.st.' + k)}</span>
@@ -579,7 +558,7 @@ function StatValues({ d, ps, cls }: { d: DaeData; ps: PoolPlan[]; cls: string })
 const QUICK: Key[] = ['atk', 'crit', 'speed', 'hp', 'def']
 /** Model keys shown in the character panel (the ones a player can read in the character window). */
 const SHEET: Key[] = ['atk', 'atkBonus', 'atkPct', 'wpn', 'crit', 'critPct', 'critDmg', 'dmg', 'pve', 'boss', 'pvp', 'double', 'perfect', 'multi',
-  'speed', 'cdr', 'acc', 'hp', 'hpPct', 'def', 'defPct', 'eva', 'block', 'critRes', 'tol', 'pveTol', 'pvpTol', 'endurance']
+  'speed', 'cdr', 'acc', 'hp', 'hpPct', 'def', 'defPct', 'eva', 'block', 'critRes', 'tol', 'pveTol', 'pvpTol', 'endurance', 'statusChance', 'statusRes']
 
 /** The character's numbers the model uses (page or own entry) and the assumptions with their source. */
 function Inputs({ d, cls, mode }: { d: DaeData; cls: string; mode: Mode }) {
@@ -630,8 +609,6 @@ function Inputs({ d, cls, mode }: { d: DaeData; cls: string; mode: Mode }) {
   </div>
 }
 
-const PANELS: readonly string[] = ['skills', 'stats', 'inputs']
-type Panel = 'skills' | 'stats' | 'inputs'
 
 /** `nav`: shown at the start of the bar (the private build's Build tab puts its page switch there). */
 export function DaevTab({ nav }: { nav?: ReactNode } = {}) {
@@ -653,49 +630,51 @@ export function DaevTab({ nav }: { nav?: ReactNode } = {}) {
     <BarRight>
       {!hasLive && <AppSelect value={cls} tip={t('dae.class')} className="h-6 text-xs"
         options={Object.entries(d.classes).map(([k, x]) => ({ value: k, label: className(x) }))} onChange={v => save({ cls: v })} />}
-      {(['respec', 'add'] as const).map(m => (
-        <button key={m} data-mode={m} data-tip={t(`dae.mode.${m}Tip`)} onClick={() => save({ mode: m })} className={cn(CHIP, s.mode === m && CHIP_ON)}>{t('dae.mode.' + m)}</button>
-      ))}
+      <Seg value={s.mode as 'respec' | 'add'} onChange={m => save({ mode: m })} item={m => ({ 'data-mode': m })}
+        options={(['respec', 'add'] as const).map(m => ({ value: m, label: t('dae.mode.' + m), tip: t(`dae.mode.${m}Tip`) }))} />
     </BarRight>
   </>
   const pve = ps.find(p => p.pool === 'pve')!, open = ps.filter(p => p.slots.length)
-  const pointsLabel: Record<Pool, string> = { pve: 'dae.freeTotal', ariel: 'dae.arielTotal', pvp: 'dae.pvpTotal' }
-  const panel = (PANELS.includes(s.open.panel) ? s.open.panel : 'skills') as Panel
+  const cur = ps.find(p => p.slots.includes(selectedSlot(c, ps))) ?? pve, w = weights(cls)
+  // first visit (no points yet): the setup opens and stays open until the player closes it
+  if (!open.some(p => p.total > 0) && U.open?.['dae.setup'] == null) U.open = { ...U.open, 'dae.setup': true }
+  const goalName = PRESETS.find(([, x]) => Math.abs(w.off - x) < 0.001)?.[0] ?? (Math.abs(w.off - (CLASS_DEF[cls]?.off ?? -1)) < 0.001 ? 'class' : 'custom')
   return (
     <Page w="rows" bar={bar}>
-      <Columns>
+      <div className="grid items-start @min-[900px]:grid-cols-2 [&>*]:min-w-0">
         <div>
-          {LIVE && <LiveBlock />}
-          <Sect>{t('dae.sect.points')}</Sect>
-          <div className={ROWS}>
-            {open.map(p => <PointsEdit key={p.pool} dataKey={p.pool} label={t(pointsLabel[p.pool])} value={p.total} spent={hasLive ? p.spentNow : undefined}
-              onChange={v => save({ [POOL_KEY[p.pool]]: v })} />)}
-          </div>
-          <Sect right={<button className={SECT_BTN} data-tip={t('dae.resetTip')} onClick={resetCls}><RotateCcw />{t('dae.reset')}</button>}>{t('dae.sect.goal')}</Sect>
-          <Goal cls={cls} pools={open.map(p => p.pool)} />
-          {s.mode === 'respec' && hasLive && <Hint>{rich(t('dae.respecHint'))}</Hint>}
-          {!hasLive && <Hint tone="cyan">{rich(t('dae.noCharHint'))}</Hint>}
+          <Summary p={cur} d={d} cls={cls} hasLive={hasLive} />
+          {s.mode === 'respec' && hasLive && cur.spentNow > 0 && <Hint>{rich(t('dae.respecHint'))}</Hint>}
           <Advice d={d} cls={cls} />
         </div>
-        {open.filter(p => p.budget > 0 || p.spentNow > 0 || p.pool === 'pve').map(p => (
-          <div key={p.pool}>
-            <Result p={p} d={d} cls={cls} />
-            {s.mode === 'add' && <Order p={p} d={d} cls={cls} />}
-          </div>
-        ))}
-      </Columns>
-      <Boards d={d} cls={cls} ps={ps} />
-      <Sect>
-        <span className="flex flex-wrap gap-1" data-panels>
-          {PANELS.map(k => <button key={k} data-panel={k} onClick={() => save({ open: { ...s.open, panel: k } })} className={cn(CHIP, 'normal-case tracking-normal', panel === k && CHIP_ON)}>{t('dae.panel.' + k)}</button>)}
-        </span>
-      </Sect>
-      <div className="mx-auto w-full max-w-[860px]">
-        {panel === 'skills' && <Skills d={d} cls={cls} p={pve} />}
-        {panel === 'stats' && <StatValues d={d} ps={ps} cls={cls} />}
-        {panel === 'inputs' && <Inputs d={d} cls={cls} mode={pve.mode} />}
+        <Panel className="pb-0.5">
+          {LIVE && <LiveBlock />}
+          <Disclosure id="dae.setup" title={t('dae.sect.setup')}
+            sub={<span className="tabular-nums">{open.map(p => `${t('dae.pool.' + p.pool)} ${p.total}`).join(' · ')} · {t('dae.preset.' + goalName)}</span>}
+            right={<button className={SECT_BTN} data-tip={t('dae.resetTip')} onClick={resetCls}><RotateCcw /></button>}>
+            <div className={cn(ROWS, 'mt-1')}>
+              {open.map(p => <PointsEdit key={p.pool} dataKey={p.pool} label={t('dae.pool.' + p.pool)} value={p.total} spent={hasLive ? p.spentNow : undefined}
+                mode={w.mode[p.pool]} onMode={m => save({ pmode: { ...s.pmode, [p.pool]: m } })} onChange={v => save({ [POOL_KEY[p.pool]]: v })} />)}
+            </div>
+            <Goal cls={cls} />
+          </Disclosure>
+        </Panel>
       </div>
-      <Foot>{t('dae.foot', { date: d.date })}</Foot>
+      <Boards d={d} cls={cls} ps={ps} />
+      <Panel>
+        <Disclosure id="dae.details" title={t('dae.sect.details')} sub={t('dae.detailsSub')}>
+          <PanelTabs id="dae.panel" tabs={[{ value: 'why', label: t('dae.panel.why') }, { value: 'skills', label: t('dae.panel.skills') },
+            { value: 'stats', label: t('dae.panel.stats') }, { value: 'inputs', label: t('dae.panel.inputs') }]}>
+            {v => <div className="mx-auto w-full max-w-[860px] pb-1">
+              {v === 'why' && <Why p={cur} d={d} cls={cls} />}
+              {v === 'skills' && <Skills d={d} cls={cls} p={pve} />}
+              {v === 'stats' && <StatValues d={d} ps={ps} cls={cls} />}
+              {v === 'inputs' && <Inputs d={d} cls={cls} mode={pve.mode} />}
+            </div>}
+          </PanelTabs>
+          <Foot>{t('dae.foot', { date: d.date })}</Foot>
+        </Disclosure>
+      </Panel>
     </Page>
   )
 }

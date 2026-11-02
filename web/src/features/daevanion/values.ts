@@ -101,6 +101,8 @@ export type Weights = {
   ignore: Key[]
   /** Healers: healing share of the output. */
   heal: number
+  /** Percent nodes preferred in the choice (1 = by the model only). */
+  pctW: number
 }
 
 export const assumeOf = (w: Pick<Weights, 'assume'>, mode: Mode): Assume => ({ ...ASSUME[mode], ...w.assume[mode] })
@@ -111,7 +113,14 @@ export function modelCtx(c: ClassData, cls: string, mode: Mode, w: Weights): Ctx
   const use = c.skills.map(s => w.use[s.en] ?? defaultUse(cls, s))
   // passives with a damage / heal row (procs) are not in the rotation: no cast, no known rate
   const rw = rotation(c.skills.map(s => ({ share: s.share, flat: s.active ? s.dmg?.flat : undefined, pct: s.dmg?.pct, cd: s.cd, heal: s.dmg?.kind === 'heal' })), mode, use, a)
+  // crit from specializations: "Critical Hit on hit" / "lands as a Critical Hit" = always; "+30% Skill Critical Hit"
+  const critOf = (s: Skill) => Object.entries(s.spec || {}).flatMap(([lv, what]) => what.flatMap(x => {
+    const add = /\+(\d+)% Skill Critical Hit/.exec(x)
+    if (add) return [{ at: +lv, add: +add[1] }]
+    return /Critical Hit on hit|lands as a Critical Hit/.test(x) ? [{ at: +lv }] : []
+  }))
   const skills: ModelSkill[] = c.skills.map((s, i) => ({
+    crit: s.active ? critOf(s) : undefined,
     flat: s.active ? s.dmg?.flat : undefined, pct: s.dmg?.pct, pvp: s.dmg?.pvp as [number, number] | undefined, cd: s.cd, heal: s.dmg?.kind === 'heal',
     fx: s.fx && use[i] ? { keys: s.fx.cols.map(x => FX_KEY[x] ?? null), lv: s.fx.lv, cond: s.cond } : undefined, w: rw[i],
   }))

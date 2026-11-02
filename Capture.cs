@@ -57,6 +57,14 @@ abstract class PetSource : IDisposable
     public event Action<int, int>? DaeOpFrame;
     public volatile bool DaeLog;
     HashSet<int> daeBoardIds = new();
+    /// Research (where are the total Daevanion points?): the frames around the login, written when 0x26e2 arrives: the
+    /// last RingSize frames before it and everything in the LoginAfter after it. (op, body, time) per frame.
+    public event Action<List<(int op, byte[] body, DateTime ts)>>? DaeLoginFrames;
+    readonly Queue<(int op, byte[] body, DateTime ts)> ring = new();
+    List<(int op, byte[] body, DateTime ts)>? loginDump;
+    DateTime loginUntil;
+    const int RingSize = 4000;
+    static readonly TimeSpan LoginAfter = TimeSpan.FromSeconds(15);
     // Other players (PvP overlay, PlayerFrames): spawn in range (0x4536), moves (0x1a37 family), gone (0x4736),
     // killed (0x048d, killer also out of range), arena roster at match start (0x19e3), own character (0x3336) and own
     // combat power (0x5636).
@@ -141,10 +149,25 @@ abstract class PetSource : IDisposable
     void Frame(int op, byte[] body, DateTime ts)
     {
         GameFrames++;
+        // login research: keep the recent frames; after 0x26e2 collect 5 s more, then hand them over
+        // movement and other high-rate frames would push the login sequence out of the ring
+        if (op is not (0x0036 or 0x2a38 or 0x1d37 or 0x1c37 or 0x1338 or 0x0438 or 0x0238 or 0x2b38 or 0x008d))
+        {
+            ring.Enqueue((op, body, ts));
+            if (ring.Count > RingSize) ring.Dequeue();
+        }
+        if (loginDump != null)
+        {
+            if (op is not (0x0036 or 0x2a38 or 0x1d37 or 0x1c37 or 0x1338 or 0x0438 or 0x0238 or 0x2b38 or 0x008d)) loginDump.Add((op, body, ts));
+            if (ts > loginUntil) { DaeLoginFrames?.Invoke(loginDump); loginDump = null; }
+        }
+        else if (op == 0x26e2) { loginDump = ring.ToList(); loginUntil = ts + LoginAfter; }
         if (DaeLog)
         {
             DaeOpFrame?.Invoke(op, body.Length);
-            if (op != 0x26e2 && DaeNodeFrame != null && NodeIds(body) is { Length: > 0 } ids) DaeNodeFrame(op, body, ids);
+            // research: currency / inventory changes (free points may be a currency) and the spent points, in full
+            if (op is 0x1d56 or 0x8456 or 0x1b56 or 0x2ee2) DaeNodeFrame?.Invoke(op, body, []);
+            else if (op != 0x26e2 && DaeNodeFrame != null && NodeIds(body) is { Length: > 0 } ids) DaeNodeFrame(op, body, ids);
         }
         if (OwnId != null) tracker.Feed(op, body, ts, OwnId); // own position: exact fixes (its estimate is not used)
         PlayerFrame(op, body);

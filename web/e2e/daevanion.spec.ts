@@ -54,14 +54,18 @@ test('without character data: class, points and goal give a plan on the boards',
   await page.screenshot({ path: 'e2e/.out/shots/dae-board.png' })
   // the plan says what it gives in damage / effective HP, and where that comes from
   await expect(page.locator('[data-gain="pve"]')).toContainText(/Schaden\s*\+/)
+  // details on demand: closed at first, open on a click (remembered)
+  await expect(page.locator('[data-why]')).toHaveCount(0)
+  await page.locator('[data-disclosure="dae.details"] button').first().click()
   await expect(page.locator('[data-why="pve"] > div').first()).toBeVisible()
   // goal presets: max damage vs defensive change the plan's numbers
   await page.locator('[data-preset="def"]').click()
-  await expect(page.locator('[data-preset="def"]')).toHaveClass(/border-gold/)
+  await expect(page.locator('[data-preset="def"]')).toHaveAttribute('data-pressed')
   await page.locator('[data-pmode="pve"] [data-pm="pvp"]').click()
-  await expect(page.locator('[data-pmode="pve"] [data-pm="pvp"]')).toHaveClass(/border-gold/)
+  await expect(page.locator('[data-pmode="pve"] [data-pm="pvp"]')).toHaveAttribute('data-pressed')
   await expect(page.locator('[data-gain="pve"]').locator('..')).toBeVisible()
   // a skill taken out of the rotation is saved per class
+  await page.locator('[data-panel="skills"]').click()
   const skill = page.locator('[data-skill="Ruinous Blow"]')
   await skill.locator('[data-use]').click()
   await expect(skill.locator('[data-use]')).toHaveAttribute('data-use', 'off')
@@ -84,7 +88,7 @@ test('boards from the game (0x26e2): own nodes on the boards, marked as from the
   await expect(page.getByText(/Boards aus dem Spiel/)).toBeVisible()
   // spent points from the game (0x2ee2): the total follows without entering it
   await app.send({ type: 'daePoints', pools: { 1: 248, 2: 0 } })
-  await expect(page.locator('[data-points="pve"] output')).toHaveText('248')
+  await expect(page.locator('[data-disclosure="dae.setup"]')).toContainText('Nezekan–Triniel 248') // in the setup's summary line
   // a node bought in the game (0x28e2): owned on the board at once
   await app.send({ type: 'daeNodes', bought: [210034 + 1], reset: [] })
   await expect(page.locator('[data-board="Nezekan"] [data-node="own"], [data-board="Nezekan"] [data-node="drop"]')).toHaveCount(3) // 2 from the login + 1 bought

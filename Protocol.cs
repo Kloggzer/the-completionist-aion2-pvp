@@ -406,8 +406,9 @@ static class PetFrames
     //   0x28e2 one node bought:            u16 0, u32 node id
     //   0x2be2 one node reset:             u16 0, u32 node id
     // Each comes after 0x2ee2 and the cost / refund frames.
-    //   0x2ee2 spent points per point pool: u8 n, n x {u8 pool, u16 spent} (pool 1 = Nezekan-Triniel; checked: 248
-    //          spent with 0 free; it rises by the node cost on every buy, falls on a reset)
+    //   0x2ee2 spent points per point pool: u8 n, n x {u8 pool, u16 spent}; pool 1 = Nezekan-Triniel, 2 = Ariel,
+    //          3 = Azphel (checked against the open nodes of a login: 416 / 71 / 0); also sent at login, right
+    //          before 0x26e2; it rises by the node cost on every buy, falls on a reset
     public static uint[]? ParseDaeBought(byte[] b)
     {
         if (b.Length < 7 || BitConverter.ToUInt16(b, 0) != 0) return null;

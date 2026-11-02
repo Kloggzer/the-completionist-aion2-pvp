@@ -1035,6 +1035,12 @@ sealed class OverlayForm : Form
         });
         // opcode timeline (no bodies) next to the board detection's found / gone, buffered, at most 30 MB
         source.DaeOpFrame += (op, len) => DaeOps($"{DateTime.Now:HH:mm:ss.fff} op 0x{op:x4} len {len}");
+        source.DaeLoginFrames += frames =>
+        {
+            var lines = frames.Select(f => $"{f.ts.ToLocalTime():HH:mm:ss.fff} op 0x{f.op:x4} len {f.body.Length} | {Convert.ToHexString(f.body.AsSpan(0, Math.Min(f.body.Length, 60000)))}");
+            try { File.WriteAllLines(Path.Combine(Settings.DataDir, "daevanion-login.log"), lines); } catch { }
+            BeginInvoke(() => Log($"Daevanion: Login-Mitschnitt ({frames.Count} Pakete) gespeichert"));
+        };
         source.DaevanionPoints += pts => BeginInvoke(() =>
         {
             daePoints = pts;
