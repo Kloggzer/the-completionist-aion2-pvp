@@ -256,6 +256,23 @@ export function TextEntry({ value, onChange, onSubmit, onCancel, placeholder, cl
   )
 }
 
+/** Text field that stays in place (no autofocus): sends host 'typing' while focused like TextEntry. Extra input
+ *  attributes (data-*, role, aria-*) pass through; `tip` becomes data-tip. */
+export function Field({ value, onChange, onKey, onBlur, placeholder, className, tip, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onBlur' | 'value'> & {
+  value: string; onChange: (v: string) => void; onKey?: (e: React.KeyboardEvent<HTMLInputElement>) => void; onBlur?: () => void
+  tip?: string; [k: `data-${string}`]: string
+}) {
+  return <input value={value} placeholder={placeholder} spellCheck={false} data-tip={tip} {...rest}
+    onFocus={() => host({ type: 'typing', on: true })} onBlur={() => { host({ type: 'typing', on: false }); onBlur?.() }}
+    onChange={e => onChange(e.target.value)} onKeyDown={onKey}
+    className={cn('h-7 min-w-0 rounded-lg border bg-background px-2.5 text-[12.5px] text-foreground outline-none placeholder:text-dim focus:border-gold/60', className)} />
+}
+
+/** Rank square of a ranked list (spots, farm routes): gold for the first, muted for the rest. */
+export function Rank({ n, className }: { n: number; className?: string }) {
+  return <span className={cn('grid size-5 flex-none place-items-center rounded-sm text-[11px] font-bold tabular-nums', n === 1 ? 'bg-gold/15 text-gold' : 'bg-foreground/[0.06] text-muted-foreground', className)}>{n}</span>
+}
+
 // ---------------------------------------------------------------- primitives (Base UI) with the house look
 // Design language "calm & compact": the density of the overlay, rounded-lg controls / rounded-xl panels, panels as slightly raised
 // cards, gold only for selection / the one action that matters, segmented controls instead of rows of chips.
@@ -263,18 +280,20 @@ export function TextEntry({ value, onChange, onSubmit, onCancel, placeholder, cl
 // <Disclosure> or behind "show all" and are remembered (U.open) – never everything at once.
 
 /** Segmented control (one of a few options): Base UI ToggleGroup. `item` adds attributes per option (tests, tips). */
-export function Seg<T extends string>({ value, onChange, options, size = 'md', className, item }: {
+export function Seg<T extends string>({ value, onChange, options, size = 'md', className, item, iconOnly }: {
   value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode; tip?: string; icon?: LucideIcon }[]; size?: 'sm' | 'md'; className?: string
   item?: (v: T) => Record<string, string | undefined>
+  /** Icons only: the label is hidden, the tip (else a string label) becomes the aria-label. */
+  iconOnly?: boolean
 }) {
   return (
     <ToggleGroup value={[value]} onValueChange={(v: unknown[]) => { if (v.length) onChange(v[v.length - 1] as T) }} spacing={0}
       className={cn('max-w-full min-w-0 flex-none rounded-lg border bg-background p-0.5', className)}>
       {options.map(o => (
-        <ToggleGroupItem key={o.value} value={o.value} data-tip={o.tip} {...item?.(o.value)}
+        <ToggleGroupItem key={o.value} value={o.value} data-tip={o.tip} aria-label={iconOnly ? o.tip ?? (typeof o.label === 'string' ? o.label : undefined) : undefined} {...item?.(o.value)}
           className={cn('min-w-0 shrink gap-1.5 rounded-md! border-0 font-normal whitespace-nowrap text-muted-foreground hover:bg-foreground/5 hover:text-foreground data-[pressed]:bg-gold/[0.14] data-[pressed]:font-semibold data-[pressed]:text-gold [&_svg]:size-3.5 [&_svg]:flex-none',
-            size === 'sm' ? 'h-6 px-2 text-[11.5px]' : 'h-7 px-2.5 text-[12.5px]')}>
-          {o.icon && <o.icon />}<span className="min-w-0 truncate">{o.label}</span>
+            size === 'sm' ? 'h-6 px-2 text-[11.5px]' : 'h-7 px-2.5 text-[12.5px]', iconOnly && (size === 'sm' ? 'px-1.5' : 'px-2'))}>
+          {o.icon && <o.icon />}{!(iconOnly && o.icon) && <span className="min-w-0 truncate">{o.label}</span>}
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
@@ -405,13 +424,13 @@ export function PageHead({ title, sub, right, icon: I }: { title: ReactNode; sub
 }
 
 /** Number tile of a page's top row: label, big value, one small line. `tone` colours the value; `onClick` jumps to the list. */
-export function Kpi({ label, value, sub, tone, icon: I, onClick, tip, ...rest }: {
-  label: ReactNode; value: ReactNode; sub?: ReactNode; tone?: keyof typeof TONE; icon?: LucideIcon; onClick?: () => void; tip?: string
+export function Kpi({ label, value, sub, tone, icon: I, onClick, tip, className, ...rest }: {
+  label: ReactNode; value: ReactNode; sub?: ReactNode; tone?: keyof typeof TONE; icon?: LucideIcon; onClick?: () => void; tip?: string; className?: string
 } & Record<`data-${string}`, string | undefined>) {
   const C = onClick ? 'button' : 'div'
   return (
     <C onClick={onClick} data-tip={tip} {...rest}
-      className={cn('flex min-w-0 flex-col rounded-lg border bg-card px-3 py-2 text-left shadow-(--shadow-card)', onClick && 'cursor-pointer transition-colors hover:border-gold/40')}>
+      className={cn('flex min-w-0 flex-col rounded-lg border bg-card px-3 py-2 text-left shadow-(--shadow-card)', onClick && 'cursor-pointer transition-colors hover:border-gold/40', className)}>
       <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted-foreground [&_svg]:size-3.5 [&_svg]:flex-none">{I && <I />}<span className="truncate">{label}</span></span>
       <span className={cn('mt-0.5 truncate text-[21px] leading-tight font-bold tabular-nums', tone ? TONE[tone] : 'text-foreground')}>{value}</span>
       {sub && <span className="truncate text-[11.5px] text-dim">{sub}</span>}

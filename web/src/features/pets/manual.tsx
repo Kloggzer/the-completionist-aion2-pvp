@@ -1,7 +1,7 @@
 // Manual mode: pet progress entered by hand on the target tiles. The host owns the pet state (PetState.cs):
 // 'addSoul' counts like a soul from the game (level-up thresholds 5 / 25 / 75, toast via 'soul'), 'setPet' sets
 // level and souls directly. Both save pet_state.json and post the state back.
-import { Plus } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import { NEED, S, V, bump, type Any } from '@/core/state'
 import { host } from '@/core/host'
 import { emit } from '@/core/bus'
@@ -38,10 +38,10 @@ export function PetControls({ x }: { x: Any }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
     <span data-manual className="-my-1 flex w-10 flex-none flex-col self-stretch border-l" onClick={stop}>
-      <button data-add-soul className={cn(col, '[&_svg]:size-4.5')} disabled={lv >= 3} data-tip={t('man.soul.tip', { name: petName(x.p) })} onClick={() => addSoul(id)}><Plus /></button>
+      <button data-add-soul className={cn(col, '[&_svg]:size-4.5')} disabled={lv >= 3} data-tip={t('man.soul.tip', { name: petName(x.p) })} aria-label={t('man.soul.tip', { name: petName(x.p) })} onClick={() => addSoul(id)}><Plus /></button>
       {/* Open state lives in V: a level change moves the tile to another group (remount), the popover stays open. */}
       <Popover open={V.petEdit === id} onOpenChange={o => { V.petEdit = o ? id : null; bump() }}>
-        <PopoverTrigger data-pet-edit data-tip={t('man.edit')} className={cn(col, 'border-t text-[11px] font-semibold')}>Lv</PopoverTrigger>
+        <PopoverTrigger data-pet-edit data-tip={t('man.edit')} aria-label={t('man.edit')} className={cn(col, 'border-t [&_svg]:size-4')}><Pencil /></PopoverTrigger>
         <PopoverContent side="left" align="start" initialFocus={false} finalFocus={false} className="w-56 gap-2 p-2" onClick={stop}>
           <div className="truncate text-[12.5px] font-semibold">{petName(x.p)}</div>
           <MiniStepper label={t('man.level')} value={lv} minus={lv > 0} plus={lv < 3} tips={['−1', '+1']}

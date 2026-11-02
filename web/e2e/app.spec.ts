@@ -111,6 +111,9 @@ test('overview: +1 on the checklist and jump to a tab', async ({ page }) => {
 
 test('spots: ranking explanation toggles', async ({ page }) => {
   await openApp(page, { ui: { tab: 'spots' } })
+  // a closed HowTo at the end of the page (kit), remembered under U.open['spots.how']
+  await expect(page.locator('[data-disclosure="spots.how"]')).toHaveAttribute('data-open', 'off')
+  await expect(page.getByText('Spawns im Umkreis von')).toHaveCount(0)
   await page.getByRole('button', { name: /Wie wird das berechnet/ }).click()
   await expect(page.getByText('Spawns im Umkreis von')).toBeVisible()
   await shot(page, 'spots-how')

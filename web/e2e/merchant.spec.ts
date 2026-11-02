@@ -33,6 +33,10 @@ const shown = (name: string) => {
   return (p && DE[p.id]) || name
 }
 
+// The missing-pets panels show the top 5 each and the "easy" panel is closed (progressive disclosure): tests that look
+// at the whole list open everything up front (U.open, as the TopN / Disclosure toggles remember it).
+const ALL = { 'merch.top.none': true, 'merch.top.hard': true, 'merch.top.easy': true, 'merch.g.easy': true }
+
 async function addOffer(page: Page, name: string) {
   const box = page.locator('[data-merchpicker]')
   await box.fill(name)
@@ -47,7 +51,7 @@ test('offers get verdicts and clear on the full hour', async ({ page }) => {
   const pets = JSON.parse(fs.readFileSync(path.join(CACHE, 'pets.json'), 'utf8')).pets
   const owned = pets[0].n, state = fakeState()
   state.levels[pets[0].id] = 3; state.souls[pets[0].id] = 0
-  const { posted } = await openApp(page, { state, ui: { tab: 'merchant', merchFac: 'Asmodian' } })
+  const { posted } = await openApp(page, { state, ui: { tab: 'merchant', merchFac: 'Asmodian', open: ALL } })
   await expect(page.getByText('Kartendaten werden noch geladen')).toHaveCount(0, { timeout: 20000 })
   await expect(page.getByText(/neues Angebot in 2:\d\d/).first()).toBeVisible()
 
@@ -68,8 +72,10 @@ test('offers get verdicts and clear on the full hour', async ({ page }) => {
   await expect(offers.nth(0)).toContainText('Kaufen')
   await expect(offers.nth(0)).toContainText(hard)
   await expect(offers.nth(1)).toHaveAttribute('data-verdict', 'opt')
-  await expect(offers.nth(1)).toContainText(/Spawns/)
-  await expect(offers.nth(1)).toContainText(/\+5 Seelen → \d+\/105 · \d+× bis Lv 3/)
+  // the tile shows what one purchase brings; buy count and where to farm are in its tooltip
+  await expect(offers.nth(1)).toHaveAttribute('data-tip', /Spawns/)
+  await expect(offers.nth(1)).toContainText(/\+5 Seelen → \d+\/105/)
+  await expect(offers.nth(1)).toHaveAttribute('data-tip', /\d+× bis Lv 3/)
   await expect(offers.nth(2)).toHaveAttribute('data-verdict', 'have')
   await expect(offers.nth(2)).toContainText('Lv 3 erreicht')
 
@@ -153,7 +159,8 @@ test('offer read from the game fills the list with verdicts and prices', async (
   await expect(page.locator('[data-offer="1095"] [data-price]')).toHaveValue('90.000')
   await expect(page.locator('[data-offer="1095"] [data-discount]')).toHaveText('-10 %')
   await expect(page.locator('[data-offer="1095"] [data-missing]')).toHaveAttribute('data-missing', '65')
-  await expect(page.locator('[data-offer="1095"]')).toContainText('+5 Seelen → 45/105 · 13× bis Lv 3')
+  await expect(page.locator('[data-offer="1095"]')).toContainText('+5 Seelen → 45/105')
+  await expect(page.locator('[data-offer="1095"]')).toHaveAttribute('data-tip', /13× bis Lv 3/)
   await expect(page.locator('[data-offer="1095"] [data-souls]')).toHaveAttribute('data-souls', '40')
   await expect(page.locator('[data-offer="1095"] [data-persoul]')).toHaveText('18.000/Seele')
   await expect(page.locator('[data-offer="1084"]')).toHaveAttribute('data-verdict', 'have')
@@ -192,7 +199,7 @@ test('offer read from the game fills the list with verdicts and prices', async (
   const kernon = page.locator('[data-offer="1009"]')
   await expect(kernon).toHaveAttribute('data-verdict', 'buy')
   await expect(kernon).toContainText('Kernon')
-  await expect(kernon).toContainText('Nur Händler/Event')
+  await expect(kernon).toHaveAttribute('data-tip', /Nur Händler\/Event/)
   await expect(kernon.locator('[data-missing]')).toHaveAttribute('data-missing', '105')
   await expect(offers.last()).toHaveAttribute('data-verdict', 'unknown')
   await expect(offers.last()).toContainText('Unbekanntes Pet (Item 534760018)')
@@ -214,7 +221,7 @@ test('layout: grouped wish list, empty offer with picks, offer tiles at 420 / 90
   await page.clock.install({ time: new Date(2026, 9, 14, 13, 20, 0) })
   await page.setViewportSize({ width: 1400, height: 900 })
   await petIcons(page)
-  const { send } = await openApp(page, { ui: { tab: 'merchant', merchFac: 'Asmodian' } })
+  const { send } = await openApp(page, { ui: { tab: 'merchant', merchFac: 'Asmodian', open: ALL } })
   await expect(page.getByText('Kartendaten werden noch geladen')).toHaveCount(0, { timeout: 20000 })
 
   // sections in order: merchant only, hard, easy; the "no spawns" note only once, in the section header
@@ -229,12 +236,14 @@ test('layout: grouped wish list, empty offer with picks, offer tiles at 420 / 90
   await expect(page.locator('[data-wishgroup="hard"] [data-tier]').first()).toHaveAttribute('data-tier', /[23]/)
   // portraits in the tiles (wide window)
   expect(await page.locator('[data-wish] img[data-peticon]').count()).toBeGreaterThan(10)
-  // empty offer: one line + countdown, the top picks below
+  // empty offer: one line + countdown, the top 4 picks below (more behind "show all")
   await expect(page.locator('[data-offerempty]')).toContainText(/neues Angebot in 39:\d\d/)
-  await expect(page.locator('[data-watchpet]')).toHaveCount(6)
-  // three wish columns side by side at 1400 px
+  await expect(page.locator('[data-watchpet]')).toHaveCount(4)
+  // redesign: the missing pets are list rows in panels (one column), right of the offer column at 1400 px
   const xs = await page.locator('[data-wishgroup="none"] [data-wish]').evaluateAll(els => [...new Set(els.slice(0, 6).map(e => Math.round(e.getBoundingClientRect().x)))].length)
-  expect(xs).toBe(3)
+  expect(xs).toBe(1)
+  const offerX = (await page.locator('[data-offerempty]').boundingBox())!.x, wishX = (await page.locator('[data-wish]').first().boundingBox())!.x
+  expect(wishX).toBeGreaterThan(offerX + 300)
   await shot(page, 'merchant-1400-empty')
 
   await send({ type: 'merchant', tab: 1356, at: Date.now(), items: TAB2 })
@@ -259,11 +268,11 @@ test('offer, picks and wish list show the pet portraits from aion2.app', async (
   // Ashen Lupyllini's portrait is missing (offline / not downloadable): its category icon stays
   const ashen = 'UT_Vehicle_Portrait_Lufilini_02_CV01.webp'
   const asked = await petIcons(page, [ashen])
-  const { send } = await openApp(page, { ui: { tab: 'merchant', merchFac: 'Asmodian' } })
+  const { send } = await openApp(page, { ui: { tab: 'merchant', merchFac: 'Asmodian', open: ALL } })
   await expect(page.getByText('Kartendaten werden noch geladen')).toHaveCount(0, { timeout: 20000 })
 
   // top picks while the offer is empty
-  await expect(page.locator('[data-watchpet] img[data-peticon]')).toHaveCount(6)
+  await expect(page.locator('[data-watchpet] img[data-peticon]')).toHaveCount(4)
   await send({ type: 'merchant', tab: 1356, at: Date.now(), items: TAB2 })
   await send({ type: 'merchant', tab: 1357, at: Date.now(), items: items([[534760008, 100000, 80000], [534760018, 100000, 90000]]) })
   await expect(page.locator('[data-offer]')).toHaveCount(12)
@@ -307,6 +316,9 @@ test('a +5 soul update moves the bought offer to "Gekauft"; offers are kept per 
   await send({ type: 'soul', ev: { pet: 1132, gained: 5, level: 1, souls: 1, need: 25, levelUp: true } })
   await expect(offers).toHaveCount(9)
   await expect(page.locator('[data-offer="1132"]')).toHaveCount(0)
+  // "Gekauft" is a closed disclosure: open it
+  await expect(page.locator('[data-bought] [data-disclosure="merch.bought"]')).toHaveAttribute('data-open', 'off')
+  await page.locator('[data-bought]').getByRole('button', { name: /Gekauft/ }).click()
   const bought = page.locator('[data-boughtoffer="1132"]')
   await expect(bought).toContainText('Aschgraue Lupyllini')
   await expect(bought).toContainText('+5 Seelen · 70.000')
@@ -325,7 +337,7 @@ test('a +5 soul update moves the bought offer to "Gekauft"; offers are kept per 
   await expect(offers).toHaveCount(10)
 
   // another character: its own (empty) offer, a chip for the first one
-  await send({ type: 'char', name: 'Twink' })
+  await send({ type: 'char', name: 'Zweitchar' })
   await expect(offers).toHaveCount(0)
   await expect(page.locator('[data-charchips]')).toBeVisible()
   const main = page.locator('[data-charchip="Testchar"]')
@@ -339,7 +351,7 @@ test('a +5 soul update moves the bought offer to "Gekauft"; offers are kept per 
   // back to the first character: its offer returns
   await send({ type: 'char', name: 'Testchar' })
   await expect(offers).toHaveCount(10)
-  await expect(page.locator('[data-charchip="Twink"]')).toBeVisible()
+  await expect(page.locator('[data-charchip="Zweitchar"]')).toBeVisible()
 })
 
 test('merchant / event pets with a game id: wish list with progress, purchase matched by id', async ({ page }) => {
@@ -351,7 +363,7 @@ test('merchant / event pets with a game id: wish list with progress, purchase ma
   state.levels[1146] = 3; state.souls[1146] = 0 // Gatekeeper Pinopi: Lv 3 done
   state.levels[1299] = 1; state.souls[1299] = 0 // not in any table
   state.levels[1001] = 1; state.souls[1001] = 0 // Black Dragon: owned, not in the item table
-  const { send } = await openApp(page, { state, ui: { tab: 'merchant', merchFac: 'Asmodian' } })
+  const { send } = await openApp(page, { state, ui: { tab: 'merchant', merchFac: 'Asmodian', open: { ...ALL, 'merch.bought': true } } })
   await expect(page.getByText('Kartendaten werden noch geladen')).toHaveCount(0, { timeout: 20000 })
 
   const none = page.locator('[data-wishgroup="none"]')

@@ -121,7 +121,9 @@ modifiers on tokens are fine (`bg-gold/10`, `border-foreground/10`).
 | Labelled −/+ in a popover | `MiniStepper` | |
 | Frequent +1 on a tile | `StepCol` (tile needs `TILE_P pr-0`) | |
 | Alarm toggle on a row or tile | `BellBtn` | |
-| Text input | `TextEntry` (sets host `typing`) | inputs without `typing` |
+| Text input | `TextEntry` (focuses itself), `Field` (stays in place; both set host `typing`) | inputs without `typing` |
+| Rank in a ranked list (spots, routes) | `Rank` | hand-made rank squares |
+| Icon-only switch (view, mode) | `Seg iconOnly` (tip = label = aria-label) | rows of icon buttons |
 | Value read from the game | `AutoBadge` | |
 | Section action / link | `SECT_BTN`, `More` | Chip |
 | Real action button | shadcn `Button` size `xs`/`sm` | Chip styled as a button |

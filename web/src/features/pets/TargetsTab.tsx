@@ -1,20 +1,22 @@
 // "Ziele" tab: missing soul pets on the current map as tiles, plus what is near the player.
-import { Star } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Check, Crosshair, Ghost, PawPrint, Star, Unlock } from 'lucide-react'
 import { G, S, U, V, bump, hasState, manual, useApp, type Any } from '@/core/state'
 
 import { emit } from '@/core/bus'
 import { mapName, petName } from '@/core/data'
 import { ago, dirTo, fmtDist, posAge } from '@/core/geo'
-import { t } from '@/core/i18n'
+import { fmt, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
-import { Bar, Hint, LEAD, Page, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE as KTILE, TILE_CLICK, TILE_P, TILE_SEL, grid } from '@/components/kit'
+import { Disclosure, Hint, Kpi, KpiRow, ListRow, Page, Panel, ROWS, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE as KTILE, TILE_CLICK, TILE_P, TILE_SEL, TopN, Bar, grid } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
 import { lvTxt, mobGroups, toggleMulti } from './logic'
-import { Dot, Empty, Pbar, PinBox, SelBar, Sect, rich } from './parts'
+import { Dot, Empty, Pbar, PinBox, SelBar, rich } from './parts'
 import { PetControls } from './manual'
 
 // Portrait tiles (kit anatomy): portrait column left; title, two-line sub, bar and footer right.
 const GRID = grid('pet'), TILE = cn(KTILE, TILE_CLICK, TILE_P), SEL = TILE_SEL
+const more = (k: number) => t('common.moreN', { n: k })
 
 // Click toggles the pet in the selection (several at once: map highlight + "find spot").
 function selectPet(id: number) { V.sel = null; toggleMulti(id) }
@@ -39,6 +41,7 @@ function ManualHint() {
   return <Hint tone="cyan">{rich(t('man.petsHint'))}</Hint>
 }
 
+/** Panel "near you": needed mobs within reach and live Hidden Cubes, nearest first (top 3, the rest behind TopN). */
 function Near() {
   if (manual()) return null // needs the live position
   const n = V.near
@@ -46,41 +49,28 @@ function Near() {
   const p = S.pos
   // Candidate cube spots say little; only cubes the server reports are shown.
   const real = [...V.live.values()].filter((l: Any) => p && Math.hypot(l.x - p.x, l.z - p.z) < 1500)
-  return <>
-    <Sect sub={'· ' + t('pets.nearPos', { est: S.pos?.est ? t('pets.nearEst') : '', ago: ago(posAge()) })}>{t('pets.near')}</Sect>
-    <div className={GRID}>
-      {n.close.map((o: Any) => (
-        <div key={'m' + o.t.p.id} data-pet={o.t.p.id} className={cn(TILE, V.multi.has(o.t.p.id) && SEL)} data-tip={`${o.mob.n} → ${petName(o.t.p)} (Lv ${o.t.lv})`} onClick={() => selectPet(o.t.p.id)}>
-          <Portrait por={o.mob.por} size={null} className={T_PORTRAIT} />
-          <div className={T_BODY}>
-            <div className="flex items-start gap-1.5"><Dot col={o.t.col} /><span className={T_TITLE}>{o.mob.n}</span></div>
-            <div className={T_SUB}>{petName(o.t.p)}</div>
-            <div className={T_FOOT}>
-              <Pbar lv={o.t.lv} frac={o.t.souls / o.t.need} />
-              <div className={T_META}>
-                <span><b className="font-semibold text-foreground">{o.t.souls}</b>/{o.t.need}</span>
-                <b className="font-semibold text-cyan tabular-nums">{fmtDist(o.dist)} {o.dir}</b>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-      {real.map((l: Any) => (
-        <div key={'c' + l.c.key} data-cube={l.c.key} data-tip={t('pets.cube.realTip')} onClick={() => selectCube(l.c.key)}
-          className={cn(TILE, 'border-cube bg-linear-135 from-cube/20 to-card shadow-[0_0_10px_color-mix(in_srgb,var(--cube)_40%,transparent)] hover:border-cube hover:from-cube/30', V.cube === l.c.key && 'ring-2 ring-gold')}>
-          <span className={cn(T_PORTRAIT, 'grid flex-none place-items-center rounded-sm border border-cube/40 bg-cube/10 text-cube')}><Star className="size-1/2 fill-current" /></span>
-          <div className={T_BODY}>
-            <span className={cn(T_TITLE, 'text-cube')}>{t('pets.cube.real')}</span>
-            <div className={T_SUB}>{l.c.name}{l.out ? t('pets.cube.lastSeen') : ''}</div>
-            <div className={T_FOOT}>
-              <Bar frac={0} className="invisible" />
-              <div className={cn(T_META, 'justify-end')}><b className="font-semibold text-cyan tabular-nums">{fmtDist(Math.hypot(l.x - p.x, l.z - p.z))} {dirTo(l.x - p.x, l.z - p.z)}</b></div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </>
+  const rows: { key: string; node: ReactNode }[] = [
+    ...real.map((l: Any) => ({ key: 'c' + l.c.key, node: (
+      <ListRow key={'c' + l.c.key} data-cube={l.c.key} tip={t('pets.cube.realTip')} onClick={() => selectCube(l.c.key)} selected={V.cube === l.c.key}
+        icon={<Star className="fill-current text-cube" />} title={<span className="font-semibold text-cube">{t('pets.cube.real')}</span>}
+        sub={l.c.name + (l.out ? t('pets.cube.lastSeen') : '')}
+        right={<span className="text-[12px] text-cyan">{fmtDist(Math.hypot(l.x - p.x, l.z - p.z))} {dirTo(l.x - p.x, l.z - p.z)}</span>} />
+    ) })),
+    ...n.close.map((o: Any) => ({ key: 'm' + o.t.p.id, node: (
+      <ListRow key={'m' + o.t.p.id} data-pet={o.t.p.id} selected={V.multi.has(o.t.p.id)} onClick={() => selectPet(o.t.p.id)}
+        tip={`${o.mob.n} → ${petName(o.t.p)} (${t('pets.lv', { lv: o.t.lv })})`}
+        icon={<Portrait por={o.mob.por} size={22} className="-my-1" />}
+        title={<span className="flex min-w-0 items-center gap-1.5"><Dot col={o.t.col} className="mt-0" /><span className="truncate">{o.mob.n}</span></span>}
+        sub={<>{petName(o.t.p)} · <span className="tabular-nums">{o.t.souls}/{o.t.need}</span></>}
+        right={<span className="text-[12px] text-cyan">{fmtDist(o.dist)} {o.dir}</span>} />
+    ) })),
+  ]
+  if (!rows.length) return null
+  return (
+    <Panel title={t('pets.near')} sub={t('pets.nearPos', { est: S.pos?.est ? t('pets.nearEst') : '', ago: ago(posAge()) })} data-near>
+      <div className={ROWS}><TopN id="pets.near" items={rows} n={3} more={more} render={r => r.node} /></div>
+    </Panel>
+  )
 }
 
 const tagTxt = (mob: Any) => [mob.named ? t('pets.tag.named') : mob.r === 'Hero' ? t('pets.tag.hero') : mob.r === 'Elite' ? t('pets.tag.elite') : '', mob.ag ? t('pets.tag.aggro') : '']
@@ -90,19 +80,20 @@ const tagTxt = (mob: Any) => [mob.named ? t('pets.tag.named') : mob.r === 'Hero'
 function TargetTile({ x }: { x: Any }) {
   const on = V.multi.has(x.p.id), groups = mobGroups(x), g0 = groups[0], man = manual()
   const where = `${g0.n} ${lvTxt(g0.lv)}${groups.length > 1 ? ` +${groups.length - 1}` : ''}${x.area.name ? ` · ${x.area.name}` : ''}`
-  const tip = [`${petName(x.p)} (${x.p.c}, Lv ${x.lv})${x.area.name ? ' · ' + x.area.name : ''}`,
-    ...groups.map(g => `${g.n} ${lvTxt(g.lv)} · ${g.count}× ${t('pets.spawnsTip')}${tagTxt(g.mob) ? ' · ' + tagTxt(g.mob) : ''}`)].join('\n')
+  const tip = [`${petName(x.p)} (${x.p.c}, ${t('pets.lv', { lv: x.lv })})${x.area.name ? ' · ' + x.area.name : ''}`,
+    ...groups.map(g => `${g.n} ${lvTxt(g.lv)} · ${g.count}× ${t('pets.spawnsTip')}${tagTxt(g.mob) ? ' · ' + tagTxt(g.mob) : ''}`),
+    ...(V.multi.size ? [] : [t('pets.pin.hover')])].join('\n')
   return (
-    <div data-pet={x.p.id} data-sel={on || undefined} className={cn(TILE, on && SEL, man && 'pr-0')} data-tip={tip} onClick={() => selectPet(x.p.id)}>
+    <div data-pet={x.p.id} data-sel={on || undefined} className={cn(TILE, 'group', on && SEL, man && 'pr-0')} data-tip={tip} onClick={() => selectPet(x.p.id)}>
       <Portrait por={g0.mob.por} size={null} className={T_PORTRAIT} />
       <div className={T_BODY}>
-        <div className="flex items-start gap-1.5"><Dot col={x.col} /><span className={T_TITLE}>{petName(x.p)}</span>{V.multi.size > 0 && <PinBox on={on} />}</div>
+        <div className="flex items-start gap-1.5"><Dot col={x.col} /><span className={T_TITLE}>{petName(x.p)}</span><PinBox on={on} hover={!V.multi.size} /></div>
         <div className={T_SUB}>{where}</div>
         <div className={T_FOOT}>
           {x.done ? <Bar frac={1} /> : <Pbar lv={x.lv} frac={x.souls / x.need} />}
           <div className={T_META}>
-            <span>{x.done ? <b className="text-green">✓</b> : <><b className="font-semibold text-foreground">{x.souls}</b>/{x.need}</>}</span>
-            <span>Lv {x.lv}</span>
+            <span>{x.done ? <Check data-done="" aria-label={t('pets.done')} className="size-3.5 text-green" /> : <><b className="font-semibold text-foreground">{x.souls}</b>/{x.need}</>}</span>
+            <span>{t('pets.lv', { lv: x.lv })}</span>
           </div>
         </div>
       </div>
@@ -111,30 +102,49 @@ function TargetTile({ x }: { x: Any }) {
   )
 }
 
+/** The answer: how many pets are missing here, how many to unlock, souls to Lv 3, the nearest needed mob. */
+function Kpis({ m }: { m: Any }) {
+  const open = V.targets.filter((x: Any) => !x.done), unlock = open.filter((x: Any) => x.lv === 0).length
+  const souls = open.reduce((s: number, x: Any) => s + x.rest, 0)
+  const mob = !manual() && (posAge() <= 1800 || S.replay) ? V.near?.mob : null
+  return (
+    <KpiRow>
+      <Kpi icon={PawPrint} label={t('pets.kpi.missing')} value={fmt(open.length)} sub={mapName(m.name)} tip={t('pets.kpi.missingSub')} data-kpi="missing" />
+      <Kpi icon={Unlock} label={t('pets.kpi.unlock')} value={fmt(unlock)} tone={unlock ? 'info' : undefined} sub={t('pets.kpi.unlockSub')} data-kpi="unlock" />
+      <Kpi icon={Ghost} label={t('pets.kpi.souls')} value={fmt(souls)} sub={t('pets.kpi.soulsSub')} data-kpi="souls" />
+      <Kpi icon={Crosshair} label={t('pets.kpi.nearest')} value={mob ? `${fmtDist(mob.dist)} ${mob.dir}` : '–'} tone={mob ? 'info' : undefined}
+        sub={mob ? `${mob.mob.n} · ${petName(mob.t.p)}` : t('pets.kpi.noPos')} tip={t('pets.kpi.nearestTip')} data-kpi="nearest"
+        onClick={mob ? () => { if (!V.multi.has(mob.t.p.id)) selectPet(mob.t.p.id) } : undefined} />
+    </KpiRow>
+  )
+}
+
 function Targets({ m }: { m: Any }) {
   const ts = V.targets
   if (!ts.length) {
     const filtered = U.hideNamed || U.lvMin > 1 || U.lvMax < 60
-    return <Empty>{hasState() ? rich(t('pets.empty.none', { map: mapName(m.name), filter: filtered ? t('pets.empty.filter') : '' })) : t('pets.empty.noPets')}</Empty>
+    return <Page><SelBar />{!hasState() && <NoStateHint />}
+      <Empty>{hasState() ? rich(t('pets.empty.none', { map: mapName(m.name), filter: filtered ? t('pets.empty.filter') : '' })) : t('pets.empty.noPets')}</Empty></Page>
   }
-  // With priority sort the tiles are grouped: unlock, level up, complete.
+  // With priority sort the tiles are grouped: unlock, level up, complete (the complete ones behind a closed disclosure).
   const sects: { group: string; items: Any[] }[] = []
   for (const x of ts) {
-    const group = U.sort === 'prio' ? t(x.done ? 'pets.group.done' : x.lv === 0 ? 'pets.group.unlock' : 'pets.group.level') : ''
+    const group = U.sort === 'prio' ? (x.done ? 'done' : x.lv === 0 ? 'unlock' : 'level') : 'all'
     if (!sects.length || sects[sects.length - 1].group !== group) sects.push({ group, items: [] })
     sects[sects.length - 1].items.push(x)
   }
+  const tiles = (items: Any[]) => <div className={cn(GRID, 'pt-0.5 pb-2.5')}>{items.map(x => <TargetTile key={x.p.id} x={x} />)}</div>
   return <Page>
     <SelBar />
     {!hasState() && <NoStateHint />}
     {manual() && <ManualHint />}
+    <Kpis m={m} />
     <Near />
-    {sects.map((s, i) => (
-      <div key={i}>
-        {s.group && <Sect>{s.group}</Sect>}
-        <div className={cn(GRID, !s.group && LEAD)}>{s.items.map(x => <TargetTile key={x.p.id} x={x} />)}</div>
-      </div>
-    ))}
+    {sects.map(s => s.group === 'done'
+      ? <Panel key={s.group} data-group={s.group} className="pb-1.5">
+        <Disclosure id="pets.done" title={t('pets.group.done')} sub={t('pets.group.n', { n: s.items.length })}>{tiles(s.items)}</Disclosure>
+      </Panel>
+      : <Panel key={s.group} data-group={s.group} title={t('pets.group.' + s.group)} sub={t('pets.group.n', { n: s.items.length })}>{tiles(s.items)}</Panel>)}
   </Page>
 }
 

@@ -108,14 +108,14 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
       <div className={ROWS}>
         {a.slots.map(s => (
           <div key={s.kind} data-arc-slot={s.kind} className={cn(ROW, 'gap-1.5')}>
-            <span className="w-[74px] flex-none text-muted-foreground">{kindName(s.kind)}</span>
+            <span className="w-[74px] min-w-0 flex-[0_1_auto] truncate text-muted-foreground">{kindName(s.kind)}</span>
             {s.card ? <>
-              <span className={cn('w-20 flex-none truncate text-[11.5px]', GRADE_TEXT[s.card.grade])}>{gradeName(s.card.grade)} +{s.card.enchant}</span>
+              <span className={cn('w-20 min-w-0 flex-[0_1_auto] truncate text-[11.5px]', GRADE_TEXT[s.card.grade])}>{gradeName(s.card.grade)} +{s.card.enchant}</span>
               <span className="min-w-0 flex-1 truncate text-[11.5px]" data-tip={s.card.set ? t('arc.adv.set', { s: s.card.set.name, n: s.card.set.count }) : undefined}>
                 {s.card.skills.map(x => `${enName(cls, x.name)} +${x.level}`).join(' · ')}
               </span>
             </> : <span className="min-w-0 flex-1 truncate text-dim">{t('arc.adv.empty')}</span>}
-            <span className="w-16 flex-none text-right font-semibold text-gold tabular-nums" data-tip={t('arc.adv.worthTip')}>{s.card ? sign(s.cur) : '—'}</span>
+            <span className="w-16 flex-none text-right font-semibold whitespace-nowrap text-gold tabular-nums" data-tip={t('arc.adv.worthTip')}>{s.card ? sign(s.cur) : '—'}</span>
           </div>
         ))}
       </div>
@@ -125,8 +125,8 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
         <TopN id="arc.farm" items={a.farm} n={4} more={k => t('arc.moreN', { n: k })} render={f => (
           <div key={f.dungeon + f.stage} data-farm={f.dungeon + ' ' + f.stage} className={cn(ROW, 'gap-1.5')}>
             <span className="min-w-0 flex-1 truncate">{f.dungeon} <span className="text-muted-foreground">{t('arc.stage', { n: f.stage })}</span></span>
-            <span className="flex-none text-right text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-tip={t('arc.adv.pTip')}>{every(f.p)}</span>
-            <span className="w-16 flex-none text-right font-semibold text-gold tabular-nums" data-tip={t('arc.adv.gainTip')}>{sign(f.gain)}</span>
+            <span className="min-w-0 flex-[0_1_auto] truncate text-right text-[11.5px] text-muted-foreground tabular-nums" data-tip={t('arc.adv.pTip')}>{every(f.p)}</span>
+            <span className="w-16 flex-none text-right font-semibold whitespace-nowrap text-gold tabular-nums" data-tip={t('arc.adv.gainTip')}>{sign(f.gain)}</span>
           </div>
         )} />
       </div>
@@ -134,12 +134,14 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
     <Panel title={t('arc.adv.tm')} sub={t('arc.adv.tmSub')} data-arc-tm>
       <div className={ROWS}>
         <TopN id="arc.tm" items={tmBest} n={4} more={k => t('arc.moreN', { n: k })} render={x => (
-          <div key={x.kind + x.n} data-tm={x.kind + x.n} className={cn(ROW, 'gap-1.5')}>
-            <span className="w-[74px] flex-none text-muted-foreground">{kindName(x.kind)}</span>
+          // narrow: the cost goes into the row tooltip, the text columns truncate, the numbers stay whole
+          <div key={x.kind + x.n} data-tm={x.kind + x.n} className={cn(ROW, 'gap-1.5')}
+            data-tip={x.picks.map(i => enName(cls, a.m.names[i])).join(' + ') + '\n' + t('arc.adv.cost', { n: x.mats, k: fmt(x.kinah / 1e6) })}>
+            <span className="w-[74px] min-w-0 flex-[0_1_auto] truncate text-muted-foreground">{kindName(x.kind)}</span>
             <span className="min-w-0 flex-1 truncate text-[11.5px]">{x.picks.map(i => enName(cls, a.m.names[i])).join(' + ')}</span>
-            <span className="flex-none text-right text-[11px] whitespace-nowrap text-dim tabular-nums">{t('arc.adv.cost', { n: x.mats, k: fmt(x.kinah / 1e6) })}</span>
-            <span className="w-14 flex-none text-right text-[11.5px] text-muted-foreground tabular-nums" data-tip={t('arc.adv.betterTip')}>{Math.round(x.p * 100)} %</span>
-            <span className={cn('w-16 flex-none text-right font-semibold tabular-nums', x.mean > 0 ? 'text-gold' : 'text-red')} data-tip={t('arc.adv.meanTip')}>{sign(x.mean)}</span>
+            <span className="hidden flex-none text-right text-[11px] whitespace-nowrap text-dim tabular-nums @min-[420px]:inline">{t('arc.adv.cost', { n: x.mats, k: fmt(x.kinah / 1e6) })}</span>
+            <span className="w-11 flex-none text-right text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-tip={t('arc.adv.betterTip')}>{Math.round(x.p * 100)} %</span>
+            <span className={cn('w-16 flex-none text-right font-semibold whitespace-nowrap tabular-nums', x.mean > 0 ? 'text-gold' : 'text-red')} data-tip={t('arc.adv.meanTip')}>{sign(x.mean)}</span>
           </div>
         )} />
       </div>

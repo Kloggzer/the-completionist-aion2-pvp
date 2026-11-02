@@ -56,7 +56,8 @@ test('pets: +1 soul on the tile, unlock at 5', async ({ page }) => {
 })
 
 test('pets: level and souls in the popover', async ({ page }) => {
-  const app = await manual(page, { tab: 'targets', view: 'list', showLv3: true })
+  // the complete group is a closed disclosure by default: open here, so the tile stays visible after "Lv 3"
+  const app = await manual(page, { tab: 'targets', view: 'list', showLv3: true, open: { 'pets.done': true } })
   const id = await page.locator('[data-pet]').first().getAttribute('data-pet')
   const tile = page.locator(`[data-pet="${id}"]`)
   await tile.locator('[data-pet-edit]').click()
@@ -68,7 +69,7 @@ test('pets: level and souls in the popover', async ({ page }) => {
   await expect(pop).toContainText('1/25')
   await shot(page, 'manual-pet-popover')
   await pop.getByRole('button', { name: 'Lv 3 – komplett' }).click()
-  await expect(tile).toContainText('✓')
+  await expect(tile.locator('[data-done]')).toBeVisible()
   const sets = await app.posted('setPet')
   expect(sets[0]).toEqual({ type: 'setPet', id: +id!, level: 1, souls: 0 })
   expect(sets.at(-1)).toEqual({ type: 'setPet', id: +id!, level: 3, souls: 0 })

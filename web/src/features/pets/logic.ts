@@ -110,7 +110,7 @@ export function mobGroups(tg: Any): Any[] {
   }
   return [...g.values()].sort((a, b) => b.count - a.count)
 }
-export const lvTxt = (lv: number[]) => (lv[0] === lv[1] ? `Lv ${lv[0]}` : `Lv ${lv[0]}–${lv[1]}`)
+export const lvTxt = (lv: number[]) => (lv[0] === lv[1] ? t('pets.lv', { lv: lv[0] }) : t('pets.lvRange', { a: lv[0], b: lv[1] }))
 
 /** Add/remove a pet from the multi-selection (map highlight, "find spot"). */
 export function toggleMulti(id: number) {

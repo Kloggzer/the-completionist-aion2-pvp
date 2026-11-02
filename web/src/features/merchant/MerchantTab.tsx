@@ -1,19 +1,20 @@
-// "Händler" tab: the Black Cloud Merchant's current offer (read from the game when its window opens, or entered by hand;
-// cleared on the full hour) with a verdict per pet by the souls still missing to Lv 3, and the wish list of pets below
-// Lv 3 in three sections (merchant only / hard / easy to farm), ranked by farm difficulty × missing souls. Clicking a
-// pet shows its spawns in the Targets tab. Offer and wish list are portrait tiles (kit anatomy); the offer column sits
-// left of the wish list grid from 900 px.
+// "Händler" tab: number tiles (next offer, worth buying now, missing pets, hard to farm), the Black Cloud Merchant's
+// current offer (read from the game when its window opens, or entered by hand; cleared on the full hour) with a verdict
+// per pet by the souls still missing to Lv 3, and the missing pets (below Lv 3) in three panels (merchant only / hard /
+// easy to farm, the easy one closed), ranked by farm difficulty × missing souls. Clicking a pet shows its spawns in the
+// Targets tab. Offers are portrait tiles (kit anatomy), the missing pets list rows; the offer column sits left of the
+// list from 900 px.
 import { useEffect, useMemo, useState } from 'react'
-import { Brain, Gamepad2, Leaf, MapPin, PawPrint, Sparkles, CircleHelp, X, type LucideIcon } from 'lucide-react'
+import { Brain, CircleHelp, Clock, Gamepad2, Leaf, MapPin, Mountain, PawPrint, Plus, Search, ShoppingCart, Sparkles, Store, Undo2, X, type LucideIcon } from 'lucide-react'
 import { U, V, bump, hasState, saveUi, useApp, type Any } from '@/core/state'
-import { host } from '@/core/host'
 import { emit } from '@/core/bus'
 import { goTab } from '@/core/nav'
 import { mapName, selectMap, petName } from '@/core/data'
 import { fmt, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
 import { AppSelect } from '@/components/AppSelect'
-import { BOX, BarInfo, BarRight, CHIP, CHIP_ON, Foot, Hint, Note, Page, Sect, SUB, T_BODY, T_FOOT, T_META, T_TITLE, TILE, TILE_CLICK, TILE_P, TileIcon, grid, rich } from '@/components/kit'
+import { BOX, BarInfo, BarRight, Chip, Disclosure, Field, Hint, HowTo, Kpi, KpiRow, ListRow, Note, Page, Panel, ROWS, SUB, Seg, T_BODY, T_FOOT, T_META, T_TITLE, TILE, TILE_CLICK, TILE_P, TileIcon, TopN, grid, rich } from '@/components/kit'
+import { Button } from '@/components/ui/button'
 import { toggleMulti } from '@/features/pets/logic'
 import {
   HARD, MAX_SOULS, OFFER_ORDER, SOULS_PER_BUY, bestZone, buyCount, buyInfo, diffOf, freshAlt, discount, eventPets, freshOffers, groupOf, mapsLoaded, merchantPets, msToNext,
@@ -100,18 +101,16 @@ function SoulBar({ have, add = 0 }: { have: number; add?: number }) {
   )
 }
 
-/** Farm effort as 1–3 dots; colour only for the top tier. */
+/** Farm effort as a readable badge (easy / hard / very hard); the score is in the tooltip. */
 function Tier({ d }: { d: Diff }) {
   const n = tierOf(d)
   return (
-    <span data-tier={n} data-tip={t('merch.tier.' + n) + ' · ' + t('merch.score.tip', { n: d.score })} className="flex flex-none items-center gap-[3px] px-0.5">
-      {[1, 2, 3].map(i => <i key={i} className={cn('size-[5px] rounded-full', i > n ? 'bg-foreground/12' : n === 3 ? 'bg-gold' : 'bg-muted-foreground/70')} />)}
+    <span data-tier={n} data-tip={t('merch.tier.' + n) + ' · ' + t('merch.score.tip', { n: d.score })}
+      className={cn('flex-none rounded-md border px-1.5 text-[11px] leading-[18px] font-semibold', n === 3 ? BOX.gold : n === 2 ? 'border-foreground/15 text-foreground' : BOX.dim)}>
+      {t('merch.tierShort.' + n)}
     </span>
   )
 }
-
-const LvChip = ({ id }: { id: number }) =>
-  <span className="flex-none rounded-[3px] border border-foreground/10 px-1 text-[10.5px] leading-[15px] font-medium text-muted-foreground tabular-nums">{t('merch.lv', { lv: petLevel(id) })}</span>
 
 /** Where to farm, one muted line: (other faction's territory ·) map · zone · n spawns · the other reasons (Named, …). */
 function whereLine(d: Diff): string {
@@ -120,17 +119,6 @@ function whereLine(d: Diff): string {
   if (!d.best) return [t('merch.noMap'), ...txt('other')].join(' · ')
   const z = bestZone(d.best)
   return [...txt('enemy'), t('merch.where', { map: mapName(d.best.name), zone: z ? ' · ' + z : '', n: d.best.n }), ...txt('other')].join(' · ')
-}
-
-/** Text field that lets the overlay take the keyboard while focused (host 'typing'). */
-function Field({ value, onChange, onKey, onBlur, placeholder, className, tip, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onBlur'> & {
-  value: string; onChange: (v: string) => void; onKey?: (e: React.KeyboardEvent<HTMLInputElement>) => void; onBlur?: () => void
-  tip?: string; [k: `data-${string}`]: string
-}) {
-  return <input value={value} placeholder={placeholder} spellCheck={false} data-tip={tip} {...rest}
-    onFocus={() => host({ type: 'typing', on: true })} onBlur={() => { host({ type: 'typing', on: false }); onBlur?.() }}
-    onChange={e => onChange(e.target.value)} onKeyDown={onKey}
-    className={cn('h-7 min-w-0 rounded-sm border bg-background/60 px-2 text-[12.5px] text-foreground outline-none placeholder:text-dim focus:border-gold/60', className)} />
 }
 
 const VERDICT_PILL: Record<OfferVerdict, string> = {
@@ -155,11 +143,14 @@ function Picker() {
     else if (e.key === 'Escape') setQ('')
   }
   return (
-    <div className="relative px-1.5 pb-1">
-      <Field value={q} onChange={v => { setQ(v); setHi(0) }} onKey={key} placeholder={t('merch.add')} tip={t('merch.add.tip')} className="h-6 w-full text-[12px]"
-        role="combobox" aria-expanded={q ? 'true' : 'false'} data-merchpicker="" />
+    <div className="relative px-2.5 pb-2">
+      <span className="relative flex items-center">
+        <Plus className="pointer-events-none absolute left-2 size-3.5 text-dim" />
+        <Field value={q} onChange={v => { setQ(v); setHi(0) }} onKey={key} placeholder={t('merch.add')} tip={t('merch.add.tip')} className="w-full pl-7"
+          role="combobox" aria-expanded={q ? 'true' : 'false'} data-merchpicker="" />
+      </span>
       {q.trim() && (
-        <div role="listbox" className="absolute inset-x-1.5 top-7 z-20 overflow-hidden rounded-sm border bg-popover shadow-lg">
+        <div role="listbox" className="absolute inset-x-2.5 top-8 z-20 overflow-hidden rounded-lg border bg-popover shadow-lg">
           {list.length ? list.map((p, i) => {
             const v = offerKind({ id: p.id }).v
             return (
@@ -168,7 +159,7 @@ function Picker() {
                 <PetPic p={p} size={20} />
                 <span className="min-w-0 flex-1 truncate">{petName(p)}</span>
                 {p.c && <span className="text-[11px] text-dim">{p.c}</span>}
-                <i className={cn('rounded-[3px] border px-1 text-[10.5px] font-semibold not-italic', VERDICT_PILL[v])}>{t('merch.v.' + v)}</i>
+                <i className={cn('rounded-[3px] border px-1 text-[11px] font-semibold not-italic', VERDICT_PILL[v])}>{t('merch.v.' + v)}</i>
               </div>
             )
           }) : <div className="px-2 py-1 text-[12px] text-dim">{t('merch.noMatch')}</div>}
@@ -182,6 +173,8 @@ const GameTag = () => <Gamepad2 data-game="" data-tip={t('merch.game.tip')} aria
 
 // ---------------------------------------------------------------- offer
 
+/** Offer tile: name + verdict, what one purchase brings + Kinah per soul, the soul bar, price field. Buy count, where
+ *  to farm and the base price are in the tooltip. */
 function OfferTile({ o }: { o: Offer }) {
   const { p, name, v } = offerKind(o)
   const rest = p ? soulsLeft(o.id) : 0, d = p ? diffOf(p) : null
@@ -190,38 +183,40 @@ function OfferTile({ o }: { o: Offer }) {
     setOffers(offers().items.map(x => (x.id === o.id ? { ...x, price: Number.isFinite(n) ? n : undefined } : x)), false)
   }
   const off = discount(o), have = soulsHave(rest), b = buyInfo(rest), click = !!(p && d?.best)
+  const tip = [t('merch.v.' + v + '.tip'),
+    p && d && v !== 'have' && v !== 'event' ? t('merch.buys', { buys: b.buys }) + ' · ' + t('merch.lv', { lv: petLevel(o.id) }) : '',
+    p && d && v !== 'have' ? (p.ev ? t('merch.evOnly') : whereLine(d)) : '',
+    off > 0 ? t('merch.base', { n: fmt(o.base!) }) : '',
+    click ? t('merch.show') : ''].filter(Boolean).join('\n')
   return (
-    <div data-offer={o.id} data-verdict={v} onClick={click ? () => showOnMap(p, d!) : undefined} data-tip={click ? t('merch.show') : undefined}
+    <div data-offer={o.id} data-verdict={v} onClick={click ? () => showOnMap(p, d!) : undefined} data-tip={tip}
       className={cn(TILE, TILE_P, click && TILE_CLICK, (v === 'buy' || v === 'event') && 'border-gold/45 bg-gold/[0.04]', (v === 'have' || v === 'unknown') && 'opacity-70')}>
       <PetPic p={p ?? (name ? { n: name } : null)} />
       <div className={T_BODY}>
         <div className="flex min-w-0 items-center gap-1.5">
           <span className={cn(T_TITLE, 'min-w-0 flex-1')}>{name ?? t('merch.unknown', { id: o.item ?? o.id })}</span>
           {o.tab != null && <GameTag />}
-          <span data-tip={t('merch.v.' + v + '.tip')}
-            className={cn('flex-none rounded-sm border px-1.5 text-[10.5px] leading-[17px] font-semibold', VERDICT_PILL[v])}>{t('merch.v.' + v)}</span>
+          <span className={cn('flex-none rounded-md border px-1.5 text-[11px] leading-[18px] font-semibold', VERDICT_PILL[v])}>{t('merch.v.' + v)}</span>
         </div>
-        <div className={cn(SUB, 'mt-0.5 truncate')}>
-          {v === 'event' ? t('merch.event.sub') : !p || !d ? t('merch.v.unknown.tip')
-            : v === 'have' ? t('merch.lv3')
-              : <span data-missing={rest} data-buy={b.buys}>
-                <span className={v === 'buy' ? 'text-foreground' : undefined}>{t('merch.buy', { s: SOULS_PER_BUY, n: soulsHave(b.after), max: MAX_SOULS })}</span>
-                {' · '}{t('merch.buys', { buys: b.buys })}{' · '}{t('merch.lv', { lv: petLevel(o.id) })}
-              </span>}
+        <div className="mt-0.5 flex min-w-0 items-baseline gap-1.5">
+          <span className={cn(SUB, 'min-w-0 flex-1 truncate')}>
+            {v === 'event' ? t('merch.event.sub') : !p || !d ? t('merch.v.unknown.tip')
+              : v === 'have' ? t('merch.lv3')
+                : <span data-missing={rest} data-buy={b.buys} className={v === 'buy' ? 'text-foreground' : undefined}>{t('merch.buy', { s: SOULS_PER_BUY, n: soulsHave(b.after), max: MAX_SOULS })}</span>}
+          </span>
+          {o.price ? <span data-persoul={perSoul(o.price)} data-tip={t('merch.perSoul.tip', { s: SOULS_PER_BUY })}
+            className={cn('flex-none text-[12px] font-semibold tabular-nums', v === 'buy' ? 'text-gold' : 'text-muted-foreground')}>{t('merch.perSoul', { n: fmt(perSoul(o.price)) })}</span> : null}
         </div>
-        {p && d && v !== 'have' && <div className={cn(SUB, 'truncate text-dim')}>{p.ev ? t('merch.evOnly') : whereLine(d)}</div>}
         <div className={T_FOOT}>
           {p && <SoulBar have={have} add={v === 'have' ? 0 : SOULS_PER_BUY} />}
           <div className={T_META} onClick={e => e.stopPropagation()}>
             <span className="flex min-w-0 items-center gap-1.5">
               <Field value={o.price != null ? fmt(o.price) : ''} onChange={setPrice} onBlur={() => saveUi(['merch', 'merchAlt'])} onKey={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                placeholder={t('merch.price')} tip={t('merch.price.tip')} className="h-5 w-[72px] px-1 text-right text-[11.5px] tabular-nums" data-price="" />
-              {off > 0 && <span data-discount={off} data-tip={t('merch.base', { n: fmt(o.base!) })}
-                className={cn('flex-none rounded-[3px] border px-1 text-[10.5px] leading-[15px] font-semibold', v === 'buy' ? BOX.gold : BOX.dim)}>-{off} %</span>}
-              {o.price ? <span data-persoul={perSoul(o.price)} data-tip={t('merch.perSoul.tip', { s: SOULS_PER_BUY })} className="truncate text-dim">{t('merch.perSoul', { n: fmt(perSoul(o.price)) })}</span> : null}
+                placeholder={t('merch.price')} tip={t('merch.price.tip')} className="h-6 w-[78px] px-1.5 text-right text-[11.5px] tabular-nums" data-price="" />
+              {off > 0 && <span data-discount={off} data-tip={t('merch.base', { n: fmt(o.base!) })} className="flex-none text-dim">-{off} %</span>}
             </span>
-            <button data-tip={t('merch.remove')} onClick={() => setOffers(offers().items.filter(x => x.id !== o.id))}
-              className="grid size-5 flex-none place-items-center rounded-sm text-dim hover:bg-foreground/10 hover:text-foreground [&_svg]:size-3.5"><X /></button>
+            <Button variant="ghost" size="icon-xs" data-tip={t('merch.remove')} aria-label={t('merch.remove')} className="text-dim"
+              onClick={() => setOffers(offers().items.filter(x => x.id !== o.id))}><X /></Button>
           </div>
         </div>
       </div>
@@ -229,70 +224,69 @@ function OfferTile({ o }: { o: Offer }) {
   )
 }
 
-const OFFER_GRID = grid('row')
-
-/** Top picks of the wish list (shown while the offer is empty): what to look out for at the merchant. */
+/** Top picks of the missing pets (shown while the offer is empty): what to look out for at the merchant. */
 function Watch() {
-  const top = wishlist().slice(0, 6)
+  const top = wishlist().slice(0, 8)
   if (!top.length) return null
-  return <>
-    <Sect sub={'· ' + t('merch.watch.sub')}>{t('merch.watch')}</Sect>
-    <div data-watch={top.length} className="flex flex-col px-1.5">
-      {top.map(({ p, d, rest }) => (
-        <div key={p.id} data-watchpet={p.id} onClick={() => showOnMap(p, d)} data-tip={d.best ? t('merch.show') : whereLine(d)}
-          className={cn('flex min-h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-[12.5px]', d.best && 'cursor-pointer hover:bg-foreground/5')}>
-          <PetPic p={p} size={24} />
-          <span className="min-w-0 flex-1 truncate font-medium">{petName(p)}</span>
-          <span className="flex-none text-[11px] text-dim tabular-nums">{t('merch.souls', { n: soulsHave(rest), max: MAX_SOULS })}</span>
-          <Tier d={d} />
-        </div>
-      ))}
-    </div>
-  </>
+  return (
+    <Panel title={t('merch.watch')} sub={t('merch.watch.sub')} data-watch={String(Math.min(4, top.length))}>
+      <div className={ROWS}>
+        <TopN id="merch.watch" items={top} n={4} more={more} render={({ p, d, rest }) => (
+          <ListRow key={p.id} data-watchpet={String(p.id)} onClick={d.best ? () => showOnMap(p, d) : undefined} tip={d.best ? t('merch.show') : whereLine(d)}
+            icon={<PetPic p={p} size={22} />} title={petName(p)}
+            meta={<span data-tip={t('merch.souls.tip', { n: soulsHave(rest), max: MAX_SOULS })}>{t('merch.souls', { n: soulsHave(rest), max: MAX_SOULS })}</span>}
+            right={d.spawns ? <Tier d={d} /> : <Store data-tip={t('merch.g.none') + ' · ' + t('merch.g.none.sub')} aria-label={t('merch.g.none')} className="size-3.5 text-dim" />} />
+        )} />
+      </div>
+    </Panel>
+  )
 }
 
-/** Bought offers: one muted row each, undo per row. */
+/** Bought offers: one muted row each, undo per row; closed by default. */
 function Bought({ list }: { list: Offer[] }) {
-  return <section data-bought={list.length} className="opacity-75">
-    <Sect sub={'· ' + list.length}>{t('merch.bought')}</Sect>
-    <div className="flex flex-col px-1.5">
-      {list.map(o => {
-        const { p, name } = offerKind(o)
-        const at = new Date(o.bought!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        return (
-          <div key={o.id} data-boughtoffer={o.id} data-tip={t('merch.bought.tip', { t: at, s: SOULS_PER_BUY })}
-            className="flex min-h-7 min-w-0 items-center gap-2 rounded-sm px-1 text-[12px] text-muted-foreground">
-            <PetPic p={p ?? (name ? { n: name } : null)} size={20} />
-            <span className="min-w-0 flex-1 truncate line-through decoration-foreground/25">{name ?? t('merch.unknown', { id: o.item ?? o.id })}</span>
-            <span className="flex-none text-[11px] text-dim tabular-nums">
-              {t('merch.bought.row', { s: SOULS_PER_BUY })}{o.price ? ' · ' + fmt(o.price) : ''}
-            </span>
-            <button data-tip={t('merch.bought.undo')} data-unbuy="" aria-label={t('merch.bought.undo')}
-              onClick={() => setOffers(offers().items.map(x => (x.id === o.id ? { ...x, bought: undefined } : x)))}
-              className="grid size-5 flex-none place-items-center rounded-sm text-dim hover:bg-foreground/10 hover:text-foreground [&_svg]:size-3.5"><X /></button>
-          </div>
-        )
-      })}
-    </div>
-  </section>
+  return (
+    <Panel className="pb-1.5" data-bought={String(list.length)}>
+      <Disclosure id="merch.bought" title={t('merch.bought')} sub={t('merch.bought.n', { n: list.length })}>
+        <div className={cn(ROWS, 'mt-1')}>
+          {list.map(o => {
+            const { p, name } = offerKind(o)
+            const at = new Date(o.bought!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            return (
+              <ListRow key={o.id} data-boughtoffer={String(o.id)} tip={t('merch.bought.tip', { t: at, s: SOULS_PER_BUY })} className="text-muted-foreground"
+                icon={<PetPic p={p ?? (name ? { n: name } : null)} size={20} />}
+                title={<span className="line-through decoration-foreground/25">{name ?? t('merch.unknown', { id: o.item ?? o.id })}</span>}
+                meta={t('merch.bought.row', { s: SOULS_PER_BUY }) + (o.price ? ' · ' + fmt(o.price) : '')}
+                right={<Button variant="ghost" size="icon-xs" data-tip={t('merch.bought.undo')} data-unbuy="" aria-label={t('merch.bought.undo')} className="text-dim"
+                  onClick={() => setOffers(offers().items.map(x => (x.id === o.id ? { ...x, bought: undefined } : x)))}><Undo2 /></Button>} />
+            )
+          })}
+        </div>
+      </Disclosure>
+    </Panel>
+  )
 }
 
-/** Chips per character with an offer this hour (only when there is more than the current one). */
+/** Characters with an offer this hour (only when there is more than the current one): a Seg for up to three, else a dropdown. */
 function CharChips() {
   const alt = freshAlt(U.merchAlt, Date.now())
   const names = Object.keys(alt).sort()
   if (!names.length) return null
   const cur = freshOffers(U.merch, Date.now()), view = viewAlt()
-  const chip = (c: string | null, o: Offers) => {
+  const label = (c: string | null, o: Offers) => {
     const name = (c ?? cur.c) || t('merch.char.none'), n = buyCount(o)
-    return (
-      <button key={c ?? ''} data-charchip={c ?? ''} data-active={view === c ? '' : undefined} onClick={() => { V.merchView = c; bump() }}
-        data-tip={t('merch.char.tip', { c: name })} className={cn(CHIP, view === c && CHIP_ON)}>
-        {n ? t('merch.char.buy', { c: name, n }) : t('merch.char.n', { c: name, n: o.items.filter(x => !x.bought).length })}
-      </button>
-    )
+    return n ? t('merch.char.buy', { c: name, n }) : t('merch.char.n', { c: name, n: o.items.filter(x => !x.bought).length })
   }
-  return <div data-charchips={names.length + 1} className="flex flex-wrap gap-1 px-1.5 pb-1">{chip(null, cur)}{names.map(c => chip(c, alt[c]))}</div>
+  const opts = [{ value: '', label: label(null, cur), tip: t('merch.char.tip', { c: cur.c || t('merch.char.none') }) },
+    ...names.map(c => ({ value: c, label: label(c, alt[c]), tip: t('merch.char.tip', { c }) }))]
+  const pick = (v: string) => { V.merchView = v || null; bump() }
+  return (
+    <div data-charchips={names.length + 1} className="flex px-2.5 pb-2">
+      {opts.length <= 3
+        ? <Seg size="sm" value={view ?? ''} onChange={pick} options={opts} className="w-full [&>*]:flex-1"
+          item={c => ({ 'data-charchip': c, 'data-active': (view ?? '') === c ? '' : undefined })} />
+        : <AppSelect value={view ?? ''} options={opts} onChange={pick} tip={t('merch.char.pick')} className="h-7 w-full text-xs" />}
+    </div>
+  )
 }
 
 function OfferList() {
@@ -303,85 +297,98 @@ function OfferList() {
     return { o, rank: OFFER_ORDER[v], prio: p ? priority(soulsLeft(p.id), diffOf(p)) : 0 }
   }).sort((a, b) => a.rank - b.rank || b.prio - a.prio)
   const other = cur.other || []
-  return <div>
-    <Sect sub={items.length ? '· ' + items.length : undefined}>{t('merch.offer')}</Sect>
-    <CharChips />
-    <Picker />
-    {items.length ? <div className={cn(OFFER_GRID, '@min-[900px]:grid-cols-1')}>{items.map(x => <OfferTile key={x.o.id} o={x.o} />)}</div>
-      : bought.length ? null : <div data-offerempty="" data-tip={t('merch.offer.help')} className="mx-1.5 rounded-sm border border-dashed border-foreground/10 px-2.5 py-2 text-[12px] leading-snug text-muted-foreground">
-        {rich(t('merch.offer.none'))} <span className="text-dim tabular-nums">{t('merch.next', { t: mmss(msToNext(Date.now())) })}</span>
-      </div>}
-    {other.length > 0 && <div data-other={other.length} className="px-2.5 py-1 text-[11px] text-dim"
-      data-tip={other.map(x => t('merch.otherItem', { id: x.item, price: fmt(x.price), off: discount(x) })).join(' · ')}>{t('merch.other', { n: other.length })}</div>}
-    {bought.length > 0 && <Bought list={bought} />}
+  return <div className="min-w-0">
+    <Panel title={t('merch.offer')} sub={items.length ? t('merch.offer.n', { n: items.length }) : undefined} className="overflow-visible" data-offers={String(items.length)}>
+      <CharChips />
+      <Picker />
+      {items.length ? <div className={cn(grid('row'), '@min-[900px]:grid-cols-1 pb-2.5')}>{items.map(x => <OfferTile key={x.o.id} o={x.o} />)}</div>
+        : bought.length ? null : <p data-offerempty="" data-tip={t('merch.offer.help')} className={cn(SUB, 'px-3 pb-2.5 leading-snug')}>
+          {rich(t('merch.offer.none'))} <span className="text-dim tabular-nums">{t('merch.next', { t: mmss(msToNext(Date.now())) })}</span>
+        </p>}
+      {other.length > 0 && <div data-other={other.length} className="px-3 pb-2 text-[11.5px] text-dim"
+        data-tip={other.map(x => t('merch.otherItem', { id: x.item, price: fmt(x.price), off: discount(x) })).join(' · ')}>{t('merch.other', { n: other.length })}</div>}
+    </Panel>
     {!items.length && <Watch />}
+    {bought.length > 0 && <Bought list={bought} />}
   </div>
 }
 
-// ---------------------------------------------------------------- wish list
+// ---------------------------------------------------------------- missing pets
 
-function WishTile({ p, d, rest }: { p: Any; d: Diff; rest: number }) {
+function WishRow({ p, d, rest }: { p: Any; d: Diff; rest: number }) {
   const g = groupOf(d), have = soulsHave(rest)
+  const where = [p.c, p.ev ? t('merch.evOnly') : g !== 'none' && whereLine(d)].filter(Boolean).join(' · ')
   return (
-    <div data-wish={p.id} data-score={d.score} data-group={g} onClick={() => showOnMap(p, d)} data-tip={d.best ? t('merch.show') : undefined}
-      className={cn(TILE, TILE_P, d.best && TILE_CLICK)}>
-      <PetPic p={p} />
-      <div className={T_BODY}>
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span data-name="" className={cn(T_TITLE, 'min-w-0 flex-1')}>{petName(p)}</span>
-          <LvChip id={p.id} />
-          {g !== 'none' && <Tier d={d} />}
-        </div>
-        <div className={cn(SUB, 'mt-0.5 truncate text-dim')}>{[p.c, p.ev ? t('merch.evOnly') : g !== 'none' && whereLine(d)].filter(Boolean).join(' · ')}</div>
-        <div className={T_FOOT}>
-          <SoulBar have={have} />
-          <div className={T_META}>
-            <span data-missing={rest} data-tip={t('merch.souls.tip', { n: have, max: MAX_SOULS })}>
-              <b className="font-semibold text-foreground">{have}</b>/{MAX_SOULS}
-            </span>
-            {d.best && <MapPin className="size-3.5 flex-none text-dim" />}
-          </div>
-        </div>
-      </div>
-    </div>
+    <ListRow data-wish={String(p.id)} data-score={String(d.score)} data-group={g} onClick={() => showOnMap(p, d)}
+      tip={[petName(p) + ' · ' + t('merch.lv', { lv: petLevel(p.id) }), where, d.best ? t('merch.show') : ''].filter(Boolean).join('\n')}
+      icon={<PetPic p={p} size={22} />}
+      title={<span data-name="">{petName(p)}</span>} sub={where || undefined}
+      meta={<span data-souls={have} data-missing={rest} data-tip={t('merch.souls.tip', { n: have, max: MAX_SOULS })}>
+        <b className="font-semibold text-foreground">{have}</b>/{MAX_SOULS}
+      </span>}
+      right={<>{g !== 'none' && <Tier d={d} />}{d.best ? <MapPin className="size-3.5 text-dim" /> : <span className="w-3.5" />}</>} />
   )
 }
 
 const GROUPS: Group[] = ['none', 'hard', 'easy']
-const WISH_GRID = grid('row')
 
 function Wishlist() {
   const all = wishlist(), q = (V.merchQ || '').trim().toLowerCase()
   const rows = all.filter(x => (!V.merchHard || x.d.score >= HARD) && (!q || hit(x.p, q)))
-  return <div>
-    <Sect sub={'· ' + t('merch.wish.sub', { n: all.length })}>{t('merch.wish')}</Sect>
-    <div className="flex items-center gap-1 px-1.5 pb-1">
-      <Field value={V.merchQ || ''} onChange={v => { V.merchQ = v; bump() }} placeholder={t('merch.search')} className="h-6 flex-1 text-[12px]" data-merchsearch="" />
-      <button onClick={() => { V.merchHard = !V.merchHard; bump() }} data-tip={t('merch.hardOnly.tip', { n: HARD })} className={cn(CHIP, V.merchHard && CHIP_ON)}>{t('merch.hardOnly')}</button>
+  return <div className="min-w-0">
+    <div className="flex flex-wrap items-center gap-1.5 px-2.5 pt-2.5">
+      <span className="flex min-w-0 flex-[1_1_10rem] items-center gap-1.5 px-0.5 text-[12px] font-semibold text-muted-foreground">
+        <span className="flex-none">{t('merch.wish')}</span><span className="min-w-0 truncate font-normal">{t('merch.wish.sub', { n: all.length })}</span>
+      </span>
+      <span className="ml-auto flex min-w-0 flex-[1_1_14rem] items-center gap-1.5">
+        <span className="relative flex min-w-0 flex-1 items-center">
+          <Search className="pointer-events-none absolute left-2 size-3.5 text-dim" />
+          <Field value={V.merchQ || ''} onChange={v => { V.merchQ = v; bump() }} placeholder={t('merch.search')} className="w-full pl-7" data-merchsearch="" />
+        </span>
+        <Chip on={!!V.merchHard} onChange={v => { V.merchHard = v; bump() }} tip={t('merch.hardOnly.tip', { n: HARD })}><Mountain />{t('merch.hardOnly')}</Chip>
+      </span>
     </div>
-    {!all.length ? <Note>{t('merch.wish.empty')}</Note> : !rows.length ? <Note>{t('merch.wish.none')}</Note> : GROUPS.map(g => {
-      const list = rows.filter(x => groupOf(x.d) === g)
-      if (!list.length) return null
-      return (
-        <section key={g} data-wishgroup={g} data-count={list.length}>
-          <Sect sub={<><b className="font-semibold text-muted-foreground tabular-nums">{list.length}</b> · {t('merch.g.' + g + '.sub')}</>}
-            className={g === 'hard' ? 'text-gold/80' : undefined}>{t('merch.g.' + g)}</Sect>
-          <div className={WISH_GRID}>{list.map(x => <WishTile key={x.p.id} {...x} />)}</div>
-        </section>
-      )
-    })}
+    {!all.length ? <Panel><Note className="py-2.5">{t('merch.wish.empty')}</Note></Panel>
+      : !rows.length ? <Panel><Note className="py-2.5">{t('merch.wish.none')}</Note></Panel>
+        : GROUPS.map(g => {
+          const list = rows.filter(x => groupOf(x.d) === g)
+          if (!list.length) return null
+          const body = <div className={ROWS}><TopN id={'merch.top.' + g} items={list} n={5} more={more} render={x => <WishRow key={x.p.id} {...x} />} /></div>
+          const sub = t('merch.g.n', { n: list.length }) + ' · ' + t('merch.g.' + g + '.sub')
+          return g === 'easy'
+            ? <Panel key={g} className="pb-1.5" data-wishgroup={g} data-count={String(list.length)}>
+              <Disclosure id="merch.g.easy" title={t('merch.g.' + g)} sub={sub}><div className="mt-1">{body}</div></Disclosure>
+            </Panel>
+            : <Panel key={g} title={<span className={g === 'hard' ? 'text-gold' : undefined}>{t('merch.g.' + g)}</span>} sub={sub} data-wishgroup={g} data-count={String(list.length)}>{body}</Panel>
+        })}
   </div>
 }
 
 const FACS = ['all', 'Asmodian', 'Elyos']
+const more = (k: number) => t('common.moreN', { n: k })
+
+/** The answer: countdown to the next offer, what to buy now, how many pets are missing, how many are hard to farm. */
+function Kpis() {
+  const cur = offers(), all = wishlist()
+  const buy = buyCount(cur), open = cur.items.filter(x => !x.bought).length, hard = all.filter(x => groupOf(x.d) === 'hard').length
+  return (
+    <KpiRow>
+      <Kpi icon={Clock} label={t('merch.kpi.next')} value={mmss(msToNext(Date.now()))} sub={t('merch.kpi.nextSub')} data-kpi="next" />
+      <Kpi icon={ShoppingCart} label={t('merch.kpi.buy')} value={open ? fmt(buy) : '–'} tone={buy ? 'warn' : undefined}
+        sub={open ? t('merch.kpi.buySub', { n: open }) : t('merch.kpi.noOffer')} data-kpi="buy" />
+      <Kpi icon={PawPrint} label={t('merch.kpi.missing')} value={fmt(all.length)} sub={t('merch.kpi.missingSub')} data-kpi="missing" />
+      <Kpi icon={Mountain} label={t('merch.kpi.hard')} value={fmt(hard)} sub={t('merch.kpi.hardSub', { n: HARD })} tip={t('merch.hardOnly.tip', { n: HARD })} data-kpi="hard" />
+    </KpiRow>
+  )
+}
 
 export function MerchantTab() {
   useApp()
   const [, tick] = useState(0)
   useEffect(() => { const i = setInterval(() => tick(n => n + 1), 1000); return () => clearInterval(i) }, [])
-  const fac = myFaction() || 'all'
+  const fac = myFaction() || 'all', who = viewAlt() ?? offers().c
   const bar = <>
-    <BarInfo>{t('merch.next', { t: mmss(msToNext(Date.now())) })}</BarInfo>
+    <BarInfo tip={t('tab.merchant.tip')}>{who ? t('merch.bar.c', { c: who }) : t('merch.bar')}</BarInfo>
     <BarRight>
       <AppSelect value={fac} tip={t('merch.fac.tip')} className="h-6 text-xs" options={FACS.map(f => ({ value: f, label: t('merch.fac.' + f) }))}
         onChange={v => { U.merchFac = v; saveUi(['merchFac']); bump() }} />
@@ -391,11 +398,14 @@ export function MerchantTab() {
     <Page w="rows" bar={bar}>
       {!mapsLoaded() && <Hint tone="cyan">{t('merch.loading')}</Hint>}
       {!hasState() && <Hint>{t('merch.noState')}</Hint>}
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-2 @min-[900px]:grid-cols-[minmax(0,330px)_minmax(0,1fr)] @min-[1300px]:grid-cols-[minmax(0,370px)_minmax(0,1fr)]">
+      <Kpis />
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start @min-[900px]:grid-cols-[minmax(0,360px)_minmax(0,1fr)] @min-[1300px]:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
         <OfferList />
         <Wishlist />
       </div>
-      <Foot>{t('merch.how', { n: HARD })}</Foot>
+      <Panel className="pb-1.5">
+        <HowTo id="merch.how" title={t('merch.howTitle')}>{t('merch.how', { n: HARD })}</HowTo>
+      </Panel>
     </Page>
   )
 }
