@@ -13,7 +13,7 @@ import {
 import { radarCfg, toggleMiniRadar, toggleRadarLock, centerRadar } from './miniRadar'
 
 // Small translucent pill over the map (#11141ccc, thin border).
-const pill = 'rounded-sm border border-white/10 bg-[#11141ccc] text-[11px] text-muted-foreground backdrop-blur-sm transition-colors hover:text-white'
+const pill = 'rounded-sm border border-foreground/10 bg-[#11141ccc] text-[11px] text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground'
 
 function TipBox({ tip }: { tip: NonNullable<Tip> }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -51,7 +51,7 @@ function HudLine({ lbl, o, children }: { lbl: string; o: Any; children: React.Re
 function RadarHud() {
   const m = G.md[U.map], p = S.pos
   if (!U.radar) return null
-  const box = 'pointer-events-none absolute right-10 bottom-1.5 left-1.5 rounded-sm border border-white/10 bg-[#0d1017e0] px-2 py-1.5 text-[11.5px]'
+  const box = 'pointer-events-none absolute right-10 bottom-1.5 left-1.5 rounded-sm border border-foreground/10 bg-[#0d1017e0] px-2 py-1.5 text-[11.5px]'
   if (!p) return <div className={box}><div className="leading-relaxed text-gold">{t('map.noPos')}</div></div>
   if (m && !onMap(m, p)) {
     const [a, b] = t('map.offMap').split('{map}')

@@ -1,11 +1,11 @@
 // Every view at the overlay sizes (360, 640) up to a maximized window (1280, 2000): screenshots for a visual check
 // (e2e/.out/shots/resp-<w>-<view>.png) and no horizontal overflow anywhere (page or any scroll container).
 import { expect, test, type Page } from '@playwright/test'
-import { hasCache, openApp } from './host'
+import { goPage, hasCache, openApp } from './host'
 
 test.skip(!hasCache(), 'needs the app data cache in %LOCALAPPDATA%\\TheCompletionist\\cache (start the app once)')
 
-const TABS = ['Übersicht', 'Ziele', 'Spots', 'Händler', 'Farmen', 'Erfolge', 'Checkliste', 'Build', 'Arkana', 'Bosse', 'Timer']
+const TABS = ['Übersicht', 'Checkliste', 'Bosse', 'Timer', 'Ziele', 'Spots', 'Händler', 'Farmen', 'Daevanion', 'Werte', 'Ausrüstung', 'Arkana', 'Erfolge']
 const SIZES = [[360, 700], [640, 800], [1280, 800], [2000, 1100], [2560, 1400]] as const
 const CHK = { srv: {}, chars: { Testchar: {}, Zweitchar: { supplyEmergency: { c: 1, at: Date.now() } } } }
 
@@ -32,17 +32,17 @@ for (const [w, h] of SIZES) {
   test(`every view fits at ${w}x${h}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h })
     await openApp(page, { ui: { checklist: CHK, timerAll: true, charges: { 'odyle|Zweitchar': { v: 545, at: Date.now() } } } })
-    for (const [i, name] of TABS.entries()) {
-      await page.locator('[data-tabs] button').nth(i).click()
+    for (const name of TABS) {
+      await goPage(page, name)
       await check(page, w, name)
     }
     // Checklist character page.
-    await page.locator('[data-tabs] button').nth(TABS.indexOf('Checkliste')).click()
+    await goPage(page, 'Checkliste')
     await page.getByRole('button', { name: /Zweitchar/ }).first().click()
     await expect(page.getByText('nicht eingeloggt')).toBeVisible()
     await check(page, w, 'Checkliste-char')
     // Map tabs in list-only view.
-    await page.locator('[data-tabs] button').nth(TABS.indexOf('Ziele')).click()
+    await goPage(page, 'Ziele')
     await page.locator('[data-tip="Nur Liste"]').click()
     await check(page, w, 'Ziele-list')
     // Settings.

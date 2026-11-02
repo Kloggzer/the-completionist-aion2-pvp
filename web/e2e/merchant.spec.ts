@@ -269,7 +269,7 @@ test('offer, picks and wish list show the pet portraits from aion2.app', async (
   await expect(page.locator('[data-offer="534760018"] img')).toHaveCount(0)
   // the portrait column spans the full tile height
   const tile = await page.locator('[data-offer="1084"]').boundingBox(), pic = await kal.locator('..').boundingBox()
-  expect(pic!.height).toBeGreaterThan(tile!.height - 12)
+  expect(pic!.height).toBeGreaterThan(tile!.height - 16) // tile padding 6 px top and bottom
   // a missing portrait falls back to the category icon
   const lup = page.locator('[data-offer="1132"]')
   await expect(lup.locator('img')).toHaveCount(0)

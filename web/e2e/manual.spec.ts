@@ -1,6 +1,6 @@
 // Manual mode (v1.1, no Npcap): onboarding, pets / achievements / characters by hand, live features off.
 import { expect, test, type Page } from '@playwright/test'
-import { emptyState, hasCache, openApp, type HostOpts } from './host'
+import { emptyState, goPage, hasCache, openApp, type HostOpts } from './host'
 
 test.skip(!hasCache(), 'needs the app data cache in %LOCALAPPDATA%\\TheCompletionist\\cache (start the app once)')
 
@@ -132,7 +132,7 @@ test('map and bosses: radar off with a note, prominent kill button', async ({ pa
   await manual(page, { tab: 'targets', view: 'both' })
   await expect(page.locator('[data-radar-off]')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Radar' })).toHaveCount(0)
-  await page.locator('[data-tabs] button').nth(9).click() // Bosse
+  await goPage(page, 'Bosse')
   await expect(page.getByText('Manuell: nach dem Kill')).toBeVisible()
   const kill = page.locator('[data-kill]')
   if (await kill.count()) {

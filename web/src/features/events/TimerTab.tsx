@@ -76,7 +76,7 @@ function BellPop({ p, onClose }: { p: Pop; onClose: () => void }) {
   const W = 240, left = Math.max(8, Math.min(p.x, innerWidth - W - 8))
   const row = (active: boolean, label: string, sub: string, tip: string, click: () => void, dot?: boolean) => (
     <button onClick={click} data-tip={tip}
-      className={cn('flex w-full items-center gap-2 rounded-sm border px-2 py-1.5 text-left transition-colors hover:bg-white/5', active ? 'border-gold/50 bg-gold/10' : 'border-border')}>
+      className={cn('flex w-full items-center gap-2 rounded-sm border px-2 py-1.5 text-left transition-colors hover:bg-foreground/5', active ? 'border-gold/50 bg-gold/10' : 'border-border')}>
       {active ? (dot ? <BellDot className="size-4 flex-none text-gold" /> : <Bell className="size-4 flex-none text-gold" />) : <BellOff className="size-4 flex-none text-dim" />}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[12px] font-semibold">{label}</span>
@@ -91,7 +91,7 @@ function BellPop({ p, onClose }: { p: Pop; onClose: () => void }) {
       <div className="flex items-center gap-1.5 px-0.5 pb-0.5">
         <I className={cn('size-3.5 flex-none', TXT[KIND_TONE[ev.kind] || 'dim'])} />
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">{timerName(ev)}</span>
-        <button onClick={onClose} className="rounded-sm px-1 text-[11px] text-muted-foreground hover:bg-white/10 hover:text-foreground">✕</button>
+        <button onClick={onClose} className="rounded-sm px-1 text-[11px] text-muted-foreground hover:bg-foreground/10 hover:text-foreground">✕</button>
       </div>
       <div className="truncate px-0.5 pb-1 text-[11px] text-muted-foreground tabular-nums">{day} · {hm(ms)}{where ? ' · ' + where : ''}</div>
       {row(on, t('timer.once'), once === undefined ? t('timer.onceFollows') : once ? t('timer.onceOn') : t('timer.onceMuted'), t('timer.onceTip'), () => toggleOnce(ev, ms), once === true)}

@@ -62,11 +62,12 @@ export function Charges({ per, char }: { per: Per; char?: string }) {
 /** Warning rows; clicking one opens the character's checklist page. */
 export function AlertList({ alerts, showChar = true, onOpen }: { alerts: Alert[]; showChar?: boolean; onOpen?: (char: string | null) => void }) {
   if (!alerts.length) return null
-  return <div className="flex flex-col gap-1 px-1.5">{alerts.map((a, i) => (
-    <button key={i} onClick={() => { V.chkPage = a.char; onOpen?.(a.char); bump() }} data-tip={t('alert.' + a.level)}
-      className={cn('group flex min-h-8 min-w-0 items-center gap-2 rounded-sm border bg-card px-2 py-1 text-left text-[12px] leading-snug transition-colors hover:bg-white/5', ACCENT[a.level])}>
+  return <div className="flex flex-col gap-1.5 px-2.5">{alerts.map((a, i) => (
+    <button key={i} onClick={() => { V.chkPage = a.char; onOpen?.(a.char); bump() }} data-tip={`${a.char ?? t('chk.server')}: ${a.text}
+${t('alert.' + a.level)}`}
+      className={cn('group flex min-h-9 min-w-0 items-center gap-2 rounded-lg border bg-card px-2.5 py-1 text-left text-[12.5px] transition-colors hover:bg-foreground/5', ACCENT[a.level])}>
       <TriangleAlert className={cn('size-3.5 flex-none', a.level === 'red' ? TONE.bad : TONE.warn)} />
-      <span className="min-w-0 flex-1">
+      <span className="min-w-0 flex-1 truncate">
         {showChar && <b className="mr-1 font-semibold">{a.char ?? t('chk.server')}:</b>}
         <span className="text-muted-foreground">{a.text}</span>
       </span>

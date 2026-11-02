@@ -68,7 +68,7 @@ function PetPic({ p, size, className }: { p: Any | null; size?: number; classNam
     className={cn('absolute inset-0 size-full object-contain p-px', !ok && 'opacity-0')} />
   if (size) {
     return (
-      <span data-tip={p?.c} className={cn('relative grid flex-none place-items-center overflow-hidden rounded-sm border border-white/10 bg-white/[0.04] text-dim/70', className)}
+      <span data-tip={p?.c} className={cn('relative grid flex-none place-items-center overflow-hidden rounded-sm border border-foreground/10 bg-foreground/[0.04] text-dim/70', className)}
         style={{ width: size, height: size }}>
         {!ok && <Cat className="size-[60%]" strokeWidth={1.5} />}{img}
       </span>
@@ -77,7 +77,7 @@ function PetPic({ p, size, className }: { p: Any | null; size?: number; classNam
   // TileIcon's own `grid` would override T_PORTRAIT's `hidden`: hide it in narrow windows like the portraits.
   // Full tile height (self-stretch), fixed width.
   return (
-    <TileIcon icon={ok ? undefined : Cat} tone="dim" tip={p?.c} className={cn('hidden @min-[700px]:grid h-auto min-h-[44px] self-stretch overflow-hidden bg-white/[0.04]', className)}>
+    <TileIcon icon={ok ? undefined : Cat} tone="dim" tip={p?.c} className={cn('hidden @min-[700px]:grid h-auto min-h-[44px] self-stretch overflow-hidden bg-foreground/[0.04]', className)}>
       {img}
     </TileIcon>
   )
@@ -91,7 +91,7 @@ function SoulBar({ have, add = 0 }: { have: number; add?: number }) {
   return (
     <span data-souls={have} className="my-1 flex h-[4px] flex-none gap-[3px]">
       {now.map((f, i) => (
-        <span key={i} className="relative flex-1 overflow-hidden rounded-[1px] bg-white/[0.08]">
+        <span key={i} className="relative flex-1 overflow-hidden rounded-[1px] bg-foreground/[0.08]">
           {then[i] > f && <i className="absolute inset-y-0 left-0 bg-gold/45" style={{ width: then[i] * 100 + '%' }} />}
           <i className={cn('absolute inset-y-0 left-0', f >= 1 ? 'bg-green/80' : 'bg-green/60')} style={{ width: f * 100 + '%' }} />
         </span>
@@ -105,13 +105,13 @@ function Tier({ d }: { d: Diff }) {
   const n = tierOf(d)
   return (
     <span data-tier={n} data-tip={t('merch.tier.' + n) + ' · ' + t('merch.score.tip', { n: d.score })} className="flex flex-none items-center gap-[3px] px-0.5">
-      {[1, 2, 3].map(i => <i key={i} className={cn('size-[5px] rounded-full', i > n ? 'bg-white/12' : n === 3 ? 'bg-gold' : 'bg-muted-foreground/70')} />)}
+      {[1, 2, 3].map(i => <i key={i} className={cn('size-[5px] rounded-full', i > n ? 'bg-foreground/12' : n === 3 ? 'bg-gold' : 'bg-muted-foreground/70')} />)}
     </span>
   )
 }
 
 const LvChip = ({ id }: { id: number }) =>
-  <span className="flex-none rounded-[3px] border border-white/10 px-1 text-[10.5px] leading-[15px] font-medium text-muted-foreground tabular-nums">{t('merch.lv', { lv: petLevel(id) })}</span>
+  <span className="flex-none rounded-[3px] border border-foreground/10 px-1 text-[10.5px] leading-[15px] font-medium text-muted-foreground tabular-nums">{t('merch.lv', { lv: petLevel(id) })}</span>
 
 /** Where to farm, one muted line: (other faction's territory ·) map · zone · n spawns · the other reasons (Named, …). */
 function whereLine(d: Diff): string {
@@ -134,7 +134,7 @@ function Field({ value, onChange, onKey, onBlur, placeholder, className, tip, ..
 }
 
 const VERDICT_PILL: Record<OfferVerdict, string> = {
-  event: 'border-gold/60 text-gold', buy: 'border-gold bg-gold text-black', opt: 'border-cyan/30 text-cyan', have: 'border-white/10 text-dim', unknown: 'border-white/10 text-dim',
+  event: 'border-gold/60 text-gold', buy: 'border-gold bg-gold text-primary-foreground', opt: 'border-cyan/30 text-cyan', have: 'border-foreground/10 text-dim', unknown: 'border-foreground/10 text-dim',
 }
 
 /** Combobox over the pet names: type, arrows, Enter / click adds the pet to the offer. */
@@ -221,7 +221,7 @@ function OfferTile({ o }: { o: Offer }) {
               {o.price ? <span data-persoul={perSoul(o.price)} data-tip={t('merch.perSoul.tip', { s: SOULS_PER_BUY })} className="truncate text-dim">{t('merch.perSoul', { n: fmt(perSoul(o.price)) })}</span> : null}
             </span>
             <button data-tip={t('merch.remove')} onClick={() => setOffers(offers().items.filter(x => x.id !== o.id))}
-              className="grid size-5 flex-none place-items-center rounded-sm text-dim hover:bg-white/10 hover:text-foreground [&_svg]:size-3.5"><X /></button>
+              className="grid size-5 flex-none place-items-center rounded-sm text-dim hover:bg-foreground/10 hover:text-foreground [&_svg]:size-3.5"><X /></button>
           </div>
         </div>
       </div>
@@ -240,7 +240,7 @@ function Watch() {
     <div data-watch={top.length} className="flex flex-col px-1.5">
       {top.map(({ p, d, rest }) => (
         <div key={p.id} data-watchpet={p.id} onClick={() => showOnMap(p, d)} data-tip={d.best ? t('merch.show') : whereLine(d)}
-          className={cn('flex min-h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-[12.5px]', d.best && 'cursor-pointer hover:bg-white/5')}>
+          className={cn('flex min-h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-[12.5px]', d.best && 'cursor-pointer hover:bg-foreground/5')}>
           <PetPic p={p} size={24} />
           <span className="min-w-0 flex-1 truncate font-medium">{petName(p)}</span>
           <span className="flex-none text-[11px] text-dim tabular-nums">{t('merch.souls', { n: soulsHave(rest), max: MAX_SOULS })}</span>
@@ -269,7 +269,7 @@ function Bought({ list }: { list: Offer[] }) {
             </span>
             <button data-tip={t('merch.bought.undo')} data-unbuy="" aria-label={t('merch.bought.undo')}
               onClick={() => setOffers(offers().items.map(x => (x.id === o.id ? { ...x, bought: undefined } : x)))}
-              className="grid size-5 flex-none place-items-center rounded-sm text-dim hover:bg-white/10 hover:text-foreground [&_svg]:size-3.5"><X /></button>
+              className="grid size-5 flex-none place-items-center rounded-sm text-dim hover:bg-foreground/10 hover:text-foreground [&_svg]:size-3.5"><X /></button>
           </div>
         )
       })}
@@ -308,7 +308,7 @@ function OfferList() {
     <CharChips />
     <Picker />
     {items.length ? <div className={cn(OFFER_GRID, '@min-[900px]:grid-cols-1')}>{items.map(x => <OfferTile key={x.o.id} o={x.o} />)}</div>
-      : bought.length ? null : <div data-offerempty="" data-tip={t('merch.offer.help')} className="mx-1.5 rounded-sm border border-dashed border-white/10 px-2.5 py-2 text-[12px] leading-snug text-muted-foreground">
+      : bought.length ? null : <div data-offerempty="" data-tip={t('merch.offer.help')} className="mx-1.5 rounded-sm border border-dashed border-foreground/10 px-2.5 py-2 text-[12px] leading-snug text-muted-foreground">
         {rich(t('merch.offer.none'))} <span className="text-dim tabular-nums">{t('merch.next', { t: mmss(msToNext(Date.now())) })}</span>
       </div>}
     {other.length > 0 && <div data-other={other.length} className="px-2.5 py-1 text-[11px] text-dim"

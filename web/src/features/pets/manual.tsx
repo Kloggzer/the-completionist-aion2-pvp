@@ -30,7 +30,7 @@ export function keepInView(id: number) {
   requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`[data-list] [data-pet="${id}"]`)?.scrollIntoView({ block: 'nearest' })))
 }
 
-const col = 'flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-white/10 hover:text-gold disabled:pointer-events-none disabled:opacity-25'
+const col = 'flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-gold disabled:pointer-events-none disabled:opacity-25'
 
 /** −/+ style column at the right edge of a target tile: +1 soul above, the level popover below. */
 export function PetControls({ x }: { x: Any }) {

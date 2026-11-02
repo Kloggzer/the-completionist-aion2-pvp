@@ -17,7 +17,7 @@ function Pill({ tt }: { tt: Toast }) {
       </span>
       <span className="truncate text-[14px] font-semibold">{tt.title}</span>
       <span className="flex-none text-[13px] text-muted-foreground">{tt.sub}</span>
-      <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/5">
+      <div className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground/5">
         <i className={cn('block h-full transition-[width] duration-600', tt.up ? 'bg-gold' : 'bg-cyan')} style={{ width: w * 100 + '%' }} />
       </div>
     </div>

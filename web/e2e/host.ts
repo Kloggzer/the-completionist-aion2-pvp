@@ -146,3 +146,22 @@ export async function openApp(page: Page, o: HostOpts = {}) {
     posted: (type?: string) => page.evaluate((t?: string) => (window as Any).__posted.filter((m: Any) => !t || m.type === t), type),
   }
 }
+
+/** Page keys by their German label (the sidebar's pages, components/Sidebar.tsx). */
+export const PAGE_KEY: Record<string, string> = {
+  'Übersicht': 'home', Ziele: 'targets', Spots: 'spots', 'Händler': 'merchant', Farmen: 'farm', Erfolge: 'ach', Checkliste: 'check',
+  Build: 'dae', Daevanion: 'dae', Werte: 'dae.stats', 'Ausrüstung': 'dae.gear', Arkana: 'arc', Bosse: 'boss', Timer: 'timer',
+}
+const AREA_OF: Record<string, string> = {
+  home: 'today', check: 'today', boss: 'today', timer: 'today', targets: 'pets', spots: 'pets', merchant: 'pets', farm: 'farm',
+  dae: 'char', 'dae.stats': 'char', 'dae.gear': 'char', arc: 'char', ach: 'char',
+}
+/** The visible button of a page: in the sidebar (wide windows) or in the area's page switch (narrow windows). */
+export const navBtn = (page: Page, key: string) => page.locator(`[data-nav="${PAGE_KEY[key] ?? key}"]:visible`).first()
+/** Open a page by key or German label: its sidebar entry, or (narrow) its area icon and then the page switch. */
+export async function goPage(page: Page, key: string) {
+  const k = PAGE_KEY[key] ?? key, b = navBtn(page, k)
+  if (await b.count()) return b.click()
+  await page.locator(`[data-area="${AREA_OF[k]}"]:visible`).click()
+  if (await navBtn(page, k).count()) await navBtn(page, k).click()
+}

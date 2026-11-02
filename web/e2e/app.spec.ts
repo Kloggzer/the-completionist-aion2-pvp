@@ -2,12 +2,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
-import { CACHE, fakeState, hasCache, openApp } from './host'
+import { CACHE, fakeState, goPage, hasCache, navBtn, openApp } from './host'
 
 test.skip(!hasCache(), 'needs the app data cache in %LOCALAPPDATA%\TheCompletionist\cache (start the app once)')
 
 const TABS = ['Übersicht', 'Ziele', 'Spots', 'Händler', 'Farmen', 'Erfolge', 'Checkliste', 'Build', 'Arkana', 'Bosse', 'Timer']
-const tab = (page: Page, name: string) => page.locator('[data-tabs] button').nth(TABS.indexOf(name))
+const tab = (page: Page, name: string) => navBtn(page, name)
 const shot = (page: Page, name: string) => page.screenshot({ path: `e2e/.out/shots/${name}.png` })
 const box = async (page: Page, sel: string) => (await page.locator(sel).first().boundingBox())!
 
@@ -25,25 +25,27 @@ test('navigation stays in place on every tab', async ({ page }) => {
   await openApp(page)
   const ref = await box(page, '[data-tabs]'), hdr = await box(page, 'header')
   for (const name of TABS) {
-    await tab(page, name).click()
-    await expect(tab(page, name)).toHaveClass(/border-gold/)
+    await goPage(page, name)
+    await expect(tab(page, name)).toHaveAttribute('data-on', 'on')
     expect(await box(page, '[data-tabs]')).toEqual(ref)
     expect(await box(page, 'header')).toEqual(hdr)
     await shot(page, 'tab-' + name)
   }
 })
 
-test('tabs fit a narrow window without scrolling', async ({ page }) => {
+test('navigation fits a narrow window: area icons left, the pages of the area on top', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 700 })
   await openApp(page)
+  expect((await box(page, '[data-tabs]')).width).toBeLessThanOrEqual(56)
   for (const name of TABS) {
-    await tab(page, name).click()
-    const nav = page.locator('[data-tabs] > div')
-    expect(await nav.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
-    for (let i = 0; i < TABS.length; i++) {
-      const b = (await tab(page, TABS[i]).boundingBox())!
-      expect(b.x).toBeGreaterThanOrEqual(0)
+    await goPage(page, name)
+    const sub = page.locator('[data-subnav]')
+    if (await sub.count()) {
+      expect(await sub.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+      const b = (await tab(page, name).boundingBox())!
       expect(b.x + b.width).toBeLessThanOrEqual(360)
+      // page buttons stay one line high
+      expect(b.height).toBeLessThanOrEqual(32)
     }
   }
   await shot(page, 'narrow-360')
@@ -53,12 +55,12 @@ test('toasts never cover the navigation', async ({ page }) => {
   const app = await openApp(page)
   const pet = fakeState().levels, id = +Object.keys(pet)[0]
   for (const name of ['Ziele', 'Erfolge']) {
-    await tab(page, name).click()
+    await goPage(page, name)
     await app.send({ type: 'soul', ev: { pet: id, level: 1, souls: 3, need: 25, levelUp: false } })
     const t = page.locator('[data-toasts] > div').first()
     await t.waitFor()
     const nav = await box(page, '[data-tabs]'), tb = (await t.boundingBox())!
-    expect(tb.y).toBeGreaterThanOrEqual(nav.y + nav.height)
+    expect(tb.x).toBeGreaterThanOrEqual(nav.x + nav.width)
     expect(await page.locator('[data-toasts]').first().evaluate(el => getComputedStyle(el).pointerEvents)).toBe('none')
     await shot(page, 'toast-' + name)
   }
@@ -99,7 +101,7 @@ test('overview: +1 on the checklist and jump to a tab', async ({ page }) => {
   expect((await app.posted('ui')).some((m: { patch: { checklist?: unknown } }) => m.patch.checklist)).toBe(true)
   await shot(page, 'overview')
   await page.getByRole('button', { name: 'alle Timer' }).click()
-  await expect(tab(page, 'Timer')).toHaveClass(/border-gold/)
+  await expect(tab(page, 'Timer')).toHaveAttribute('data-on', 'on')
 })
 
 test('spots: ranking explanation toggles', async ({ page }) => {
@@ -175,7 +177,7 @@ test('language switch de -> en', async ({ page }) => {
   await page.getByRole('option', { name: 'English' }).click()
   await expect(page.getByText('General', { exact: true }).first()).toBeVisible()
   await page.locator('[data-tip="Close"]').click()
-  await expect(tab(page, 'Ziele')).toHaveText(/Targets/)
+  await expect(tab(page, 'Übersicht')).toHaveText(/Overview/)
   await shot(page, 'english')
 })
 
@@ -193,7 +195,7 @@ test('multi-select pets -> find spot for the selection', async ({ page }) => {
   await expect(bar).toContainText('3 ausgewählt')
   await shot(page, 'multi-targets')
   await bar.getByRole('button', { name: 'Spot suchen' }).click()
-  await expect(tab(page, 'Spots')).toHaveClass(/border-gold/)
+  await expect(tab(page, 'Spots')).toHaveAttribute('data-on', 'on')
   await expect(bar).toContainText('Spots nur für deine Auswahl')
   await expect(page.locator('[data-spot="1"][data-sel]')).toBeVisible()
   await shot(page, 'multi-spots')
@@ -222,7 +224,7 @@ test('bosses + timers: big bell toggles', async ({ page }) => {
   await bell.click()
   expect((await app.posted('ui')).some((m: { patch: { bossBells?: unknown } }) => m.patch.bossBells)).toBe(true)
   await shot(page, 'boss-bells')
-  await tab(page, 'Timer').click()
+  await goPage(page, 'Timer')
   await shot(page, 'timer-bells')
 })
 

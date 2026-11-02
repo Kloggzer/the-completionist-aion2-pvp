@@ -37,7 +37,7 @@ function BossCard({ b, s }: { b: Any; s: Any }) {
               <Skull className="size-3.5" />{!s.due && t('boss.killShort')}
             </button>
             : <button onClick={() => killBoss(b.key)} data-tip={t('boss.kill')}
-              className="flex h-5 w-5 flex-none items-center justify-center rounded-sm text-muted-foreground opacity-60 hover:bg-white/10 hover:opacity-100">
+              className="flex h-5 w-5 flex-none items-center justify-center rounded-sm text-muted-foreground opacity-60 hover:bg-foreground/10 hover:opacity-100">
               <Skull className="size-3.5" />
             </button>
           )}

@@ -1,6 +1,6 @@
 // Contents of the settings categories.
 import { useEffect, useReducer } from 'react'
-import { Box, Star } from 'lucide-react'
+import { Box, Monitor, Moon, Star, Sun } from 'lucide-react'
 import { DEF_UI, G, S, U, V, saveUi, bump, type Any } from '@/core/state'
 import { host, onHost } from '@/core/host'
 import { emit } from '@/core/bus'
@@ -12,7 +12,8 @@ import { loadMapArt } from '@/core/data'
 import { ext } from '@/core/ext'
 import { Button } from '@/components/ui/button'
 import { Group, Row, Toggle, Stepper } from './parts'
-import { NpcapLink, rich } from '@/components/kit'
+import { NpcapLink, Seg, rich } from '@/components/kit'
+import { applyTheme } from '@/core/theme'
 import { nextRange, MIN_RANGE, MAX_RANGE, radarCfg, setRadarCfg, toggleMiniRadar, toggleRadarLock, centerRadar } from '@/features/map/miniRadar'
 import { pvpCfg, setPvpCfg, togglePvp, toggleWinEdit } from '@/features/pvp'
 import { cn } from '@/lib/utils'
@@ -51,6 +52,10 @@ export function General() {
       <Row label={t('set.lang')}>
         <AppSelect value={U.lang === 'de' || U.lang === 'en' ? U.lang : 'auto'} options={langs} className="w-52 max-w-full"
           onChange={v => { U.lang = v; saveUi(['lang']); syncLang(); bump() }} />
+      </Row>
+      <Row label={t('set.theme')} sub={t('set.theme.sub')}>
+        <Seg value={U.theme || 'system'} onChange={v => { U.theme = v; saveUi(['theme']); applyTheme(); bump() }} item={v => ({ 'data-theme': v })}
+          options={[{ value: 'light', label: t('set.theme.light'), icon: Sun }, { value: 'dark', label: t('set.theme.dark'), icon: Moon }, { value: 'system', label: t('set.theme.system'), icon: Monitor }]} />
       </Row>
       <Stepper label={t('set.opacity')} value={pct(st.opacity)} onStep={setOpacity} minus={st.opacity > 0.3} plus={st.opacity < 1} />
       <Stepper label={t('set.zoom')} value={pct(st.zoom)} onStep={setZoom} minus={st.zoom > 0.7} plus={st.zoom < 1.6} />

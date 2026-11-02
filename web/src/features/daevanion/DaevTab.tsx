@@ -231,7 +231,7 @@ function Order({ p, d, cls }: { p: PoolPlan; d: DaeData; cls: string }) {
         return (
           <li key={i} data-step={ok ? 'done' : i === next ? 'next' : 'open'} onMouseEnter={() => hover(p.pool + i)} onClick={() => toggleDone(pinKey(p.refs[i]))}
             className={cn(ROW, 'min-h-7 cursor-pointer gap-1.5', ok && 'opacity-45', i === next && 'bg-gold/[0.07]', V.daeHover === p.pool + i && 'bg-gold/10')}>
-            <span className={cn('grid size-4 flex-none place-items-center rounded-[3px] border [&_svg]:size-3', ok ? 'border-green bg-green/30 text-green' : i === next ? 'border-gold' : 'border-white/25')}>{ok && <Check />}</span>
+            <span className={cn('grid size-4 flex-none place-items-center rounded-[3px] border [&_svg]:size-3', ok ? 'border-green bg-green/30 text-green' : i === next ? 'border-gold' : 'border-foreground/25')}>{ok && <Check />}</span>
             <b className={cn('w-6 flex-none text-right tabular-nums', ok ? 'text-dim' : 'text-gold')}>{k + 1}.</b>
             <span className="w-16 flex-none truncate text-dim">{d.classes[cls].boards[p.refs[i].slot].name}</span>
             <span className={cn('min-w-0 flex-1 truncate', ok && 'line-through')}>{nodeText(d, cls, p, i)}</span>
@@ -263,8 +263,8 @@ function SkillIcon({ sk, className }: { sk: Skill; className?: string }) {
 
 /** Node state: owned now and kept, new in the plan, reset by the plan, free. */
 const nodeState = (p: PoolPlan, i: number) => { const own = p.cur.has(i), plan = p.plan.owned.has(i); return own && plan ? 'own' : plan ? 'new' : own ? 'drop' : 'free' }
-const RING = { own: 'border-green/80', new: 'border-gold shadow-[0_0_8px_-1px_var(--color-gold)]', drop: 'border-red', free: 'border-white/10' } as const
-const GRADE = ['', 'border-white/25', 'border-cyan/50', 'border-gold/60', 'border-red/60']
+const RING = { own: 'border-green/80', new: 'border-gold shadow-[0_0_8px_-1px_var(--color-gold)]', drop: 'border-red', free: 'border-foreground/10' } as const
+const GRADE = ['', 'border-foreground/25', 'border-cyan/50', 'border-gold/60', 'border-red/60']
 
 /** One board, big: skill nodes with their icon, stat nodes as tiles (red = damage, cyan = defense), the start a
  *  diamond. Owned green, new gold (with its click number in "add" mode), reset red, the rest dimmed. */
@@ -295,9 +295,9 @@ function Board({ p, d, cls, slot, numbers: nums }: { p: PoolPlan; d: DaeData; cl
               n[2] <= 1 && n[3] === 1 && 'scale-[0.82]', hot && 'z-10 scale-125 ring-2 ring-foreground')}>
             {n[3] === 2 ? <SkillIcon sk={sk[n[4] as number]} className="size-full" />
               : <Icon className={cn('size-[55%]', c === 'off' ? 'text-red/85' : c === 'def' ? 'text-cyan/85' : 'text-dim', n[2] === 4 && 'size-[65%] text-gold')} strokeWidth={2.2} />}
-            {no != null && !ticked && <b className="absolute right-0 bottom-0 rounded-tl-[3px] bg-gold px-[2px] text-[8px] leading-tight font-bold text-black tabular-nums">{no}</b>}
+            {no != null && !ticked && <b className="absolute right-0 bottom-0 rounded-tl-[3px] bg-gold px-[2px] text-[8px] leading-tight font-bold text-primary-foreground tabular-nums">{no}</b>}
             {ticked && <Check className="absolute size-[60%] text-green drop-shadow" strokeWidth={3} />}
-            {pin === 1 && <Pin className="absolute top-0 left-0 size-[38%] rounded-br-[3px] bg-gold p-[1px] text-black" strokeWidth={2.5} />}
+            {pin === 1 && <Pin className="absolute top-0 left-0 size-[38%] rounded-br-[3px] bg-gold p-[1px] text-primary-foreground" strokeWidth={2.5} />}
             {pin === -1 && <Ban className="absolute size-[70%] text-red" strokeWidth={2.5} />}
           </button>
         )
@@ -447,7 +447,7 @@ function Advice({ d, cls }: { d: DaeData; cls: string }) {
   </>
 }
 
-const SWATCH = { own: 'border-green/80 bg-green/30', new: 'border-gold bg-gold/40', path: 'border-dashed border-gold/60 bg-transparent', drop: 'border-red bg-red/30', free: 'border-white/20 bg-background' }
+const SWATCH = { own: 'border-green/80 bg-green/30', new: 'border-gold bg-gold/40', path: 'border-dashed border-gold/60 bg-transparent', drop: 'border-red bg-red/30', free: 'border-foreground/20 bg-background' }
 function Legend() {
   return <span className="flex flex-wrap gap-x-2.5">{(Object.keys(SWATCH) as (keyof typeof SWATCH)[]).map(k => (
     <span key={k} className="inline-flex items-center gap-1"><i className={cn('size-2 rounded-[2px] border', SWATCH[k])} />{t('dae.st.' + k)}</span>

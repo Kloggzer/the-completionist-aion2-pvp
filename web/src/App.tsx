@@ -1,8 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { Clock, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PawPrint, Pickaxe, Skull, Store, Trophy, type LucideIcon } from 'lucide-react'
 import { MAP_TABS, S, U, V, saveUi, bump, useApp } from '@/core/state'
 import { host } from '@/core/host'
-import { goTab } from '@/core/nav'
 import { t } from '@/core/i18n'
 import { Header } from '@/components/Header'
 import { Toasts } from '@/components/Toasts'
@@ -18,17 +16,14 @@ import { TimerTab } from '@/features/events/TimerTab'
 import { BossTab } from '@/features/events/BossTab'
 import { CheckTab } from '@/features/progress/CheckTab'
 import { AchTab } from '@/features/progress/AchTab'
-import { achOpenCount } from '@/features/progress/achievements'
 import { BuildTab } from '@/features/build/BuildTab'
 import { SettingsPanel } from '@/features/settings/SettingsPanel'
 import { ArcanaTab } from '@/features/arcana/ArcanaTab'
 import { HomeTab } from '@/features/home/HomeTab'
 import { NpcapNotice, Welcome } from '@/features/home/Welcome'
 import { cn } from '@/lib/utils'
-import { BADGE } from '@/components/kit'
+import { Sidebar, SubNav } from '@/components/Sidebar'
 
-const TABS = ['home', 'targets', 'spots', 'merchant', 'farm', 'ach', 'check', 'dae', 'arc', 'boss', 'timer'] as const
-const TAB_ICON: Record<string, LucideIcon> = { home: LayoutDashboard, targets: PawPrint, spots: MapPin, merchant: Store, farm: Pickaxe, ach: Trophy, check: ListChecks, dae: Grid3x3, arc: Layers, boss: Skull, timer: Clock }
 /** Pet freshness footer only where pet progress is shown. */
 const FOOTER_TABS = ['targets', 'spots']
 
@@ -65,32 +60,6 @@ function Splitter() {
     className={cn('h-1.5 flex-none cursor-row-resize bg-border/60 transition-colors hover:bg-gold/50', '@min-[1100px]/main:h-auto @min-[1100px]/main:w-1.5 @min-[1100px]/main:cursor-col-resize')} />
 }
 
-// Icons always; labels while there is room. On narrow windows (container < 800 px) only the active tab keeps its
-// label, so the bar never scrolls or cuts tabs off. The overview tab is icon-only.
-function TabBar() {
-  const count: Record<string, number> = {
-    targets: V.targets.filter((x: { done: boolean }) => !x.done).length, spots: V.spots.length, ach: achOpenCount(),
-  }
-  return (
-    <nav data-tabs className="@container flex-none border-b bg-card">
-      <div className="flex gap-0.5 px-1">
-        {TABS.map(k => {
-          const I = TAB_ICON[k], on = U.tab === k
-          return (
-            <button key={k} onClick={() => goTab(k)} data-tip={t('tab.' + k + '.tip')}
-              className={cn('flex h-[35px] min-w-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-2 pt-2 pb-1.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground',
-                k === 'home' ? 'flex-none' : 'flex-[1_1_auto] @min-[800px]:flex-none', on && 'border-gold text-foreground')}>
-              <I className={cn('size-3.5 flex-none', on && 'text-gold')} />
-              {k !== 'home' && <span className={cn('truncate', !on && '@max-[799px]:hidden')}>{t('tab.' + k)}</span>}
-              {count[k] > 0 && <i className={cn(BADGE, !on && '@max-[379px]:hidden')}>{count[k]}</i>}
-            </button>
-          )
-        })}
-      </div>
-    </nav>
-  )
-}
-
 function List() {
   switch (U.tab) {
     case 'spots': return <SpotsTab />
@@ -107,7 +76,7 @@ function List() {
   }
 }
 
-// Fixed frame on every tab: header, tab bar, content. Map tabs show the map at the top of their content (resizable),
+// Fixed frame on every page: header, sidebar (components/Sidebar.tsx) left, content right. Map tabs show the map at the top of their content (resizable),
 // then their toolbar (filters + view switch), then the list; from 1100 px content width (container query on main) the
 // map sits left and toolbar + list right. The other
 // tabs use the whole content.
@@ -117,9 +86,12 @@ export default function App() {
   const mapTab = MAP_TABS.includes(U.tab), view = mapTab ? U.view || 'both' : 'list', both = view === 'both'
   const size = { '--map-h': Math.round(U.mapH * 100) + '%', '--map-w': Math.round((U.mapW ?? 0.55) * 100) + '%' } as React.CSSProperties
   return (
-    <div className={cn('relative flex h-full flex-col', S.ct && 'pointer-events-none')}>
+    <div className={cn('@container/app relative flex h-full flex-col', S.ct && 'pointer-events-none')}>
       <Header />
-      <TabBar />
+      <div className="flex min-h-0 flex-1">
+      <Sidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+      <SubNav />
       <NpcapNotice />
       <main className={cn('@container/main flex min-h-0 flex-1 flex-col', S.site && 'invisible')}>
         <div data-split className={cn('flex min-h-0 flex-1 flex-col', both && '@min-[1100px]/main:flex-row')} style={size}>
@@ -143,6 +115,8 @@ export default function App() {
         </div>
         {FOOTER_TABS.includes(U.tab) && <Footer />}
       </main>
+      </div>
+      </div>
       {V.settingsOpen && <SettingsPanel />}
       <Welcome />
       <HoverTip />

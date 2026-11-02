@@ -64,7 +64,7 @@ function AchIcon({ a }: { a: Any }) {
 /** One dot per tier: reached green, current cyan, open dim. */
 function Pips({ n, reached }: { n: number; reached: number }) {
   return <span className="flex items-center gap-[3px]">{Array.from({ length: n }, (_, i) =>
-    <i key={i} className={cn('size-[5px] rounded-full', i < reached ? 'bg-green' : i === reached ? 'bg-cyan' : 'bg-white/15')} />)}</span>
+    <i key={i} className={cn('size-[5px] rounded-full', i < reached ? 'bg-green' : i === reached ? 'bg-cyan' : 'bg-foreground/15')} />)}</span>
 }
 
 function Tile({ r }: { r: AchRow }) {
@@ -100,7 +100,7 @@ function Tile({ r }: { r: AchRow }) {
               return (
                 <div key={i} data-tier={man ? i + 1 : undefined} data-tip={tick ? t(ok ? 'ach.untickTip' : 'ach.tickTip', { goal: fmt(ok ? back : y.goal) }) : undefined}
                   onClick={tick ? e => { e.stopPropagation(); setAch(a, ok ? back : y.goal) } : undefined}
-                  className={cn('flex flex-wrap items-baseline gap-1.5', ok && 'text-dim', now && 'text-foreground', tick && 'cursor-pointer rounded-sm hover:bg-white/5')}>
+                  className={cn('flex flex-wrap items-baseline gap-1.5', ok && 'text-dim', now && 'text-foreground', tick && 'cursor-pointer rounded-sm hover:bg-foreground/5')}>
                   <b className={cn('w-3.5 text-dim', ok && 'text-green', now && 'text-cyan')}>{man ? (ok ? '☑' : '☐') : ok ? '✓' : y.tier}</b>
                   {loc(y, 'objective')} <span className="text-foreground tabular-nums">{fmt(y.goal)}</span>
                   {y.rewards?.title && <em className="flex items-center gap-1 text-gold not-italic"><Award className="size-3" /> {y.rewards.title.name}</em>}

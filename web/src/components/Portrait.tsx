@@ -39,9 +39,9 @@ function scan() {
 export function Portrait({ por, size = 32, className, title }: { por?: number | null; size?: number | null; className?: string; title?: string }) {
   scan()
   const none = por == null || por < 0 || por >= COLS * ROWS || !!empty?.has(por)
-  const box = cn('inline-grid flex-none place-items-center overflow-hidden rounded-sm border border-white/10 bg-black/30', className)
+  const box = cn('inline-grid flex-none place-items-center overflow-hidden rounded-sm border border-foreground/10 bg-black/30', className)
   const dim = size ? { width: size, height: size } : {}
-  if (none) return <span data-tip={title} className={cn(box, 'bg-white/[0.03] text-dim/60')} style={dim}><PawPrint className="size-[45%]" /></span>
+  if (none) return <span data-tip={title} className={cn(box, 'bg-foreground/[0.03] text-dim/60')} style={dim}><PawPrint className="size-[45%]" /></span>
   return (
     <span data-tip={title} className={box}
       style={{

@@ -40,7 +40,7 @@ export function Header() {
   // Inside an instance its map is shown: list it too (it is not part of the world map picker).
   if (U.map?.startsWith('dng:') && G.md[U.map]) maps.unshift({ value: U.map, label: G.md[U.map].name })
   return (
-    <header className="flex h-10 flex-none items-center gap-1.5 border-b bg-[linear-gradient(#1b2030,#151925)] pr-1 pl-2"
+    <header className="flex h-10 flex-none items-center gap-1.5 border-b bg-card pr-1 pl-2"
       onWheel={e => { if ((e.target as HTMLElement).closest('[data-slot=select-trigger]')) return; host({ type: 'opacity', v: Math.round((S.settings.opacity + (e.deltaY < 0 ? 0.05 : -0.05)) * 100) / 100 }) }}>
       <div data-drag className="flex flex-none cursor-grab items-center gap-1.5" data-tip={hasState() ? t('hdr.brandState', { have, total: sp.length, max }) : t('hdr.brandNone')}>
         <Paw /><b className="font-semibold tracking-wide text-gold">{hasState() && sp.length ? `${have}/${sp.length}` : '–'}</b>

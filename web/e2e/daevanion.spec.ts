@@ -2,17 +2,16 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { expect, test, type Page } from '@playwright/test'
-import { hasCache, openApp } from './host'
+import { hasCache, navBtn, openApp } from './host'
 
 const FILE = path.join(import.meta.dirname, '..', 'public', 'daevanion.json')
 test.skip(!hasCache() || !fs.existsSync(FILE), 'needs the app data cache and web/public/daevanion.json (tools/fetch_daevanion.py)')
 
-const TABS = ['Übersicht', 'Ziele', 'Spots', 'Händler', 'Farmen', 'Erfolge', 'Checkliste', 'Build', 'Arkana', 'Bosse', 'Timer']
-const tab = (page: Page) => page.locator('[data-tabs] button').nth(TABS.indexOf('Build'))
+const tab = (page: Page) => navBtn(page, 'dae')
 
 test('without character data: class, points and goal give a plan on the boards', async ({ page }) => {
   const app = await openApp(page, { ui: { tab: 'dae' } })
-  await expect(tab(page)).toHaveClass(/border-gold/)
+  await expect(tab(page)).toHaveAttribute('data-on', 'on')
   await expect(page.locator('[data-board="Nezekan"]')).toBeVisible()
   // points for the four boards: the plan uses them, the boards show new (gold) nodes
   const pve = page.locator('[data-points="pve"]')

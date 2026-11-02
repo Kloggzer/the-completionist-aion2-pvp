@@ -5,6 +5,7 @@ import { emit } from './bus'
 import { setStartView } from './data'
 import { lang, t } from './i18n'
 import { toast } from './toast'
+import { applyTheme } from './theme'
 
 const norm = (st: Any) => Object.assign({ levels: {}, souls: {} }, st || {})
 
@@ -16,6 +17,7 @@ onHost('init', m => {
   const u = Object.assign(structuredClone(DEF_UI), m.settings.ui || {})
   u.layers = Object.assign({}, DEF_UI.layers, u.layers)
   setU(u)
+  applyTheme()
   setStartView(m.view)
   syncLang()
   if (manual()) leaveLive()

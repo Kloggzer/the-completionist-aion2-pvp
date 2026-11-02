@@ -1,8 +1,9 @@
 // Shared building blocks of every view: one page frame, one top bar, one section header, one tile, one flat row, one
 // chip, one bar, and the primitives below (Seg, Chip, Stepper, Panel, Disclosure, TopN, PanelTabs on Base UI).
-// Spacing scale: 4 px gaps (gap-1), 6 px outer padding (px-1.5), 10 px text inset (px-2.5). Type scale: section
-// 10.5 px caps, title 12.5 px semibold, text 12.5 px, sub 11.5 px muted, meta 11 px. Radius: rounded-md for controls
-// and panels, rounded-sm for small marks.
+// Spacing scale: 6 px gaps (gap-1.5), 10 px outer padding (px-2.5), 12 px text inset (px-3). Type scale (Manrope):
+// section 10.5 px caps, title 13 px semibold, text 13 px, sub 12 px muted, meta 11.5 px; page titles Cinzel (font-display).
+// Radius: rounded-lg for controls and tiles, rounded-xl for panels. Colours only via tokens (index.css: light "Aion
+// Ember", dark "Night Indigo"; `gold` = the accent). Controls never wrap (index.css): long labels truncate.
 // Icons: 14 px (size-3.5) in rows and bars, 28 px / stroke 1.5 in tile icon columns, 18 px in bell / step columns.
 //
 // Responsive system (container queries, never the viewport: the overlay can be any size):
@@ -32,19 +33,19 @@ import { Progress as ProgressPrimitive } from '@base-ui/react/progress'
 
 // ---------------------------------------------------------------- text + layout classes
 
-export const TITLE = 'text-[12.5px] leading-tight font-semibold [overflow-wrap:anywhere]'
-export const SUB = 'text-[11.5px] leading-tight text-muted-foreground [overflow-wrap:anywhere]'
-export const META = 'text-[11px] text-muted-foreground tabular-nums'
-export const CLAMP2 = 'line-clamp-2'
+export const TITLE = 'text-[13px] leading-tight font-semibold [overflow-wrap:anywhere]'
+export const SUB = 'text-[12px] leading-tight whitespace-normal text-muted-foreground [overflow-wrap:anywhere]'
+export const META = 'text-[11.5px] text-muted-foreground tabular-nums'
+export const CLAMP2 = 'line-clamp-2 whitespace-normal'
 /** Gap above a tile grid / row list that starts right below the bar (no section header in between). */
-export const LEAD = 'pt-1.5'
+export const LEAD = 'pt-2.5'
 
 /** Status text colours, the same meaning in every tab. */
 export const TONE = { ok: 'text-green', warn: 'text-gold', bad: 'text-red', info: 'text-cyan', off: 'text-dim' } as const
 /** Tinted boxes (tile icon columns, badges). */
 export const BOX = {
   gold: 'text-gold bg-gold/10 border-gold/25', cyan: 'text-cyan bg-cyan/10 border-cyan/25', green: 'text-green bg-green/10 border-green/30',
-  red: 'text-red bg-red/10 border-red/35', purple: 'text-purple bg-purple/10 border-purple/25', dim: 'text-dim bg-white/[0.03] border-white/10',
+  red: 'text-red bg-red/10 border-red/35', purple: 'text-purple bg-purple/10 border-purple/25', dim: 'text-dim bg-foreground/[0.03] border-foreground/10',
 } as const
 export type BoxTone = keyof typeof BOX
 /** Tile border accent per traffic light. */
@@ -61,10 +62,10 @@ export type TileSize = keyof typeof TILE_W
 
 /** Responsive tile grid (inside a <Page>): auto-fill columns, min tile width grows with the page width. */
 export const grid = (size: TileSize = 'md') =>
-  cn('grid grid-cols-[repeat(auto-fill,minmax(min(var(--tile),100%),1fr))] gap-1 px-1.5 pb-1', TILE_W[size])
+  cn('grid grid-cols-[repeat(auto-fill,minmax(min(var(--tile),100%),1fr))] gap-1.5 px-2.5 pb-1.5', TILE_W[size])
 
 /** Top bar of a tab (32 px): info left, chips right. */
-export const BAR = 'flex min-h-8 flex-none flex-wrap items-center gap-x-1.5 gap-y-1 border-b bg-card px-1.5 py-1 text-[12px] text-muted-foreground'
+export const BAR = 'flex min-h-10 flex-none flex-wrap items-center gap-x-1.5 gap-y-1 border-b bg-card px-2.5 py-1.5 text-[12.5px] text-muted-foreground'
 
 /** Page frame of every tab: the container the responsive rules query, centred with a max width on big windows.
  *  `bar` = the tab's top bar (sticky, full width, its content aligned with the page). */
@@ -72,7 +73,7 @@ const PAGE_W = { tiles: 'max-w-[1680px]', rows: 'max-w-[1400px]', form: 'max-w-[
 export function Page({ w = 'tiles', bar, children, className }: { w?: keyof typeof PAGE_W; bar?: ReactNode; children: ReactNode; className?: string }) {
   return <>
     {bar && <div data-bar className="sticky top-0 z-10 border-b bg-card"><div className={cn(BAR, 'mx-auto w-full border-b-0', PAGE_W[w])}>{bar}</div></div>}
-    <div className={cn('@container mx-auto w-full min-w-0 pb-2', PAGE_W[w], className)}>{children}</div>
+    <div className={cn('@container mx-auto w-full min-w-0 pb-3', PAGE_W[w], className)}>{children}</div>
   </>
 }
 
@@ -82,16 +83,16 @@ export function Columns({ children, className }: { children: ReactNode; classNam
 }
 
 /** Tile: bordered box with title / sub / bar / footer slots (use the classes above inside). */
-export const TILE = 'flex min-w-0 flex-col overflow-hidden rounded-md border bg-card px-1.5 pt-1 pb-0.5 text-left'
+export const TILE = 'flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card px-2 pt-1.5 pb-1 text-left whitespace-normal shadow-(--shadow-card)'
 /** Tile anatomy, the same in every grid so tiles in a row line up: a one-line title (full text in the tooltip), a sub
  *  text that always takes exactly two lines, then bar + footer pinned to the bottom (T_FOOT). */
 export const T_TITLE = cn(TITLE, 'truncate')
 export const T_SUB = cn(SUB, 'mt-0.5 line-clamp-2 min-h-[2lh]')
 export const T_FOOT = 'mt-auto'
 /** Footer line of a tile: value left, extras right. */
-export const T_META = 'flex min-w-0 items-center justify-between gap-1.5 text-[11px] text-muted-foreground tabular-nums'
+export const T_META = 'flex min-w-0 items-center justify-between gap-1.5 text-[11.5px] text-muted-foreground tabular-nums'
 /** Portrait tile: square portrait column at the left edge (60 px, 64 px on wide pages), text column right of it. */
-export const TILE_P = 'flex-row items-stretch gap-2 p-1 pr-1.5'
+export const TILE_P = 'flex-row items-stretch gap-2.5 p-1.5 pr-2'
 // Hidden in narrow windows (the overlay next to the game): text first; from 700 px a compact square.
 export const T_PORTRAIT = 'hidden @min-[700px]:inline-grid size-[44px] @min-[1300px]:size-[52px]'
 export const T_BODY = 'flex min-w-0 flex-1 flex-col'
@@ -99,29 +100,29 @@ export const TILE_CLICK = 'cursor-pointer transition-colors hover:border-gold/40
 export const TILE_SEL = 'border-gold bg-gold/[0.06] ring-1 ring-gold/60 hover:border-gold hover:bg-gold/[0.06]'
 
 /** Flat row with a hairline separator (lists without frames). */
-export const ROW = 'flex min-h-8 min-w-0 items-center gap-2 border-b border-border/40 px-2.5 text-[12.5px]'
-export const ROW_CLICK = 'cursor-pointer hover:bg-white/5'
+export const ROW = 'flex min-h-9 min-w-0 items-center gap-2.5 border-b border-border/50 px-3 text-[13px]'
+export const ROW_CLICK = 'cursor-pointer hover:bg-foreground/5'
 /** Hairline above a block of ROWs. */
-export const ROWS = 'border-t border-border/40'
+export const ROWS = 'border-t border-border/50'
 /** Icon slot of a row (time | icon | name …). */
-export const ROW_ICON = 'grid w-[22px] flex-none place-items-center [&_svg]:size-3.5'
+export const ROW_ICON = 'grid w-[22px] flex-none place-items-center [&_svg]:size-4'
 
 /** Toggle chip (filters) – same look in every bar, 24 px high like the dropdowns. */
-export const CHIP = 'inline-flex h-6 flex-none items-center gap-1 rounded-md border border-border/80 bg-white/[0.02] px-2 text-[12px] whitespace-nowrap text-muted-foreground transition-colors hover:border-border hover:bg-white/[0.05] hover:text-foreground [&_svg]:size-3.5'
-export const CHIP_ON = 'border-gold/45 bg-gold/[0.12] text-gold hover:border-gold/60 hover:bg-gold/[0.16] hover:text-gold'
+export const CHIP = 'inline-flex h-7 max-w-full min-w-0 flex-none items-center gap-1.5 truncate rounded-lg border border-border bg-card px-2.5 text-[12.5px] whitespace-nowrap text-muted-foreground transition-colors hover:border-gold/40 hover:text-foreground [&_svg]:size-3.5 [&_svg]:flex-none'
+export const CHIP_ON = 'border-gold/45 bg-gold/[0.12] font-semibold text-gold hover:border-gold/60 hover:bg-gold/[0.16] hover:text-gold'
 
 /** Small count badge (tab bar, headers). */
-export const BADGE = 'rounded-sm bg-accent px-1 text-[11px] font-semibold not-italic text-muted-foreground tabular-nums'
+export const BADGE = 'rounded-full bg-accent px-1.5 text-[11px] font-semibold not-italic text-muted-foreground tabular-nums'
 
 /** Small action at the right of a section header ("Alle erledigt", "Mitgliedschaft"). */
-export const SECT_BTN = 'flex items-center gap-1 rounded-sm px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-white/5 hover:text-foreground [&_svg]:size-3'
+export const SECT_BTN = 'flex items-center gap-1 rounded-sm px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-foreground/5 hover:text-foreground [&_svg]:size-3'
 
 // ---------------------------------------------------------------- components
 
 /** Section header: small caps line; `sub` inline after it, `right` (link/action) at the end. */
 export function Sect({ children, sub, right, className }: { children: ReactNode; sub?: ReactNode; right?: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex min-h-6 items-center gap-1.5 px-2.5 pt-2 pb-1 text-[10.5px] font-semibold tracking-wider text-dim uppercase', className)}>
+    <div className={cn('flex min-h-7 items-center gap-1.5 px-3 pt-2.5 pb-1 text-[10.5px] font-bold tracking-[0.1em] text-muted-foreground uppercase', className)}>
       <span className="flex-none">{children}</span>
       {sub && <span className="min-w-0 truncate font-normal tracking-normal normal-case">{sub}</span>}
       {right && <span className="ml-auto flex flex-none items-center gap-1 font-normal tracking-normal normal-case">{right}</span>}
@@ -132,7 +133,7 @@ export function Sect({ children, sub, right, className }: { children: ReactNode;
 /** "alle Timer ›" style link at the right of a section header. */
 export function More({ onClick, children, tip }: { onClick: () => void; children: ReactNode; tip?: string }) {
   return (
-    <button onClick={onClick} data-tip={tip} className="flex items-center gap-0.5 rounded-sm px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-white/5 hover:text-gold">
+    <button onClick={onClick} data-tip={tip} className="flex items-center gap-0.5 rounded-sm px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-foreground/5 hover:text-gold">
       {children}<ChevronRight className="size-3" />
     </button>
   )
@@ -144,7 +145,7 @@ export function Bar({ frac, tone = 'green', className }: { frac: number; tone?: 
   const pct = Math.min(100, Math.max(0, frac * 100))
   return (
     <ProgressPrimitive.Root value={pct} className={cn('my-1 flex-none', className)}>
-      <ProgressPrimitive.Track className="block h-[3px] overflow-hidden rounded-full bg-white/[0.07]">
+      <ProgressPrimitive.Track className="block h-[3px] overflow-hidden rounded-full bg-foreground/[0.07]">
         <ProgressPrimitive.Indicator className={cn('block h-full rounded-full transition-[width]', fill)} />
       </ProgressPrimitive.Track>
     </ProgressPrimitive.Root>
@@ -171,15 +172,15 @@ export function ToolbarStrip({ children }: { children: ReactNode }) {
 
 /** Empty / loading state of a whole tab. */
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="px-3.5 py-5 text-center text-[12.5px] leading-relaxed text-muted-foreground">{children}</p>
+  return <p className="px-4 py-6 text-center text-[13px] leading-relaxed whitespace-normal text-muted-foreground">{children}</p>
 }
 /** Empty state inside a section (one muted line). */
 export function Note({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cn(SUB, 'px-2.5 py-1', className)}>{children}</p>
+  return <p className={cn(SUB, 'px-3 py-1.5', className)}>{children}</p>
 }
 /** Explanation at the end of a page. */
 export function Foot({ children }: { children: ReactNode }) {
-  return <p className="px-2.5 pt-2 text-[11px] leading-normal text-dim">{children}</p>
+  return <p className="px-3 pt-2.5 text-[11.5px] leading-normal text-dim">{children}</p>
 }
 
 /** Icon column of a tile (same size as a portrait), tinted. */
@@ -199,7 +200,7 @@ export function AutoBadge({ tip }: { tip: string }) {
 /** −/+ column at the right edge of a tile (+ above, − below), full tile height so both are easy to hit.
  *  The tile needs TILE_P + 'pr-0'. */
 export function StepCol({ onStep, minus = true, plus = true, tips }: { onStep: (d: 1 | -1) => void; minus?: boolean; plus?: boolean; tips: [string, string] }) {
-  const b = 'flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-white/10 hover:text-gold disabled:pointer-events-none disabled:opacity-25 [&_svg]:size-4.5'
+  const b = 'flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-gold disabled:pointer-events-none disabled:opacity-25 [&_svg]:size-4.5'
   return (
     <span className="-my-1 flex w-10 flex-none flex-col self-stretch border-l">
       <button className={b} disabled={!plus} data-tip={tips[1]} onClick={e => { e.stopPropagation(); onStep(1) }}><Plus /></button>
@@ -212,7 +213,7 @@ export function StepCol({ onStep, minus = true, plus = true, tips }: { onStep: (
 export function BellBtn({ on, onClick, tip, className }: { on: boolean; onClick: (e: MouseEvent) => void; tip: string; className?: string }) {
   return (
     <button onClick={onClick} data-tip={tip}
-      className={cn('flex w-10 flex-none items-center justify-center self-stretch transition-colors', on ? 'bg-gold/10 text-gold hover:bg-gold/20' : 'text-dim hover:bg-white/10 hover:text-muted-foreground', className)}>
+      className={cn('flex w-10 flex-none items-center justify-center self-stretch transition-colors', on ? 'bg-gold/10 text-gold hover:bg-gold/20' : 'text-dim hover:bg-foreground/10 hover:text-muted-foreground', className)}>
       {on ? <Bell className="size-4.5" /> : <BellOff className="size-4.5" />}
     </button>
   )
@@ -221,8 +222,8 @@ export function BellBtn({ on, onClick, tip, className }: { on: boolean; onClick:
 /** Hint box (login hints etc.). */
 export function Hint({ children, tone = 'gold' }: { children: ReactNode; tone?: 'gold' | 'cyan' }) {
   return (
-    <div className={cn('mx-1.5 mt-1.5 rounded-md border px-2.5 py-1.5 text-[12px] leading-snug text-muted-foreground',
-      tone === 'gold' ? 'border-gold/30 bg-gold/[0.06]' : 'border-cyan/25 bg-cyan/[0.05]')}>{children}</div>
+    <div className={cn('mx-2.5 mt-2.5 rounded-lg border px-3 py-2 text-[12.5px] leading-snug whitespace-normal',
+      tone === 'gold' ? 'border-warn-line bg-warn-bg text-warn' : 'border-cyan/25 bg-cyan/[0.06] text-muted-foreground')}>{children}</div>
   )
 }
 
@@ -251,7 +252,7 @@ export function TextEntry({ value, onChange, onSubmit, onCancel, placeholder, cl
       onFocus={() => host({ type: 'typing', on: true })} onBlur={() => host({ type: 'typing', on: false })}
       onChange={e => onChange(e.target.value)} onClick={e => e.stopPropagation()}
       onKeyDown={e => { if (e.key === 'Enter') onSubmit(); else if (e.key === 'Escape') onCancel?.() }}
-      className={cn('h-7 min-w-0 rounded-sm border bg-background/60 px-2 text-[12.5px] text-foreground outline-none placeholder:text-dim focus:border-gold/60', className)} />
+      className={cn('h-8 min-w-0 rounded-lg border bg-background px-2.5 text-[13px] text-foreground outline-none placeholder:text-dim focus:border-gold/60', className)} />
   )
 }
 
@@ -263,17 +264,17 @@ export function TextEntry({ value, onChange, onSubmit, onCancel, placeholder, cl
 
 /** Segmented control (one of a few options): Base UI ToggleGroup. `item` adds attributes per option (tests, tips). */
 export function Seg<T extends string>({ value, onChange, options, size = 'md', className, item }: {
-  value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode; tip?: string }[]; size?: 'sm' | 'md'; className?: string
+  value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode; tip?: string; icon?: LucideIcon }[]; size?: 'sm' | 'md'; className?: string
   item?: (v: T) => Record<string, string | undefined>
 }) {
   return (
     <ToggleGroup value={[value]} onValueChange={(v: unknown[]) => { if (v.length) onChange(v[v.length - 1] as T) }} spacing={0}
-      className={cn('flex-none rounded-md border bg-background/40 p-px', className)}>
+      className={cn('max-w-full min-w-0 flex-none rounded-lg border bg-background p-0.5', className)}>
       {options.map(o => (
         <ToggleGroupItem key={o.value} value={o.value} data-tip={o.tip} {...item?.(o.value)}
-          className={cn('rounded-[5px]! border-0 px-2 font-normal text-muted-foreground hover:bg-white/5 hover:text-foreground data-[pressed]:bg-gold/[0.14] data-[pressed]:font-medium data-[pressed]:text-gold',
-            size === 'sm' ? 'h-5 min-w-0 px-1.5 text-[10.5px]' : 'h-[22px] min-w-0 text-[11.5px]')}>
-          {o.label}
+          className={cn('min-w-0 shrink gap-1.5 rounded-md! border-0 font-normal whitespace-nowrap text-muted-foreground hover:bg-foreground/5 hover:text-foreground data-[pressed]:bg-gold/[0.14] data-[pressed]:font-semibold data-[pressed]:text-gold [&_svg]:size-3.5 [&_svg]:flex-none',
+            size === 'sm' ? 'h-6 px-2 text-[11.5px]' : 'h-7 px-2.5 text-[12.5px]')}>
+          {o.icon && <o.icon />}<span className="min-w-0 truncate">{o.label}</span>
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
@@ -297,7 +298,7 @@ export function Stepper({ value, onChange, min = 0, max = 999, big, className, .
   value: number; onChange: (v: number) => void; min?: number; max?: number; big?: number; className?: string
 } & Record<`data-${string}`, string | undefined>) {
   const set = (v: number) => onChange(Math.max(min, Math.min(max, v)))
-  const b = 'grid h-[22px] min-w-[22px] flex-none place-items-center rounded-[5px] px-1 text-[11px] text-muted-foreground tabular-nums transition-colors hover:bg-white/[0.07] hover:text-gold disabled:pointer-events-none disabled:opacity-30 [&_svg]:size-3'
+  const b = 'grid h-[22px] min-w-[22px] flex-none place-items-center rounded-[5px] px-1 text-[11px] text-muted-foreground tabular-nums transition-colors hover:bg-foreground/[0.07] hover:text-gold disabled:pointer-events-none disabled:opacity-30 [&_svg]:size-3'
   return (
     <span className={cn('flex flex-none items-center rounded-md border bg-background/40 p-px', className)} {...rest}>
       {big && <button className={cn(b, 'hidden @min-[420px]:grid')} disabled={value <= min} onClick={() => set(value - big)}>−{big}</button>}
@@ -314,8 +315,8 @@ export function Panel({ title, sub, right, children, className, ...rest }: {
   title?: ReactNode; sub?: ReactNode; right?: ReactNode; children: ReactNode; className?: string
 } & Record<`data-${string}`, string | undefined>) {
   return (
-    <section className={cn('mx-1.5 mt-1.5 overflow-hidden rounded-md border bg-card shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]', className)} {...rest}>
-      {(title || right) && <Sect sub={sub} right={right} className="pt-1.5">{title}</Sect>}
+    <section className={cn('mx-2.5 mt-2.5 overflow-hidden rounded-xl border bg-card shadow-(--shadow-card)', className)} {...rest}>
+      {(title || right) && <Sect sub={sub} right={right} className="pt-2">{title}</Sect>}
       {children}
     </section>
   )
@@ -330,8 +331,8 @@ export function Disclosure({ id, title, sub, children, defaultOpen = false, righ
   const toggle = () => { U.open = { ...U.open, [id]: !open }; saveUi(['open']); bump() }
   return (
     <div data-disclosure={id} data-open={open ? 'on' : 'off'}>
-      <div className="flex min-h-7 items-center gap-1.5 px-2.5 pt-1.5">
-        <button onClick={toggle} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10.5px] font-semibold tracking-wider text-dim uppercase hover:text-muted-foreground [&_svg]:size-3.5">
+      <div className="flex min-h-8 items-center gap-1.5 px-3 pt-1.5">
+        <button onClick={toggle} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10.5px] font-bold tracking-[0.1em] text-muted-foreground uppercase hover:text-foreground [&_svg]:size-3.5">
           <ChevronRight className={cn('flex-none transition-transform', open && 'rotate-90')} />
           <span className="flex-none">{title}</span>
           {sub && <span className="min-w-0 truncate font-normal tracking-normal normal-case">{sub}</span>}
@@ -351,7 +352,7 @@ export function TopN<T>({ id, items, n, render, more }: { id: string; items: T[]
     {shown.map(render)}
     {items.length > n && (
       <button data-more={id} onClick={() => { U.open = { ...U.open, [id]: !all }; saveUi(['open']); bump() }}
-        className="flex w-full items-center gap-1 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-gold [&_svg]:size-3">
+        className="flex w-full items-center gap-1 px-3 py-1.5 text-[12px] text-muted-foreground hover:text-gold [&_svg]:size-3.5">
         <ChevronRight className={cn('transition-transform', all && '-rotate-90')} />{all ? '−' : more(items.length - n)}
       </button>
     )}
@@ -387,4 +388,59 @@ export function MiniStepper({ label, value, onStep, minus = true, plus = true, t
       <button className={b} disabled={!plus} data-tip={tips?.[1]} onClick={e => { e.stopPropagation(); onStep(1) }}><Plus /></button>
     </div>
   )
+}
+
+/** Page head: Cinzel title, muted sub line, actions at the right (filters, switches). */
+export function PageHead({ title, sub, right, icon: I }: { title: ReactNode; sub?: ReactNode; right?: ReactNode; icon?: LucideIcon }) {
+  return (
+    <div data-drag className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1.5 px-3 pt-3">
+      <h1 className="m-0 flex min-w-0 items-center gap-2 font-display text-[19px] leading-none font-semibold tracking-[0.04em] text-foreground">
+        {I && <I className="size-4.5 flex-none text-gold" />}<span className="truncate">{title}</span>
+      </h1>
+      {sub && <span className="min-w-0 flex-[1_1_8rem] truncate text-[12.5px] text-muted-foreground">{sub}</span>}
+      {right && <span className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-1.5">{right}</span>}
+    </div>
+  )
+}
+
+/** Number tile of a page's top row: label, big value, one small line. `tone` colours the value; `onClick` jumps to the list. */
+export function Kpi({ label, value, sub, tone, icon: I, onClick, tip, ...rest }: {
+  label: ReactNode; value: ReactNode; sub?: ReactNode; tone?: keyof typeof TONE; icon?: LucideIcon; onClick?: () => void; tip?: string
+} & Record<`data-${string}`, string | undefined>) {
+  const C = onClick ? 'button' : 'div'
+  return (
+    <C onClick={onClick} data-tip={tip} {...rest}
+      className={cn('flex min-w-0 flex-col rounded-lg border bg-card px-3 py-2 text-left shadow-(--shadow-card)', onClick && 'cursor-pointer transition-colors hover:border-gold/40')}>
+      <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted-foreground [&_svg]:size-3.5 [&_svg]:flex-none">{I && <I />}<span className="truncate">{label}</span></span>
+      <span className={cn('mt-0.5 truncate text-[21px] leading-tight font-bold tabular-nums', tone ? TONE[tone] : 'text-foreground')}>{value}</span>
+      {sub && <span className="truncate text-[11.5px] text-dim">{sub}</span>}
+    </C>
+  )
+}
+/** The row of number tiles at the top of a page: 2 columns on the overlay, 4 from 640 px. */
+export function KpiRow({ children }: { children: ReactNode }) {
+  return <div data-kpis className="grid grid-cols-2 gap-1.5 px-2.5 pt-2.5 @min-[640px]:grid-cols-4">{children}</div>
+}
+
+/** One list line: icon, title + one sub line, meta, value / action at the right. Click = select. */
+export function ListRow({ icon, title, sub, meta, right, onClick, selected, tip, className, ...rest }: {
+  icon?: ReactNode; title: ReactNode; sub?: ReactNode; meta?: ReactNode; right?: ReactNode; onClick?: () => void; selected?: boolean; tip?: string; className?: string
+} & Record<`data-${string}`, string | undefined>) {
+  return (
+    <div onClick={onClick} data-tip={tip} data-sel={selected ? 'on' : undefined} {...rest}
+      className={cn(ROW, 'py-1', onClick && ROW_CLICK, selected && 'bg-gold/[0.08]', className)}>
+      {icon && <span className={cn(ROW_ICON, 'text-muted-foreground')}>{icon}</span>}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate">{title}</span>
+        {sub && <span className="truncate text-[12px] text-muted-foreground">{sub}</span>}
+      </span>
+      {meta && <span className={cn(META, 'flex-none')}>{meta}</span>}
+      {right && <span className="flex flex-none items-center gap-1.5 font-semibold tabular-nums">{right}</span>}
+    </div>
+  )
+}
+
+/** "How is this computed": a closed disclosure holding the explanation (never shown by default). */
+export function HowTo({ id, title, children }: { id: string; title: ReactNode; children: ReactNode }) {
+  return <Disclosure id={id} title={title}><div className="px-3 pb-2.5 text-[12.5px] leading-relaxed whitespace-normal text-muted-foreground">{children}</div></Disclosure>
 }

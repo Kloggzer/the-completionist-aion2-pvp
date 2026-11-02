@@ -16,7 +16,7 @@ export const MAP_TABS = ['targets', 'spots', 'farm']
 export const DEF_UI: Any = {
   map: '', sort: 'prio', hideNamed: false, lvMin: 1, lvMax: 60, tab: 'home', toasts: true, showLv3: false,
   layers: { spawns: true, spots: true, cubes: true, labels: true }, cubes: {}, mapH: 0.42, mapW: 0.55, radar: false, radarS: 0.9,
-  view: 'both', radarHud: false, mapStyle: 'map', farmRes: '', farmHelp: false,
+  view: 'both', radarHud: false, mapStyle: 'map', farmRes: '', farmHelp: false, theme: 'system', navMini: false, lastPage: {},
 }
 
 export const S: Any = { settings: null, state: { levels: {}, souls: {} }, status: { state: 'off', text: '' }, replay: false, site: false, ct: false, pos: null, zone: 0, instance: false }

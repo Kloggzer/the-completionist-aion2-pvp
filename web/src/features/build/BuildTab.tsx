@@ -6,7 +6,7 @@ import { host } from '@/core/host'
 import { P } from '@/features/pvp'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
-import { BarInfo, BarRight, CHIP, CHIP_ON, Columns, Empty, Foot, Hint, Note, Page, ROW, ROWS, SECT_BTN, Sect, rich } from '@/components/kit'
+import { BarInfo, BarRight, CHIP, Columns, Empty, Foot, Hint, Note, Page, ROW, ROWS, SECT_BTN, Sect, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { DaevTab } from '@/features/daevanion/DaevTab'
 import { ago, charKey } from '@/features/daevanion/daevanion'
@@ -16,17 +16,9 @@ import { K, PCT_KEYS, type Key } from './stats'
 import { assume, autoFight, bs, fightsOf, gearById, gearRows, loadGear, loadingFight, loadingGear, measured, model, setBuild, snap, pickFight, type Page as BuildPage } from './build'
 import { candidates, fmtLine, fmtRange, report, upgrades } from './gear'
 
-const PAGES: BuildPage[] = ['dae', 'stats', 'gear']
 const num = (v: number, d: number) => v.toLocaleString(lang() === 'de' ? 'de-DE' : 'en-GB', { maximumFractionDigits: d, minimumFractionDigits: d })
 const pct = (v: number, d = 2) => (v > 0 ? '+' : '') + num(v, d) + ' %'
 const val = (k: Key, v: number) => (PCT_KEYS.includes(k) ? fmtLine(Math.round(v * 10) / 10) + ' %' : fmt(Math.round(v)))
-
-function Nav() {
-  const cur = bs().page as BuildPage
-  return <span className="flex flex-none gap-1">{PAGES.map(p => (
-    <button key={p} data-page={p} onClick={() => setBuild({ page: p })} className={cn(CHIP, cur === p && CHIP_ON)}>{t('build.page.' + p)}</button>
-  ))}</span>
-}
 
 /** Gear + fight sources: load buttons, what is loaded. */
 function Sources() {
@@ -57,7 +49,7 @@ const RATE_ROWS: [string, 'critRate' | 'doubleRate' | 'perfectRate' | 'multiRate
 function StatsPage() {
   const char = charKey(), md = model(char), s = md.state, b = bs(), a = assume()
   const order = (Object.keys(md.marg) as Key[]).filter(k => k !== 'might' && k !== 'precision').sort((x, y) => md.marg[y] - md.marg[x])
-  const bar = <><Nav /><BarInfo>{t('build.statsInfo')}</BarInfo></>
+  const bar = <><BarInfo>{t('build.statsInfo')}</BarInfo></>
   const setOver = (k: Key, v: number | null) => { const o = { ...b.over }; if (v == null) delete o[k]; else o[k] = v; setBuild({ over: o }) }
   const setA = (k: keyof Assume, v: number) => setBuild({ assume: { ...b.assume, [k]: v } })
   return (
@@ -70,9 +62,9 @@ function StatsPage() {
             {RATE_ROWS.map(([label, r, m, key]) => (
               <div key={r} className={ROW}>
                 <span className="min-w-0 flex-1 truncate">{t(label)}</span>
-                <b className="w-16 text-right tabular-nums">{num(s[r] * 100, 1)} %</b>
-                <span className="w-14 text-right text-muted-foreground tabular-nums">×{num(s[m], 2)}</span>
-                <i className={cn('w-16 text-right text-[11px] not-italic', s.measured[key as 'crit'] ? 'text-green' : 'text-dim')}>{t(s.measured[key as 'crit'] ? 'build.measured' : 'build.assumed')}</i>
+                <b className="w-16 flex-none text-right tabular-nums">{num(s[r] * 100, 1)} %</b>
+                <span className="w-12 flex-none text-right text-muted-foreground tabular-nums">×{num(s[m], 2)}</span>
+                <i className={cn('w-16 min-w-0 truncate text-right text-[11px] not-italic', s.measured[key as 'crit'] ? 'text-green' : 'text-dim')}>{t(s.measured[key as 'crit'] ? 'build.measured' : 'build.assumed')}</i>
               </div>
             ))}
           </div>
@@ -129,7 +121,7 @@ function NumEntry({ value, onChange, placeholder }: { value: number | undefined;
 
 function GearPage() {
   const char = charKey(), md = model(char), s0 = snap(char), db = gearById(), b = bs()
-  const bar = <><Nav /><BarInfo>{t('build.gearInfo')}</BarInfo>
+  const bar = <><BarInfo>{t('build.gearInfo')}</BarInfo>
     <BarRight><button className={cn(CHIP)} disabled={loadingGear.has(char)} onClick={() => loadGear(char)}>{s0 ? <RefreshCw /> : <Download />}{t(s0 ? 'build.reload' : 'build.loadGear')}</button></BarRight></>
   if (!s0) return <Page w="rows" bar={bar}><Empty>{profile(char) ? t('build.noGear') : t('dae.liveNoneGame')}</Empty></Page>
   const ups = upgrades(md.state, s0, db).slice(0, 15)
@@ -200,5 +192,5 @@ export function BuildTab() {
   useEffect(() => { void autoFight(char) }, [char])
   if (page === 'stats') return <StatsPage />
   if (page === 'gear') return <GearPage />
-  return <DaevTab nav={<Nav />} />
+  return <DaevTab />
 }

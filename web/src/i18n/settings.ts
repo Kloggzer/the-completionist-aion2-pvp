@@ -6,6 +6,7 @@ export default {
     'set.cat.hotkeys': 'Hotkeys', 'set.cat.live': 'Live-Tracking', 'set.cat.data': 'Daten & Über',
 
     'set.g.display': 'Anzeige', 'set.g.window': 'Fenster', 'set.g.app': 'Programm',
+    'set.theme': 'Farbschema', 'set.theme.sub': 'Hell (Aion Ember), Dunkel (Nacht-Indigo) oder wie Windows', 'set.theme.light': 'Hell', 'set.theme.dark': 'Dunkel', 'set.theme.system': 'System',
     'set.lang': 'Sprache', 'set.lang.auto': 'System ({lang})', 'set.lang.de': 'Deutsch', 'set.lang.en': 'English',
     'set.opacity': 'Deckkraft', 'set.zoom': 'Skalierung',
     'set.toasts': 'Hinweis bei neuer Seele / Level-up',
@@ -73,6 +74,7 @@ export default {
     'set.cat.hotkeys': 'Hotkeys', 'set.cat.live': 'Live tracking', 'set.cat.data': 'Data & about',
 
     'set.g.display': 'Display', 'set.g.window': 'Window', 'set.g.app': 'App',
+    'set.theme': 'Colour scheme', 'set.theme.sub': 'Light (Aion Ember), dark (Night Indigo) or like Windows', 'set.theme.light': 'Light', 'set.theme.dark': 'Dark', 'set.theme.system': 'System',
     'set.lang': 'Language', 'set.lang.auto': 'System ({lang})', 'set.lang.de': 'Deutsch', 'set.lang.en': 'English',
     'set.opacity': 'Opacity', 'set.zoom': 'Scale',
     'set.toasts': 'Notice on new soul / level-up',
