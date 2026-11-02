@@ -649,6 +649,7 @@ sealed class OverlayForm : Form
                 if (dataOk is { } d) Post(new { type = "dataReady", ok = d });
                 PostDock();
                 PostUpdate();
+                PostDaevanion();
                 break;
             case "drag": Native.BeginDrag(Handle); break;
             case "resize":
@@ -900,6 +901,13 @@ sealed class OverlayForm : Form
         PostUpdate();
     }
 
+    // last own Daevanion boards from the game (sent again when the page reloads)
+    Dictionary<int, uint[]>? daeBoards;
+    void PostDaevanion()
+    {
+        if (uiReady && daeBoards != null) Post(new { type = "daeGame", boards = daeBoards.ToDictionary(b => b.Key.ToString(), b => b.Value) });
+    }
+
     void PostUpdate()
     {
         if (uiReady && update is { } info) Post(new { type = "update", version = info.Version, page = info.Page, auto = Updater.CanSelfUpdate && info.Exe != null });
@@ -998,6 +1006,12 @@ sealed class OverlayForm : Form
             Post(new { type = "merchant", tab, at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 items = items.Select(i => new { item = i.Item, count = i.Count, tier = i.Tier, @base = i.Base, price = i.Price, sold = i.Sold }) });
         });
+        source.DaevanionReceived += boards => BeginInvoke(() =>
+        {
+            Log("Daevanion: " + string.Join(", ", boards.Select(b => $"Brett {b.Key} {b.Value.Length} offen")));
+            daeBoards = boards;
+            PostDaevanion();
+        });
         source.OdyleReceived += (energy, bonus) => BeginInvoke(() =>
         {
             Log($"Odyle-Energie: {energy} + {bonus} Bonus");
@@ -1083,6 +1097,7 @@ sealed class OverlayForm : Form
 
     void SetStatus(string s, string text)
     {
+        if (status != (s, text)) Log($"Status: {s} – {text}");
         status = (s, text);
         Post(new { type = "status", state = s, text });
         tray.Text = Truncate($"The Completionist – {text}", 63);
@@ -1112,10 +1127,13 @@ sealed class OverlayForm : Form
         Post(new { type = "settings", settings = SettingsView() });
     }
 
-    static void Log(string line)
+    static readonly object logLock = new();
+    // Also called from the capture threads (Capture.cs: adapter, diagnosis).
+    internal static void Log(string line)
     {
-        try { File.AppendAllText(Path.Combine(Settings.DataDir, "log.txt"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {line}\n"); }
-        catch { }
+        lock (logLock)
+            try { File.AppendAllText(Path.Combine(Settings.DataDir, "log.txt"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {line}\n"); }
+            catch { }
     }
 
     // ---------------------------------------------------------------- aion2maps view

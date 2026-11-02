@@ -9,7 +9,7 @@ import { U, V, bump, hasState, saveUi, useApp, type Any } from '@/core/state'
 import { host } from '@/core/host'
 import { emit } from '@/core/bus'
 import { goTab } from '@/core/nav'
-import { mapName, selectMap } from '@/core/data'
+import { mapName, selectMap, petName } from '@/core/data'
 import { fmt, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
 import { AppSelect } from '@/components/AppSelect'
@@ -20,6 +20,9 @@ import {
   myFaction, offerKind, perSoul, petIcon, petLevel, priority, segments, soulsHave, soulsLeft, tierOf, wishlist, type Diff, type Group, type Offer, type OfferVerdict,
   type Offers,
 } from './logic'
+
+/** Name search: the shown name or the English one (lower-case query). */
+const hit = (p: Any, q: string) => petName(p).toLowerCase().includes(q) || p.n.toLowerCase().includes(q)
 
 /** Character whose offer is shown: another one picked in the chips (V.merchView), else the current one (U.merch). */
 const viewAlt = (): string | null => (V.merchView != null && freshAlt(U.merchAlt, Date.now())[V.merchView] ? V.merchView : null)
@@ -141,8 +144,8 @@ function Picker() {
   const list = useMemo(() => {
     const s = q.trim().toLowerCase()
     if (!s) return []
-    return [...new Map([...merchantPets(), ...eventPets()].map(p => [p.id, p])).values()].filter(p => !taken.has(p.id) && p.n.toLowerCase().includes(s))
-      .sort((a, b) => +!a.n.toLowerCase().startsWith(s) - +!b.n.toLowerCase().startsWith(s) || a.n.localeCompare(b.n)).slice(0, 8)
+    return [...new Map([...merchantPets(), ...eventPets()].map(p => [p.id, p])).values()].filter(p => !taken.has(p.id) && hit(p, s))
+      .sort((a, b) => +!petName(a).toLowerCase().startsWith(s) - +!petName(b).toLowerCase().startsWith(s) || petName(a).localeCompare(petName(b))).slice(0, 8)
   }, [q, taken.size]) // eslint-disable-line react-hooks/exhaustive-deps
   const add = (p: Any) => { setOffers([...offers().items, { id: p.id }]); setQ(''); setHi(0) }
   const key = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -163,7 +166,7 @@ function Picker() {
               <div key={p.id} role="option" aria-selected={i === hi} onMouseDown={e => { e.preventDefault(); add(p) }} onMouseEnter={() => setHi(i)}
                 className={cn('flex cursor-pointer items-center gap-2 px-2 py-1 text-[12.5px]', i === hi && 'bg-accent')}>
                 <PetPic p={p} size={20} />
-                <span className="min-w-0 flex-1 truncate">{p.n}</span>
+                <span className="min-w-0 flex-1 truncate">{petName(p)}</span>
                 {p.c && <span className="text-[11px] text-dim">{p.c}</span>}
                 <i className={cn('rounded-[3px] border px-1 text-[10.5px] font-semibold not-italic', VERDICT_PILL[v])}>{t('merch.v.' + v)}</i>
               </div>
@@ -239,7 +242,7 @@ function Watch() {
         <div key={p.id} data-watchpet={p.id} onClick={() => showOnMap(p, d)} data-tip={d.best ? t('merch.show') : whereLine(d)}
           className={cn('flex min-h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-[12.5px]', d.best && 'cursor-pointer hover:bg-white/5')}>
           <PetPic p={p} size={24} />
-          <span className="min-w-0 flex-1 truncate font-medium">{p.n}</span>
+          <span className="min-w-0 flex-1 truncate font-medium">{petName(p)}</span>
           <span className="flex-none text-[11px] text-dim tabular-nums">{t('merch.souls', { n: soulsHave(rest), max: MAX_SOULS })}</span>
           <Tier d={d} />
         </div>
@@ -325,7 +328,7 @@ function WishTile({ p, d, rest }: { p: Any; d: Diff; rest: number }) {
       <PetPic p={p} />
       <div className={T_BODY}>
         <div className="flex min-w-0 items-center gap-1.5">
-          <span data-name="" className={cn(T_TITLE, 'min-w-0 flex-1')}>{p.n}</span>
+          <span data-name="" className={cn(T_TITLE, 'min-w-0 flex-1')}>{petName(p)}</span>
           <LvChip id={p.id} />
           {g !== 'none' && <Tier d={d} />}
         </div>
@@ -349,7 +352,7 @@ const WISH_GRID = grid('row')
 
 function Wishlist() {
   const all = wishlist(), q = (V.merchQ || '').trim().toLowerCase()
-  const rows = all.filter(x => (!V.merchHard || x.d.score >= HARD) && (!q || x.p.n.toLowerCase().includes(q)))
+  const rows = all.filter(x => (!V.merchHard || x.d.score >= HARD) && (!q || hit(x.p, q)))
   return <div>
     <Sect sub={'· ' + t('merch.wish.sub', { n: all.length })}>{t('merch.wish')}</Sect>
     <div className="flex items-center gap-1 px-1.5 pb-1">

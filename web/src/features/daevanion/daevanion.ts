@@ -3,17 +3,22 @@
 //
 // Settings: U.dae = { mode: 'respec' | 'add', cls, free (total points Nezekan–Triniel), ariel, pvp (Azphel), off: {cls: 0..1}, mult: {statKey: n}, tiers: {cls: {skill: n}},
 //   base: {cls: {skill: level without Daevanion}}, bps: {cls: {skill: [breakpoints]}}, showW }
-// Live boards: U.daeLive[char] = { at, cls, level, open: {slot: [row * 32 + col, …]}, skills: {name: level} } (only what
-// the website shows; the website's skill level includes the Daevanion levels).
+// Live boards: U.daeLive[char] = { at, cls, level, open: {slot: [row * 32 + col, …]}, skills: {name: level}, game, webOpen }
+// Open nodes from the website or, newer and preferred, from the game (private build: packet 0x26e2 at login, host
+// 'daeGame'); skill levels only from the website, whose skill level includes the Daevanion levels of the boards it
+// showed then (webOpen, when the open nodes came from the game since).
 import { G, U, bump, saveUi, type Any } from '@/core/state'
+import { host, onHost } from '@/core/host'
 import { lang, t } from '@/core/i18n'
 import { toast } from '@/core/toast'
 import { LIVE, NONE_HINT, ago, charKey, gameClass, gameLevel, getJson, profile as srcProfile, resolve, watch, type Profile } from './source'
 import { buildGraph, optimize, setValue, type Graph, type Plan } from './optimize'
-import { CLASS_DEF, DEFAULT_BASE, classMult, unitHook, defaultBps, defaultTier, nodeValue, perNodeValue, skillCurve, statUnits, type ClassData, type DaeData, type Pool, type RawNode, type Weights } from './values'
+import { CLASS_DEF, DEFAULT_BASE, classMult, unitHook, defaultTier, nodeValue, perNodeValue, skillBps, skillCurve, statUnits, type ClassData, type DaeData, type Pool, type RawNode, type Weights } from './values'
 
 export type Mode = 'respec' | 'add'
-export type Live = { at: number; cls: string; level: number | null; open: Record<string, number[]>; skills?: Record<string, number> }
+export type Live = { at: number; cls: string; level: number | null; open: Record<string, number[]>; skills?: Record<string, number>
+  /** Open nodes from the game (time); `webOpen` = the website's open nodes that go with `skills`. */
+  game?: number; webOpen?: Record<string, number[]> }
 
 fetch('daevanion.json').then(r => r.json()).then(d => { G.dae = d; bump() }).catch(() => { G.dae = false; bump() })
 
@@ -48,7 +53,7 @@ export function classId(): string {
 export const className = (c: ClassData) => (lang() === 'de' ? c.de : c.en)
 export const weights = (cls: string): Weights => {
   const s = settings()
-  return { off: s.off[cls] ?? CLASS_DEF[cls]?.off ?? 0.5, mult: classMult(cls, s.mult), tiers: s.tiers[cls] || {}, base: s.base[cls] || {}, bps: s.bps[cls] || {} }
+  return { off: s.off[cls] ?? CLASS_DEF[cls]?.off ?? 0.5, mult: classMult(cls, s.mult), tiers: s.tiers[cls] || {}, base: s.base[cls] || {}, bps: s.bps[cls] || {}, pvp: !!s.pvpFocus }
 }
 
 // ---------------------------------------------------------------- website boards
@@ -81,6 +86,32 @@ export function parseLive(info: Any, boards: Record<number, Any>, at = Date.now(
   return { at, cls: String(Math.floor(list[0].id / 10)), level: typeof lv === 'number' ? lv : null, open }
 }
 
+/** Live boards from the game: {board id: [node id]} (node id = board * 10000 + (row - 1) * 15 + col, Start included).
+ *  Level and skill levels stay from the website (`prev`) while the class matches. */
+export function parseGame(boards: Record<string, number[]>, prev: Live | undefined, at = Date.now()): Live | null {
+  const ids = Object.keys(boards).map(Number).filter(b => b > 10)
+  if (!ids.length) return null
+  const cls = String(Math.floor(ids[0] / 10)), open: Record<string, number[]> = {}
+  for (const b of ids) open[String(b % 10)] = boards[b].map(id => id % 10000).filter(i => i !== 113).map(i => pos(Math.floor((i - 1) / 15) + 1, (i - 1) % 15 + 1))
+  const same = prev?.cls === cls
+  return { at, cls, level: same ? prev!.level : gameLevel(), open, game: at, ...(same && prev!.skills ? { skills: prev!.skills, webOpen: prev!.webOpen ?? prev!.open } : {}) }
+}
+
+// the game's boards: for the character logged in (the name may come a moment after the boards)
+let gameBoards: Record<string, number[]> | null = null
+function applyGame() {
+  const char = charKey()
+  if (!gameBoards || !char) return
+  const l = parseGame(gameBoards, U.daeLive?.[char])
+  gameBoards = null
+  if (!l) return
+  U.daeLive ||= {}
+  U.daeLive[char] = l
+  saveUi(['daeLive']); bump()
+}
+onHost('daeGame', m => { gameBoards = m.boards; applyGame() })
+onHost('pvp', () => setTimeout(applyGame, 0))
+
 export const loading = new Set<string>()
 
 /** Load the character's boards from the website. `quiet` = no toast on failure (automatic loads). */
@@ -95,10 +126,13 @@ export async function loadLive(char = charKey(), quiet = false) {
     const l = parseLive(info, boards)
     if (!l) throw new Error('empty')
     try { l.skills = parseSkills(await getJson(equipUrl(p))) } catch { /* boards without skill levels */ }
+    // the game's open nodes are newer than the website's: keep them, take level and skill levels from the website
+    const prev = U.daeLive?.[char]
     U.daeLive ||= {}
-    U.daeLive[char] = l
+    U.daeLive[char] = prev?.game && prev.cls === l.cls ? { ...prev, level: l.level ?? prev.level, skills: l.skills, webOpen: l.open } : l
     saveUi(['daeLive'])
-  } catch {
+  } catch (e) {
+    host({ type: 'log', msg: `Daevanion ${char}: ${(e as Error)?.message || e}` })
     if (!quiet) toast(t('dae.err'), t('dae.errSub'))
   } finally {
     loading.delete(char); bump()
@@ -138,7 +172,7 @@ export function planPool(d: DaeData, cls: string, pool: Pool, mode: Mode, points
   const isOpen = (slot: string, n: RawNode) => mine && !!l!.open[slot]?.includes(pos(n[0], n[1]))
   // skill nodes form one group per skill: worth something at the breakpoints (see skillCurve)
   const bases = skillBases(c, mine ? l : undefined, w)
-  const gf = c.skills.map((sk, si) => skillCurve(perNodeValue(sk, sk.active ? 3 : 2, cls, w), bases[si], w.bps?.[sk.en] ?? defaultBps(sk)))
+  const gf = c.skills.map((sk, si) => skillCurve(perNodeValue(sk, sk.active ? 3 : 2, cls, w), bases[si], skillBps(cls, sk, w)))
   const g = buildGraph(slots.map(slot => ({
     b: +slot,
     nodes: c.boards[slot].nodes.map(n => {
@@ -161,7 +195,8 @@ export function planPool(d: DaeData, cls: string, pool: Pool, mode: Mode, points
  *  levels of that skill (all boards), else unknown (null). */
 export function skillBases(c: ClassData, l: Live | undefined, w: Weights): (number | null)[] {
   const dae = c.skills.map(() => 0)
-  if (l) for (const [slot, b] of Object.entries(c.boards)) for (const n of b.nodes) if (n[3] === 2 && l.open[slot]?.includes(pos(n[0], n[1]))) dae[n[4] as number]++
+  const open = l?.webOpen ?? l?.open
+  if (open) for (const [slot, b] of Object.entries(c.boards)) for (const n of b.nodes) if (n[3] === 2 && open[slot]?.includes(pos(n[0], n[1]))) dae[n[4] as number]++
   return c.skills.map((sk, si) => w.base?.[sk.en] ?? (l?.skills?.[sk.en] != null ? Math.max(1, l.skills[sk.en] - dae[si]) : null))
 }
 
@@ -207,7 +242,7 @@ export function advice(): Advice[] {
     for (const [si, nodes] of count) {
       const sk = c.skills[si], b0 = bases[si] ?? DEFAULT_BASE, lv = b0 + nodes.length, cost = a.refs[nodes[0]].n[2] || 0
       if ((w.tiers[sk.en] ?? defaultTier(cls, sk)) === 0) { waste.push({ si, level: lv, top: b0, extra: nodes.length, points: nodes.length * cost, unused: true }); continue }
-      const bps = w.bps?.[sk.en] ?? defaultBps(sk)
+      const bps = skillBps(cls, sk, w)
       if (!bps.length) continue // every level counts
       const top = Math.max(b0, ...bps.filter(x => x > b0 && x <= lv))
       if (lv > top) waste.push({ si, level: lv, top, extra: lv - top, points: (lv - top) * cost })

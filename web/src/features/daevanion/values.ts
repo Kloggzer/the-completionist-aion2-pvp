@@ -40,6 +40,9 @@ export const PCT_VALUE: Record<string, number> = {
   'Combat Speed': 16 / 1.5, 'Cooldown Reduction': 10 / 1.5, 'Multi-hit Chance': 10 / 1.5, 'Critical Damage Boost': 9 / 1.5,
   'Damage Boost': 7 / 1.5, 'PvE Damage Boost': 7 / 1.5, 'Boss Damage Boost': 4.5,
 }
+/** PvP focus (switch in the tab): these resists count for every build (not scaled by the attack/defense slider) and
+ *  this many times on top of their multiplier, so the plan takes them before most other nodes. */
+export const PVP_MULT: Record<string, number> = { 'Multi-hit Resist': 3, 'Critical Hit Resist': 3, 'PvP Critical Hit Resist': 3 }
 /** Utility stats (MP) count like a Common node times their multiplier. */
 export const UTIL_W = 1
 /** Multiplier of a stat until it is set in the tab: MP is worth nothing (only bought on the way to other nodes). */
@@ -63,13 +66,14 @@ export function statUnits(d: DaeData, cls: string): number[] {
 }
 
 /** Skill node value per tier, in Common-node units: [Legend (3 points, active skill), Rare (2 points, passive)]. */
-export const TIER_VALUE: Record<number, [number, number]> = { 3: [5, 3.2], 2: [3, 2], 1: [1.2, 0.8], 0: [0, 0] }
-export const TIERS = [3, 2, 1, 0] as const
+/** Tier 4 ("Max"): as high as the boards allow – every level counts and outweighs any stat path. */
+export const TIER_VALUE: Record<number, [number, number]> = { 4: [100, 100], 3: [5, 3.2], 2: [3, 2], 1: [1.2, 0.8], 0: [0, 0] }
+export const TIERS = [4, 3, 2, 1, 0] as const
 
 // Defaults per class id (board id / 10): attack share of the slider, tier 3 (core), tier 2 (good), tier 0 (skip), and
 // stat multipliers for the stats the guides want most. With a `good` list, other actives default to 1 (not on any PvE
 // bar), without one to 2. Passives not listed: 1.
-// Source: wakayashi.gg class guides (Stand 27.10.2026): core = the guide's Daevanion skill picks ("Skill-Stufen"),
+// Source: wakayashi.gg class guides (Stand 27.10.2026, Templar 31.10.2026): core = the guide's Daevanion skill picks ("Skill-Stufen"),
 // good = the rest of its skill setup (Lv 12-20 tiles) and its first passives, skip = the Lv 8 filler + Defiance.
 // Before: aion2data.com class guides (raw/class-guides.json), metabot.gg; Templar from player feedback (CLASS_DEF_OLD).
 export type ClassDef = { off: number; core: string[]; good?: string[]; skip?: string[]; mult?: Record<string, number> }
@@ -80,8 +84,9 @@ export const CLASS_DEF: Record<string, ClassDef> = {
     skip: ['Sword Aura Rampage', 'Defiance'], mult: { 'Critical Hit': 1.5 },
   },
   2: {
-    off: 0.3, core: ['Warding Strike', 'Punishment', 'Vicious Strike', 'Ironclad Defense', 'Poach', 'Punishing Benediction', 'Debilitating Smash', 'Shield Smite', 'Shield Rush', 'Pummel', 'Judgment', 'Annihilate'],
-    good: ['Fury', 'Insulting Roar', 'Impact Hit', 'Survival Willpower', 'Block Pain'], skip: ['Flash Rampage', 'Defiance'],
+    // Stand 31.10.2026: Flash Rampage now a level 16 target and picked on every board (was skip)
+    off: 0.3, core: ['Warding Strike', 'Punishment', 'Vicious Strike', 'Ironclad Defense', 'Poach', 'Punishing Benediction', 'Debilitating Smash', 'Shield Smite', 'Shield Rush', 'Pummel', 'Judgment', 'Annihilate', 'Flash Rampage'],
+    good: ['Fury', 'Insulting Roar', 'Impact Hit', 'Survival Willpower', 'Block Pain'], skip: ['Defiance'],
   },
   3: {
     off: 0.85, core: ["Hunter's Resolve", 'Focused Eye', 'Concentrated Fire', 'Drill Dart', 'Gale Arrow', 'Snipe', 'Tempest Shot', 'Burst Arrow', 'Deadshot'],
@@ -127,6 +132,9 @@ export const DEFAULT_BASE = 10
 /** Default breakpoints of a skill: its specialization levels (game data); passives none (every level counts);
  *  other actives BREAKPOINTS. No breakpoints = every level counts on its own. */
 export const defaultBps = (sk: Skill) => (sk.spec ? Object.keys(sk.spec).map(Number).sort((a, b) => a - b) : sk.active ? BREAKPOINTS : [])
+/** Breakpoints that count for a skill: none on "Max" (every level), else the chosen ones or the defaults. */
+export const skillBps = (clsId: string, sk: Skill, w: Weights) =>
+  (w.tiers[sk.en] ?? defaultTier(clsId, sk)) === 4 ? [] : w.bps?.[sk.en] ?? defaultBps(sk)
 /** A breakpoint is worth this many single skill levels (about what the four Daevanion nodes of a skill give). */
 export const BP_NODES = 4
 
@@ -155,11 +163,14 @@ export type Weights = {
   base?: Record<string, number>
   /** Breakpoints per skill name (en); missing = BREAKPOINTS. */
   bps?: Record<string, number[]>
+  /** PvP focus: PVP_MULT on. */
+  pvp?: boolean
 }
 
 /** Value of one stat effect. */
 export function effectValue(key: string, amount: number, unit: number, w: Weights) {
-  const cat = statCat(key), m = statMult(key, w)
+  const cat = statCat(key), m = statMult(key, w), pvp = w.pvp ? PVP_MULT[key] : undefined
+  if (pvp) return amount * unit * m * pvp
   const cw = cat === 'off' ? 2 * w.off : cat === 'def' ? 2 * (1 - w.off) : cat === 'all' ? 1 : UTIL_W
   return amount * unit * cw * m
 }

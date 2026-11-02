@@ -25,6 +25,23 @@ void Check(bool ok, string what) { if (!ok) { fails++; Console.WriteLine("FAIL "
     Check(Placement.Clamp(r, []) == r, "no screens: unchanged");
     Console.WriteLine(fails == 0 ? "Placement OK" : $"Placement: {fails} FAILED");
 }
+// ---- Daevanion boards (0x26e2): u8 n, n x {u32 board, varint count, count x u32 node id}
+{
+    static byte[] Frame(params (int board, uint[] ids)[] bs)
+    {
+        var m = new List<byte> { (byte)bs.Length };
+        foreach (var (board, ids) in bs) { m.AddRange(BitConverter.GetBytes(board)); m.Add((byte)ids.Length); foreach (var i in ids) m.AddRange(BitConverter.GetBytes(i)); }
+        return [.. m];
+    }
+    var d = PetFrames.ParseDaevanion(Frame((21, [210113, 210033]), (26, [260113])));
+    Check(d != null && d[21].SequenceEqual(new uint[] { 210113, 210033 }) && d[26].Length == 1, "Daevanion: two boards");
+    Check(PetFrames.ParseDaevanion(Frame((21, [220113]))) == null, "Daevanion: node of another board rejected");
+    Check(PetFrames.ParseDaevanion([.. Frame((21, [210113])), 0]) == null, "Daevanion: trailing bytes rejected");
+    var real = Environment.GetEnvironmentVariable("DAE_HEX"); // optional: hex of a real 0x26e2 frame
+    if (real != null && PetFrames.ParseDaevanion(Convert.FromHexString(File.ReadAllText(real).Trim())) is var rd)
+        Console.WriteLine("real frame: " + (rd == null ? "null" : string.Join(", ", rd.Select(b => $"{b.Key}:{b.Value.Length}"))));
+    Console.WriteLine(fails == 0 ? "Daevanion OK" : $"Daevanion: {fails} FAILED");
+}
 if (args.Length == 0) return fails == 0 ? 0 : 1;
 var path = args[0];
 

@@ -12,6 +12,8 @@ abstract class PetSource : IDisposable
     HashSet<int> ports = new();
     protected readonly object Sync = new();
     protected int LinkType = 1;
+    /// Diagnostics (LiveCapture status): segments of the game's connections seen / frames decoded from them.
+    protected long GameSegments, GameFrames;
 
     public event Action<PetList, DateTime>? PetListReceived;
     public event Action<List<(uint id, uint val, byte tier, long ts)>, bool>? AchievementsReceived; // items, full list (login)
@@ -42,6 +44,8 @@ abstract class PetSource : IDisposable
     public event Action<uint, int>? ChargeReceived;
     // Black Cloud Merchant offer (0x9156) whenever its window/tab opens: tab id, offered items.
     public event Action<int, List<MerchantItem>>? MerchantReceived;
+    /// Own Daevanion boards (0x26e2 at login): board id -> open node ids.
+    public event Action<Dictionary<int, uint[]>>? DaevanionReceived;
     // Other players (PvP overlay, PlayerFrames): spawn in range (0x4536), moves (0x1a37 family), gone (0x4736),
     // killed (0x048d, killer also out of range), arena roster at match start (0x19e3), own character (0x3336) and own
     // combat power (0x5636).
@@ -88,6 +92,7 @@ abstract class PetSource : IDisposable
         if (Packets.Parse(data, LinkType) is not { } s) return;
         if (ports.Contains(s.DstPort))
         {
+            GameSegments++;
             var key = $"{s.Src}:{s.SrcPort}>{s.DstPort}";
             if (!streams.TryGetValue(key, out var st)) streams[key] = st = new TcpStream();
             st.Add(s.Seq, s.Flags, data.AsSpan(s.Offset, s.Length), (op, body) => Frame(op, body, ts));
@@ -109,6 +114,7 @@ abstract class PetSource : IDisposable
 
     void Frame(int op, byte[] body, DateTime ts)
     {
+        GameFrames++;
         if (OwnId != null) tracker.Feed(op, body, ts, OwnId); // own position: exact fixes (its estimate is not used)
         PlayerFrame(op, body);
         if (op == Frames.OpPetList && PetFrames.ParseList(body) is { } list)
@@ -123,6 +129,8 @@ abstract class PetSource : IDisposable
             tracker.MapChanged();
             MapChanged?.Invoke(BitConverter.ToUInt32(body, 0));
         }
+        else if (op == 0x26e2 && PetFrames.ParseDaevanion(body) is { } dae)
+            DaevanionReceived?.Invoke(dae);
         else if (op == 0x9156 && PetFrames.ParseMerchant(body) is { } merch)
             MerchantReceived?.Invoke(merch.tab, merch.items);
         else if (op == 0x0c61 && body.Length == 8 && body[1] == 0x04)
@@ -236,47 +244,121 @@ abstract class PetSource : IDisposable
 
 sealed class LiveCapture(string processName) : PetSource
 {
-    ILiveDevice? device;
+    LibPcapLiveDevice? device;
     System.Threading.Timer? poll;
-    bool? running;
+    readonly object open = new();
+    // Status diagnosis: since when the game has connections on the current adapter, and the counters at that point.
+    DateTime connAt;
+    long segAt, frameAt;
+    string? lastStatus;
+    static readonly TimeSpan Silence = TimeSpan.FromSeconds(30);
 
     public override void Start()
     {
-        try
-        {
-            var local = LocalAddress();
-            device = LibPcapLiveDeviceList.Instance.FirstOrDefault(d => d.Addresses.Any(a => Equals(a.Addr?.ipAddress, local)))
-                ?? throw new InvalidOperationException($"Kein Npcap-Adapter mit IP {local} gefunden.");
-            device.OnPacketArrival += (_, e) =>
-            {
-                var raw = e.GetPacket();
-                lock (Sync) Packet(raw.Timeval.Date, raw.Data.ToArray());
-            };
-            device.Open(new DeviceConfiguration { Mode = DeviceModes.MaxResponsiveness, ReadTimeout = 200, BufferSize = 16 << 20 });
-            LinkType = (int)device.LinkType;
-            device.Filter = "tcp and not net 127.0.0.0/8";
-            device.StartCapture();
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            var msg = ex is DllNotFoundException || ex.InnerException is DllNotFoundException
-                ? L.T("Npcap nicht gefunden – bitte Npcap installieren.", "Npcap not found – please install Npcap.") : ex.Message;
-            SetStatus("error", msg);
-            return;
-        }
+        System.Net.IPAddress? local = null;
+        try { local = LocalAddress(); }
+        catch (Exception ex) { OverlayForm.Log("Capture: keine Standard-Route – " + ex.Message); }
+        if (local != null && !Open(local, out var err)) { Status("error", err); return; }
         poll = new System.Threading.Timer(_ => Poll(), null, 0, 1000);
     }
+
+    /// Opens the Npcap adapter with this address in place of the current one; false + reason if it cannot.
+    bool Open(System.Net.IPAddress ip, out string err)
+    {
+        err = "";
+        lock (open)
+        {
+            LibPcapLiveDevice? next;
+            try { next = LibPcapLiveDeviceList.Instance.FirstOrDefault(d => d.Addresses.Any(a => Equals(a.Addr?.ipAddress, ip))); }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                err = ex is DllNotFoundException || ex.InnerException is DllNotFoundException
+                    ? L.T("Npcap nicht gefunden – bitte Npcap installieren.", "Npcap not found – please install Npcap.") : ex.Message;
+                OverlayForm.Log("Capture: Npcap-Fehler – " + ex);
+                return false;
+            }
+            if (next == null)
+            {
+                err = L.T($"Kein Npcap-Adapter mit IP {ip} – VPN oder virtueller Adapter?", $"No Npcap adapter with IP {ip} – VPN or virtual adapter?");
+                OverlayForm.Log($"Capture: kein Adapter mit {ip}; vorhanden: " + string.Join(" | ", LibPcapLiveDeviceList.Instance
+                    .Select(d => $"{d.Description} [{string.Join(", ", d.Addresses.Select(a => a.Addr?.ipAddress).Where(a => a != null))}]")));
+                return false;
+            }
+            try
+            {
+                Close();
+                next.OnPacketArrival += (_, e) =>
+                {
+                    var raw = e.GetPacket();
+                    lock (Sync) Packet(raw.Timeval.Date, raw.Data.ToArray());
+                };
+                next.Open(new DeviceConfiguration { Mode = DeviceModes.MaxResponsiveness, ReadTimeout = 200, BufferSize = 16 << 20 });
+                LinkType = (int)next.LinkType;
+                next.Filter = "tcp and not net 127.0.0.0/8";
+                next.StartCapture();
+                device = next;
+                connAt = default;
+                OverlayForm.Log($"Capture: Adapter {next.Description} ({ip}), Link-Typ {LinkType}{(Packets.Supported(LinkType) ? "" : " – nicht unterstützt")}");
+                return true;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                err = ex.Message;
+                OverlayForm.Log($"Capture: Adapter {next.Description} ({ip}) nicht geöffnet – {ex}");
+                return false;
+            }
+        }
+    }
+
+    bool OnDevice(System.Net.IPAddress ip) => device?.Addresses.Any(a => Equals(a.Addr?.ipAddress, ip)) == true;
 
     void Poll()
     {
         HashSet<int> now;
-        bool run;
-        try { now = Native.GamePorts(processName, out run); }
-        catch { return; }
+        HashSet<System.Net.IPAddress> local;
+        bool run, proxied;
+        try { now = Native.GamePorts(processName, out run, out local, out proxied); }
+        catch (Exception ex) { Status("error", L.T("Verbindungen des Spiels nicht lesbar: ", "Cannot read the game's connections: ") + ex.Message); return; }
         lock (Sync) SetPorts(now);
-        if (run == running) return;
-        running = run;
-        SetStatus(run ? "live" : "waiting", run ? L.T("Live – Aion 2 erkannt", "Live – Aion 2 detected") : L.T("Warte auf Aion 2 …", "Waiting for Aion 2 …"));
+
+        // the game's traffic runs over another adapter than the default route (VPN, second network card): follow it
+        if (local.Count > 0 && !local.Any(OnDevice))
+        {
+            var ip = local.First();
+            OverlayForm.Log($"Capture: Spiel nutzt {ip}, aktueller Adapter {device?.Description ?? "keiner"} – wechsle");
+            if (!Open(ip, out var err)) { Status("error", err); return; }
+        }
+
+        if (!run) { connAt = default; Status("waiting", L.T("Warte auf Aion 2 …", "Waiting for Aion 2 …")); return; }
+        if (now.Count == 0)
+        {
+            connAt = default;
+            if (proxied) Status("error", L.T("Aion 2 verbindet über einen lokalen Proxy (ExitLag, NoPing o.ä.) – Spieldaten nicht lesbar.",
+                                             "Aion 2 connects through a local proxy (ExitLag, NoPing etc.) – game data not readable."));
+            else Status("live", L.T("Live – Aion 2 erkannt", "Live – Aion 2 detected"));
+            return;
+        }
+        long seg, frames;
+        lock (Sync) (seg, frames) = (GameSegments, GameFrames);
+        if (connAt == default) (connAt, segAt, frameAt) = (DateTime.UtcNow, seg, frames);
+        bool due = DateTime.UtcNow - connAt > Silence;
+        if (due && seg == segAt)
+            Status("error", L.T($"Keine Spieldaten auf Adapter {device?.Description} – VPN/Firewall? Details in log.txt.",
+                                $"No game data on adapter {device?.Description} – VPN/firewall? Details in log.txt."));
+        else if (due && frames == frameAt)
+            Status("error", L.T("Spieldaten kommen an, sind aber nicht lesbar (neue Spielversion?).", "Game data arrives but cannot be read (new game version?)."));
+        else
+        {
+            Status("live", L.T("Live – Aion 2 erkannt", "Live – Aion 2 detected"));
+            if (due) (connAt, segAt, frameAt) = (DateTime.UtcNow, seg, frames); // next window
+        }
+    }
+
+    void Status(string state, string text)
+    {
+        if (lastStatus == state + text) return;
+        lastStatus = state + text;
+        SetStatus(state, text);
     }
 
     static System.Net.IPAddress LocalAddress()
@@ -288,10 +370,16 @@ sealed class LiveCapture(string processName) : PetSource
         return ((System.Net.IPEndPoint)s.LocalEndPoint!).Address;
     }
 
+    void Close()
+    {
+        try { device?.StopCapture(); device?.Close(); } catch { }
+        device = null;
+    }
+
     public override void Dispose()
     {
         poll?.Dispose();
-        try { device?.StopCapture(); device?.Close(); } catch { }
+        lock (open) Close();
     }
 }
 

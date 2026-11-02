@@ -7,6 +7,7 @@ import { R, mobGroups } from './logic'
 import { Empty, SelBar, rich } from './parts'
 import { Bar, Hint, LEAD, Page, T_BODY, T_PORTRAIT, T_TITLE, TILE as KTILE, TILE_CLICK, TILE_P, TILE_SEL, grid } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
+import { petName } from '@/core/data'
 
 const GRID = grid('pet'), TILE = cn(KTILE, TILE_CLICK, TILE_P), SEL = TILE_SEL
 
@@ -35,7 +36,7 @@ function Spot({ s }: { s: Any }) {
   const sel = V.spot === s.rank, pets = s.pets.slice(0, 3), more = s.pets.length - pets.length
   return (
     <div data-spot={s.rank} data-sel={sel || undefined} onClick={() => { V.spot = sel ? null : s.rank; V.sel = null; emit('fit'); bump() }}
-      data-tip={[t('pets.spot.tip', { n: s.n, r: R, pets: s.pets.length }), ...s.pets.map(({ t: x, n }: Any) => `${x.p.n}: ${n}× · ${x.souls}/${x.need} (Lv${x.lv})`)].join('\n')} className={cn(TILE, sel && SEL)}>
+      data-tip={[t('pets.spot.tip', { n: s.n, r: R, pets: s.pets.length }), ...s.pets.map(({ t: x, n }: Any) => `${petName(x.p)}: ${n}× · ${x.souls}/${x.need} (Lv${x.lv})`)].join('\n')} className={cn(TILE, sel && SEL)}>
       <Portrait por={pets[0] && mobGroups(pets[0].t)[0]?.mob.por} size={null} className={T_PORTRAIT} />
       <div className={T_BODY}>
         <div className="flex items-center gap-1.5">
@@ -53,7 +54,7 @@ function Spot({ s }: { s: Any }) {
               <span key={x.p.id} className="flex h-4 min-w-0 items-center gap-1 text-[#c3cad8]">
                 <Portrait por={mobGroups(x)[0]?.mob.por} size={16} className="rounded-[2px]" />
                 <span className="flex-none text-[9px]" style={{ color: x.col }}>●</span>
-                <span className={cn('min-w-0 flex-1 truncate', x.lv === 0 && 'text-cyan')}>{x.p.n}</span>
+                <span className={cn('min-w-0 flex-1 truncate', x.lv === 0 && 'text-cyan')}>{petName(x.p)}</span>
                 <i className="flex-none text-dim not-italic tabular-nums">{e.n}×</i>
               </span>
             )

@@ -136,6 +136,9 @@ readonly record struct TcpSegment(string Src, int SrcPort, string Dst, int DstPo
 
 static class Packets
 {
+    /// Link types Parse understands: null/loopback (0), Ethernet (1), raw IP (12 / 101, e.g. VPN tunnel adapters).
+    public static bool Supported(int linkType) => linkType is 0 or 1 or 12 or 101;
+
     // Ethernet (+VLAN) / IPv4 / IPv6 -> TCP segment, else null.
     public static TcpSegment? Parse(byte[] p, int linkType)
     {
@@ -150,6 +153,7 @@ static class Packets
                 if (etype == 0x8100) { etype = p[16] << 8 | p[17]; off = 18; }
             }
             else if (linkType == 0) { etype = p[0] == 2 ? 0x0800 : 0x86DD; off = 4; }
+            else if (linkType is 12 or 101) { etype = p[0] >> 4 == 4 ? 0x0800 : 0x86DD; off = 0; }
             else return null;
 
             int t, end;
@@ -393,6 +397,33 @@ static class PetFrames
                     list.Add((id, BitConverter.ToUInt32(b, o + 4), b[o + 16], BitConverter.ToInt64(b, o + 8))); // ts = last change, unix ms
             }
             return list;
+        }
+        catch { return null; }
+    }
+
+    // 0x26e2 (login): own Daevanion boards: u8 n, n x {u32 board id (class * 10 + slot), varint count, count x u32 open
+    // node id (board * 10000 + (row - 1) * 15 + col, the Start node included)}. Same ids as the plaync website's nodeId.
+    public static Dictionary<int, uint[]>? ParseDaevanion(byte[] b)
+    {
+        try
+        {
+            int o = 0, n = b[o++];
+            if (n is < 1 or > 8) return null;
+            var boards = new Dictionary<int, uint[]>();
+            for (int i = 0; i < n; i++)
+            {
+                int board = (int)BitConverter.ToUInt32(b, o); o += 4;
+                int cnt = Varint(b, ref o);
+                if (board is < 11 or > 109 || cnt is < 0 or > 225 || o + cnt * 4 > b.Length) return null;
+                var ids = new uint[cnt];
+                for (int k = 0; k < cnt; k++, o += 4)
+                {
+                    ids[k] = BitConverter.ToUInt32(b, o);
+                    if (ids[k] / 10000 != board || ids[k] % 10000 is < 1 or > 225) return null;
+                }
+                boards[board] = ids;
+            }
+            return o == b.Length ? boards : null;
         }
         catch { return null; }
     }

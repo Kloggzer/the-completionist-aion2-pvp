@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider'
 import { Bar, BarInfo, BarRight, CHIP, CHIP_ON, Columns, Empty, Foot, Hint, Note, Page, ROW, ROWS, SECT_BTN, Sect, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { LIVE, NONE_HINT, advice, ago, charKey, classId, className, data, forgetLive, live, loadLive, loading, plans, POOL_KEY, profile, save, settings, skillBases, totals, weights, type PoolPlan } from './daevanion'
-import { BREAKPOINTS, DEFAULT_BASE, TIERS, defaultBps, defaultTier, statCat, statMult, type DaeData, type Pool, type Skill } from './values'
+import { BREAKPOINTS, DEFAULT_BASE, TIERS, defaultTier, skillBps, statCat, statMult, type DaeData, type Pool, type Skill } from './values'
 
 const label = (o: { en: string; de: string }) => (lang() === 'de' ? o.de : o.en)
 const amount = (v: number, pct: boolean) => (v > 0 ? '+' : '') + (pct ? fmt(Math.round(v * 10) / 10) + ' %' : fmt(v))
@@ -42,6 +42,8 @@ function GoalSlider({ cls }: { cls: string }) {
         <span className="w-20 flex-none text-right">{t('dae.atk')}</span>
       </div>
       <div className="mt-0.5 text-center text-[11px] text-dim tabular-nums">{t('dae.slider', { a: Math.round(v * 100), d: Math.round((1 - v) * 100) })}</div>
+      <button data-pvp-focus data-tip={t('dae.pvpFocusTip')} onClick={() => save({ pvpFocus: !s.pvpFocus })}
+        className={cn(CHIP, 'mt-1 h-6 w-full justify-center text-[11.5px]', s.pvpFocus && CHIP_ON)}>{t(s.pvpFocus ? 'dae.pvpFocusOn' : 'dae.pvpFocus')}</button>
     </div>
   )
 }
@@ -55,7 +57,7 @@ function LiveBlock() {
       </button>
       {l && <button className={SECT_BTN} onClick={() => forgetLive(char)}><Trash2 />{t('dae.liveForget')}</button>}
     </>}>{t('dae.sect.live')}</Sect>
-    <Note>{!p ? t(NONE_HINT) : l ? `${p.name} · ${t('dae.live', { age: ago(l.at) })}` : p.name}</Note>
+    <Note>{!p ? t(NONE_HINT) : l ? `${p.name} · ${t(l.game ? 'dae.liveGame' : 'dae.live', { age: ago(l.at) })}` : p.name}</Note>
   </>
 }
 
@@ -251,7 +253,7 @@ function Skills({ d, cls, p }: { d: DaeData; cls: string; p: PoolPlan }) {
     <div className={ROWS} data-skills>
       {order.map(({ sk, si }) => {
         const tier = w.tiers[sk.en] ?? defaultTier(cls, sk), base = bases[si], own = w.base?.[sk.en] != null
-        const bps = w.bps?.[sk.en] ?? defaultBps(sk), k = bought(si)
+        const bps = skillBps(cls, sk, w), max = tier === 4, k = bought(si)
         // highest breakpoint the plan reaches; levels above it only lie on the way to other nodes
         const b0 = base ?? DEFAULT_BASE, linear = !bps.length, top = linear ? b0 + k : Math.max(0, ...bps.filter(x => x > b0 && x <= b0 + k))
         const used = linear ? k : top ? top - b0 : 0, way = k - used
@@ -277,7 +279,7 @@ function Skills({ d, cls, p }: { d: DaeData; cls: string; p: PoolPlan }) {
                 {!own && base != null && <i className="text-dim not-italic">plaync</i>}
               </span>
               <span className="flex items-center gap-0.5" data-tip={t('dae.bpTip')}>
-                {BREAKPOINTS.map(x => {
+                {!max && BREAKPOINTS.map(x => {
                   const on = bps.includes(x), spec = sk.spec?.[x]
                   return <button key={x} data-bp={x} data-tip={spec ? t('dae.lv', { n: x }) + ': ' + spec.join(' · ') : undefined} onClick={() => put('bps', sk.en, on ? bps.filter(y => y !== x) : [...bps, x].sort((m, n) => m - n))}
                     className={cn(CHIP, 'h-5 px-1 text-[11px]', on && CHIP_ON, spec && 'underline decoration-dotted underline-offset-2')}>{x}</button>

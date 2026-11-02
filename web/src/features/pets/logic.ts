@@ -1,6 +1,6 @@
 // Planning: which soul pets are still missing on a map, which mobs drop them and where to farm.
 import { G, NEED, S, U, V, bump, type Any } from '@/core/state'
-import { zoneAt, zoneOfSpawn, nearestZone } from '@/core/data'
+import { zoneAt, zoneOfSpawn, nearestZone, petName } from '@/core/data'
 import { t } from '@/core/i18n'
 import { emit } from '@/core/bus'
 
@@ -33,7 +33,7 @@ export function computeTargets(m: Any): Any[] {
     prio: (a: Any, b: Any) => b.prio - a.prio || b.spawns - a.spawns,
     near: (a: Any, b: Any) => (a.done - b.done) || a.left - b.left || b.prio - a.prio,
     spawns: (a: Any, b: Any) => b.spawns - a.spawns,
-    name: (a: Any, b: Any) => a.p.n.localeCompare(b.p.n),
+    name: (a: Any, b: Any) => petName(a.p).localeCompare(petName(b.p)),
   } as Record<string, (a: Any, b: Any) => number>)[U.sort] || ((a: Any, b: Any) => b.prio - a.prio)
   out.sort(by)
   out.forEach((x, i) => { x.col = PALETTE[i % PALETTE.length]; x.area = bestArea(m, x) })

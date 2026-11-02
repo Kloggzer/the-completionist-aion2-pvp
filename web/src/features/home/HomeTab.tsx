@@ -2,7 +2,7 @@
 // "almost done". Every block links to its tab; the common actions (+1, bell) work right here.
 import { Clock, Plus, Skull, Star, User, type LucideIcon } from 'lucide-react'
 import { G, S, U, V, hasState, useApp, type Any } from '@/core/state'
-import { selectMap, mapName } from '@/core/data'
+import { selectMap, mapName, petName } from '@/core/data'
 import { goTab } from '@/core/nav'
 import { fmtDist } from '@/core/geo'
 import { hm, fmt, t } from '@/core/i18n'
@@ -119,7 +119,7 @@ function FarmHere() {
         </div>
       )}
       {n?.mob && (
-        <div className={cn(ROW, ROW_CLICK)} data-tip={`${n.mob.mob.n} → ${n.mob.t.p.n}`}
+        <div className={cn(ROW, ROW_CLICK)} data-tip={`${n.mob.mob.n} → ${petName(n.mob.t.p)}`}
           onClick={() => { V.multi = new Set([n.mob.t.p.id]); V.spotsSel = false; V.spot = V.cube = null; goTab('targets', `[data-pet="${n.mob.t.p.id}"][data-sel]`) }}>
           <span className="w-10 flex-none text-[10.5px] tracking-wide text-dim uppercase">{t('map.hudMob')}</span>
           <Portrait por={n.mob.mob.por} size={22} className="-my-1" />
@@ -128,7 +128,7 @@ function FarmHere() {
         </div>
       )}
       {spot && (
-        <div className={cn(ROW, ROW_CLICK)} data-tip={spot.pets.map((p: Any) => p.t.p.n).join(', ')}
+        <div className={cn(ROW, ROW_CLICK)} data-tip={spot.pets.map((p: Any) => petName(p.t.p)).join(', ')}
           onClick={() => { V.spot = spot.rank; V.cube = null; goTab('spots', `[data-spot="${spot.rank}"]`) }}>
           <span className="w-10 flex-none text-[10.5px] tracking-wide text-dim uppercase">{t('map.hudSpot')}</span>
           <Portrait por={spot.pets[0]?.t.mobs[0]?.por} size={22} className="-my-1" />

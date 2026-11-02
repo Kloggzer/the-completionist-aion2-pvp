@@ -131,9 +131,14 @@ static partial class PlayerLookup
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
             using var r = await http.GetAsync(u, cts.Token);
+            if (!r.IsSuccessStatusCode) OverlayForm.Log($"PLAYNC HTTP {(int)r.StatusCode}: {u.AbsolutePath}");
             return ((int)r.StatusCode, await r.Content.ReadAsStringAsync(cts.Token));
         }
-        catch { return (0, null); }
+        catch (Exception e)
+        {
+            OverlayForm.Log($"PLAYNC {u.AbsolutePath}: {e.GetType().Name} {e.Message}");
+            return (0, null);
+        }
     }
 
     static async Task<JsonNode?> GetJson(string url)

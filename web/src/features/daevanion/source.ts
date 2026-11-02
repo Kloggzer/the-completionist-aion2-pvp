@@ -72,7 +72,7 @@ export function watch(load: (char: string) => void) {
     const o = P.own
     if (!o?.name || tried.has(o.name)) return
     const l = U.daeLive?.[o.name]
-    if (l && Date.now() - l.at < MAX_AGE) return
+    if (l && Date.now() - l.at < MAX_AGE && l.skills) return // boards from the game: still load the skill levels
     tried.add(o.name)
     load(o.name)
   }, 0))

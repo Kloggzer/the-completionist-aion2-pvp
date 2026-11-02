@@ -2,7 +2,8 @@
 import { host, onHost } from './host'
 import { G, S, U, V, saveUi, bump, type Any } from './state'
 import { emit } from './bus'
-import { t } from './i18n'
+import { lang, t } from './i18n'
+import PET_DE from '@/features/pets/petNamesDe.json'
 
 const DATA = '/data/'
 
@@ -13,6 +14,9 @@ export async function getJson(path: string): Promise<Any> {
 }
 
 export function showMapMsg(msg: string) { V.mapMsg = msg || ''; bump() }
+
+/** Pet display name in the UI language: German from aion2.app (tools/fetch_petnames.py), else the English name. */
+export const petName = (p: Any): string => (lang() === 'de' && (PET_DE as Record<string, string>)[p?.id]) || p?.n || ''
 
 /** Map display name in the UI language. */
 export const mapName = (name: string) => { const k = 'map.' + name, v = t(k); return v === k ? name : v }

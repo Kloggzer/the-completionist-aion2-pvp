@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Radar, Minus, Plus, Scan, CircleDot, Lock, LockOpen, LocateFixed } from 'lucide-react'
 import { G, S, U, V, manual, useApp, type Any } from '@/core/state'
-import { mapName, zoneOfSpawn } from '@/core/data'
+import { mapName, zoneOfSpawn, petName } from '@/core/data'
 import { posAge, ago, fmtDist, relHeight } from '@/core/geo'
 import { hkText } from '@/core/session'
 import { t } from '@/core/i18n'
@@ -28,11 +28,11 @@ function TipBox({ tip }: { tip: NonNullable<Tip> }) {
   const it = tip.it, m = G.md[U.map]
   let body
   if (it.farm) body = <><b className="font-semibold text-gold">{t('map.tipFarm')} #{it.farm.rank} {it.farm.name}</b><br /><span className="text-muted-foreground">{t('farm.spot.route', { n: it.farm.route.length, len: Math.round(it.farm.len), min: Math.max(1, Math.round(it.farm.secs / 60)) })}</span></>
-  else if (it.spot) body = <><b className="font-semibold text-gold">#{it.spot.rank} {it.spot.name}</b><br /><span className="text-muted-foreground">{it.spot.pets.map((p: Any) => p.t.p.n + ' ' + p.n + '×').join(', ')}</span></>
+  else if (it.spot) body = <><b className="font-semibold text-gold">#{it.spot.rank} {it.spot.name}</b><br /><span className="text-muted-foreground">{it.spot.pets.map((p: Any) => petName(p.t.p) + ' ' + p.n + '×').join(', ')}</span></>
   else if (it.cube) body = <><b className="font-semibold text-gold">{t('map.tipCube')}</b> {it.cube.name}<br /><span className="text-muted-foreground">{cubeDone(m).has(it.cube.key) ? t('map.tipFound') : t('map.tipOneOf', { n: it.cube.pts.length })}{relHeight(it.h) && <> · <b className="text-foreground">{relHeight(it.h)}</b></>}</span></>
   else body = <>
     <b className="font-semibold text-gold">{it.mob.n}</b> <span className="text-muted-foreground">Lv {it.mob.lv}{it.mob.named ? ' · ' + t('map.named') : it.mob.r !== 'Normal' ? ' · ' + it.mob.r : ''}</span><br />
-    → {it.t.p.n} <span className="text-muted-foreground">{it.t.done ? 'Lv3' : `${it.t.souls}/${it.t.need}`} · {zoneOfSpawn(m, it.i)}</span>
+    → {petName(it.t.p)} <span className="text-muted-foreground">{it.t.done ? 'Lv3' : `${it.t.souls}/${it.t.need}`} · {zoneOfSpawn(m, it.i)}</span>
   </>
   return <div ref={ref} className="pointer-events-none absolute z-[5] max-w-60 rounded-sm border border-[#3a4560] bg-[#0d1017ee] px-2 py-1.5 text-[11.5px] shadow-[0_4px_14px_#0008]">{body}</div>
 }
@@ -61,7 +61,7 @@ function RadarHud() {
   const n = V.near || {}, old = posAge() > 120
   return (
     <div className={box}>
-      <HudLine lbl={t('map.hudMob')} o={n.mob}>{n.mob && <>{n.mob.mob.n} <i className="text-muted-foreground not-italic">→ {n.mob.t.p.n} {n.mob.t.souls}/{n.mob.t.need}</i></>}</HudLine>
+      <HudLine lbl={t('map.hudMob')} o={n.mob}>{n.mob && <>{n.mob.mob.n} <i className="text-muted-foreground not-italic">→ {petName(n.mob.t.p)} {n.mob.t.souls}/{n.mob.t.need}</i></>}</HudLine>
       <HudLine lbl={t('map.hudSpot')} o={n.spot}>{n.spot && `#${n.spot.s.rank} ${n.spot.s.name}`}</HudLine>
       {U.layers.cubes && <HudLine lbl={t('map.hudCube')} o={n.cube}>{n.cube?.c.name}</HudLine>}
       <div className={cn('mt-0.5 text-[10.5px] text-dim', old && 'text-gold')}>{t('map.posAgo', { ago: ago(posAge()) })}{old && t('map.posOld')}</div>

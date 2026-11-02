@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { MiniStepper } from '@/components/kit'
 import { cn } from '@/lib/utils'
+import { petName } from '@/core/data'
 
 export const addSoul = (id: number) => host({ type: 'addSoul', id, n: 1 }) // the host answers with 'soul' (pets/index.ts)
 
@@ -37,12 +38,12 @@ export function PetControls({ x }: { x: Any }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
     <span data-manual className="-my-1 flex w-10 flex-none flex-col self-stretch border-l" onClick={stop}>
-      <button data-add-soul className={cn(col, '[&_svg]:size-4.5')} disabled={lv >= 3} data-tip={t('man.soul.tip', { name: x.p.n })} onClick={() => addSoul(id)}><Plus /></button>
+      <button data-add-soul className={cn(col, '[&_svg]:size-4.5')} disabled={lv >= 3} data-tip={t('man.soul.tip', { name: petName(x.p) })} onClick={() => addSoul(id)}><Plus /></button>
       {/* Open state lives in V: a level change moves the tile to another group (remount), the popover stays open. */}
       <Popover open={V.petEdit === id} onOpenChange={o => { V.petEdit = o ? id : null; bump() }}>
         <PopoverTrigger data-pet-edit data-tip={t('man.edit')} className={cn(col, 'border-t text-[11px] font-semibold')}>Lv</PopoverTrigger>
         <PopoverContent side="left" align="start" initialFocus={false} finalFocus={false} className="w-56 gap-2 p-2" onClick={stop}>
-          <div className="truncate text-[12.5px] font-semibold">{x.p.n}</div>
+          <div className="truncate text-[12.5px] font-semibold">{petName(x.p)}</div>
           <MiniStepper label={t('man.level')} value={lv} minus={lv > 0} plus={lv < 3} tips={['−1', '+1']}
             onStep={d => setPet(id, lv + d, 0)} />
           <MiniStepper label={t('man.souls')} value={lv >= 3 ? '–' : `${souls}/${need}`} minus={lv < 3 && souls > 0} plus={lv < 3}

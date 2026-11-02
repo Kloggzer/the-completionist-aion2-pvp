@@ -7,6 +7,7 @@ import { toast } from '@/core/toast'
 import { say } from '@/core/tts'
 import { recompute } from './logic'
 import { keepInView } from './manual'
+import { petName } from '@/core/data'
 
 // Registered before the map feature's handler, which then computes V.near from the fresh targets.
 on('recompute', recompute)
@@ -23,7 +24,7 @@ function flash(pet: number) {
 
 function onSoul(ev: Any) {
   const p = G.petById.get(ev.pet)
-  const name = p ? p.n : `Pet #${ev.pet}`
+  const name = p ? petName(p) : `Pet #${ev.pet}`
   ev.prev = { level: S.state.levels[ev.pet] || 0, souls: S.state.souls[ev.pet] || 0 } // before: merchant purchase check (soulGain)
   S.state.levels[ev.pet] = ev.level; S.state.souls[ev.pet] = ev.souls
   emit('recompute')

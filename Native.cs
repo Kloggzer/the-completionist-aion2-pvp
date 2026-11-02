@@ -135,24 +135,30 @@ static class Native
         return vk != 0;
     }
 
-    // Local TCP ports of a process' outgoing connections (not loopback, not HTTPS/HTTP).
-    public static HashSet<int> GamePorts(string processName, out bool running)
+    // Local TCP ports of a process' outgoing connections (not loopback, not HTTPS/HTTP), plus the local addresses they
+    // use (= the adapter that carries the game's traffic) and whether the game talks to a local proxy (VPN/booster tools).
+    public static HashSet<int> GamePorts(string processName, out bool running, out HashSet<IPAddress> local, out bool proxied)
     {
         var ports = new HashSet<int>();
-        running = false;
+        local = new();
+        running = proxied = false;
         var pids = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(processName))
             .Select(p => p.Id).Where(id => id != Environment.ProcessId).ToHashSet();
         if (pids.Count == 0) return ports;
         running = true;
-        foreach (var (pid, lport, remote, rport) in TcpRows(2, 24).Concat(TcpRows(23, 56)))
-            if (pids.Contains(pid) && rport is not (0 or 80 or 443) && !IPAddress.IsLoopback(remote))
-                ports.Add(lport);
+        foreach (var (pid, laddr, lport, remote, rport) in TcpRows(2, 24).Concat(TcpRows(23, 56)))
+        {
+            if (!pids.Contains(pid) || rport is 0 or 80 or 443) continue;
+            if (IPAddress.IsLoopback(remote)) { proxied = true; continue; }
+            ports.Add(lport);
+            local.Add(laddr);
+        }
         return ports;
     }
 
-    static List<(int pid, int lport, IPAddress remote, int rport)> TcpRows(int af, int rowSize)
+    static List<(int pid, IPAddress local, int lport, IPAddress remote, int rport)> TcpRows(int af, int rowSize)
     {
-        var rows = new List<(int, int, IPAddress, int)>();
+        var rows = new List<(int, IPAddress, int, IPAddress, int)>();
         int size = 0;
         GetExtendedTcpTable(IntPtr.Zero, ref size, false, af, 5 /* TCP_TABLE_OWNER_PID_ALL */, 0);
         size += 4096;
@@ -168,9 +174,9 @@ static class Native
             {
                 int o = 4 + i * rowSize;
                 if (af == 2)
-                    rows.Add((BitConverter.ToInt32(raw, o + 20), Port(raw, o + 8), new IPAddress(raw[(o + 12)..(o + 16)]), Port(raw, o + 16)));
+                    rows.Add((BitConverter.ToInt32(raw, o + 20), new IPAddress(raw[(o + 4)..(o + 8)]), Port(raw, o + 8), new IPAddress(raw[(o + 12)..(o + 16)]), Port(raw, o + 16)));
                 else
-                    rows.Add((BitConverter.ToInt32(raw, o + 52), Port(raw, o + 20), new IPAddress(raw[(o + 24)..(o + 40)]), Port(raw, o + 44)));
+                    rows.Add((BitConverter.ToInt32(raw, o + 52), new IPAddress(raw[o..(o + 16)]), Port(raw, o + 20), new IPAddress(raw[(o + 24)..(o + 40)]), Port(raw, o + 44)));
             }
         }
         finally { Marshal.FreeHGlobal(buf); }

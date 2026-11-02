@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { Bar, CHIP, CHIP_ON, ToolbarStrip } from '@/components/kit'
 export { Empty } from '@/components/kit'
 import { SORTS, clearMulti, mobGroups, recompute, spotsForSelection } from './logic'
+import { petName } from '@/core/data'
 
 export { rich } from '@/components/kit'
 
@@ -84,7 +85,7 @@ const barBtn = 'flex flex-none items-center gap-1 rounded-sm border px-1.5 py-0.
 /** Selection bar above the targets/spots list while pets are multi-selected. */
 export function SelBar() {
   if (!V.multi.size) return null
-  const sel = V.targets.filter((x: Any) => V.multi.has(x.p.id)), names = sel.map((x: Any) => x.p.n).join(', ')
+  const sel = V.targets.filter((x: Any) => V.multi.has(x.p.id)), names = sel.map((x: Any) => petName(x.p)).join(', ')
   const one = sel.length === 1 ? mobGroups(sel[0])[0] : null
   const spotsTab = U.tab === 'spots'
   return (

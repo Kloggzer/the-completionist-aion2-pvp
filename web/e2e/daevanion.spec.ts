@@ -27,3 +27,11 @@ test('without character data: class, points and goal give a plan on the boards',
   await expect(skill.getByRole('button', { name: 'Nie' })).toHaveClass(/border-red/)
   await page.screenshot({ path: 'e2e/.out/shots/dae-respec.png', fullPage: true })
 })
+
+test('boards from the game (0x26e2): own nodes on the boards, marked as from the game', async ({ page }) => {
+  const app = await openApp(page, { ui: { tab: 'dae' } })
+  await app.send({ type: 'pvp', own: { name: 'Testdaeva', srv: 2306, pc: 10, race: 2, lv: 45, il: 3000, cp: 0 }, players: [], party: [], kills: [] })
+  await app.send({ type: 'daeGame', boards: { 21: [210113, 210033, 210034], 26: [260113] } })
+  await expect(page.getByText(/Boards aus dem Spiel/)).toBeVisible()
+  await expect(page.locator('[data-board="Nezekan"] [data-node="own"], [data-board="Nezekan"] [data-node="drop"]')).toHaveCount(2)
+})

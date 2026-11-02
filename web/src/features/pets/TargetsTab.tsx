@@ -3,7 +3,7 @@ import { Star } from 'lucide-react'
 import { G, S, U, V, bump, hasState, manual, useApp, type Any } from '@/core/state'
 
 import { emit } from '@/core/bus'
-import { mapName } from '@/core/data'
+import { mapName, petName } from '@/core/data'
 import { ago, dirTo, fmtDist, posAge } from '@/core/geo'
 import { t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
@@ -50,11 +50,11 @@ function Near() {
     <Sect sub={'· ' + t('pets.nearPos', { est: S.pos?.est ? t('pets.nearEst') : '', ago: ago(posAge()) })}>{t('pets.near')}</Sect>
     <div className={GRID}>
       {n.close.map((o: Any) => (
-        <div key={'m' + o.t.p.id} data-pet={o.t.p.id} className={cn(TILE, V.multi.has(o.t.p.id) && SEL)} data-tip={`${o.mob.n} → ${o.t.p.n} (Lv${o.t.lv})`} onClick={() => selectPet(o.t.p.id)}>
+        <div key={'m' + o.t.p.id} data-pet={o.t.p.id} className={cn(TILE, V.multi.has(o.t.p.id) && SEL)} data-tip={`${o.mob.n} → ${petName(o.t.p)} (Lv${o.t.lv})`} onClick={() => selectPet(o.t.p.id)}>
           <Portrait por={o.mob.por} size={null} className={T_PORTRAIT} />
           <div className={T_BODY}>
             <div className="flex items-start gap-1.5"><Dot col={o.t.col} /><span className={T_TITLE}>{o.mob.n}</span></div>
-            <div className={T_SUB}>{o.t.p.n}</div>
+            <div className={T_SUB}>{petName(o.t.p)}</div>
             <div className={T_FOOT}>
               <Pbar lv={o.t.lv} frac={o.t.souls / o.t.need} />
               <div className={T_META}>
@@ -90,13 +90,13 @@ const tagTxt = (mob: Any) => [mob.named ? t('pets.tag.named') : mob.r === 'Hero'
 function TargetTile({ x }: { x: Any }) {
   const on = V.multi.has(x.p.id), groups = mobGroups(x), g0 = groups[0], man = manual()
   const where = `${g0.n} ${lvTxt(g0.lv)}${groups.length > 1 ? ` +${groups.length - 1}` : ''}${x.area.name ? ` · ${x.area.name}` : ''}`
-  const tip = [`${x.p.n} (${x.p.c}, Lv${x.lv})${x.area.name ? ' · ' + x.area.name : ''}`,
+  const tip = [`${petName(x.p)} (${x.p.c}, Lv${x.lv})${x.area.name ? ' · ' + x.area.name : ''}`,
     ...groups.map(g => `${g.n} ${lvTxt(g.lv)} · ${g.count}× ${t('pets.spawnsTip')}${tagTxt(g.mob) ? ' · ' + tagTxt(g.mob) : ''}`)].join('\n')
   return (
     <div data-pet={x.p.id} data-sel={on || undefined} className={cn(TILE, on && SEL, man && 'pr-0')} data-tip={tip} onClick={() => selectPet(x.p.id)}>
       <Portrait por={g0.mob.por} size={null} className={T_PORTRAIT} />
       <div className={T_BODY}>
-        <div className="flex items-start gap-1.5"><Dot col={x.col} /><span className={T_TITLE}>{x.p.n}</span>{V.multi.size > 0 && <PinBox on={on} />}</div>
+        <div className="flex items-start gap-1.5"><Dot col={x.col} /><span className={T_TITLE}>{petName(x.p)}</span>{V.multi.size > 0 && <PinBox on={on} />}</div>
         <div className={T_SUB}>{where}</div>
         <div className={T_FOOT}>
           {x.done ? <Bar frac={1} /> : <Pbar lv={x.lv} frac={x.souls / x.need} />}
