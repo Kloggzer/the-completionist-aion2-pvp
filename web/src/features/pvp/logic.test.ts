@@ -324,8 +324,8 @@ describe('dungeon panel', () => {
     expect(d.kina).toBe(12000)
     const p = ownLootPanel('Krao Cave', { 'Red Agate Cloak': 20.39 })
     expect(p.map(s => s.h)).toEqual(['Dieser Run: 2 Items', 'Gesamt: 2 Runs · Ø 4.0 Items'])
-    expect(p[0].l.map(x => x.t)).toEqual(['Artwork: Krao', 'Red Agate Cloak', '+7000 Kina'])
-    expect(p[1].l.map(x => x.t)).toEqual(['Artwork: Krao · 1/2 Runs (50 %)', 'Red Agate Cloak · 2/2 Runs (100 %) · Tabelle 20 %', 'Odyle · 1/2 Runs (50 %)', 'Ø 6000 Kina pro Run'])
+    expect(p[0].l.map(x => x.t)).toEqual(['Artwork: Krao', 'Red Agate Cloak', '+7000 Kinah'])
+    expect(p[1].l.map(x => x.t)).toEqual(['Artwork: Krao · 1/2 Runs (50 %)', 'Red Agate Cloak · 2/2 Runs (100 %) · Tabelle 20 %', 'Odyle · 1/2 Runs (50 %)', 'Ø 6000 Kinah pro Run'])
     expect(ownLootPanel('Fire Temple')[0].l[0].t).toBe('Noch nichts gelootet')
     // after leaving: the run that just ended (clear reward), not after AFTER
     const { lastRun, AFTER } = await import('./loot')

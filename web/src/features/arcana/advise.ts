@@ -14,17 +14,25 @@ import { GRADES, KINDS, arcSkills, type ArcData, type Kind } from './arcana'
 export const LEVELS = [1, 2, 3]
 const SAMPLES = 800
 
-/** `state`: none = no character of this class, loading = its cards are being read, cards = from the page. */
-export type Model = { names: string[]; lv: number[]; dmg: (lv: number[]) => number; state: 'none' | 'loading' | 'cards' }
+/** `state`: other = the class is not the own character's, none = no cards from the page, loading = its cards are
+ *  being read, cards = from the page. */
+export type Model = { names: string[]; lv: number[]; dmg: (lv: number[]) => number; state: 'other' | 'none' | 'loading' | 'cards' }
+
+// pure (called during render); the refetch below runs from an effect
+function cardsState(cls: string): Model['state'] {
+  const char = charKey(), l = live(char)
+  if (l && l.cls !== cls) return 'other'
+  if (l?.gear?.arcana) return 'cards'
+  return loading.has(char) ? 'loading' : 'none'
+}
 
 // gear read before the cards were (older save): read the page again once per character and session
 const refetched = new Set<string>()
-function cardsState(cls: string): Model['state'] {
-  const char = charKey(), l = live(char)
-  if (!l || l.cls !== cls) return 'none'
-  if (l.gear?.arcana) return 'cards'
-  if (!refetched.has(char)) { refetched.add(char); void loadLive(char, true) }
-  return loading.has(char) ? 'loading' : 'none'
+export function refetchCards(char = charKey()) {
+  const l = live(char)
+  if (!l || l.gear?.arcana || refetched.has(char)) return
+  refetched.add(char)
+  void loadLive(char, true)
 }
 
 /** The character's damage as a function of its skill levels (PvE, damage only). */

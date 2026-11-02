@@ -43,13 +43,15 @@ Design B, "sidebar and tiles". Every new or reworked view follows this file. The
 - The toolbar holds the page's filters and the view switch. The list below follows the normal anatomy (KpiRow, panels).
 - The selection bar (`SelBar`) is sticky at the top of the list and uses tokens like the page bar.
 - The canvas draws game art; its colours may be fixed. HTML on top of the map (pills, HUD, tooltip) uses tokens.
+  The map section has the `dark` class (App.tsx): the map is dark art in both themes, so its overlays use the dark set.
 
 ## Navigation
 
 - Four areas: Today, Pets, Farming, Character (`components/Sidebar.tsx`, `AREAS`). A new page is one entry in `AREAS`.
 - From 760 px: sidebar with every page. Below, or with the sidebar collapsed: area icons only, the pages of the
   current area as a `Seg` above the content (`SubNav`). Below 560 px the SubNav shows the icon only for unselected pages.
-- An area remembers its last page (`U.lastPage`). Badges count open items only (missing pets, open achievements).
+- An area remembers its last page (`U.lastPage`, written on every navigation). Badges count open items worth acting on
+  now only (missing pets, spots, merchant offers to buy); no large standing counts.
 - Jump to another page with `goTab(tab, selector)` so the target scrolls into view. No in-page tab bars for pages;
   `PanelTabs` is only for detail areas inside one panel.
 

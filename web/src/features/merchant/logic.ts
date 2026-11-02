@@ -2,7 +2,7 @@
 // Pure logic: farm difficulty from the spawn data, verdicts by the souls still missing to Lv 3, the hourly offer reset,
 // merging the offer the game sends (0x9156, host message 'merchant') into the hand-entered one.
 import { G, NEED, S, U, manual, type Any } from '@/core/state'
-import { zoneOfSpawn } from '@/core/data'
+import { petName, zoneOfSpawn } from '@/core/data'
 import { achFaction } from '@/features/progress/achievements'
 import { petInfo, soulPets } from '@/features/pets/logic'
 import PET_ITEMS from './petItems.json'
@@ -262,11 +262,12 @@ export type OfferVerdict = Verdict | 'event' | 'unknown'
 export const OFFER_ORDER: Record<OfferVerdict, number> = { event: 0, buy: 1, opt: 2, have: 3, unknown: 4 }
 export function offerKind(o: Offer): { p: Any | null; name: string | null; v: OfferVerdict } {
   const p = catPet(o.id)
-  if (p) return { p, name: p.n, v: verdict(soulsLeft(p.id), diffOf(p)) }
+  // shown name in the UI language (list, toast); only unlisted pet items keep their English item name
+  if (p) return { p, name: petName(p), v: verdict(soulsLeft(p.id), diffOf(p)) }
   const n = isPetItem(o.id) ? itemName(o.id) : undefined
   return { p: null, name: n ?? null, v: n ? 'event' : 'unknown' }
 }
-/** Unbought offers worth buying (KAUFEN or merchant-only). */
+/** Unbought offers worth buying (verdict buy or merchant-only). */
 export const buyCount = (o: Offers) => o.items.filter(x => !x.bought && ['buy', 'event'].includes(offerKind(x).v)).length
 
 // ---------------------------------------------------------------- app glue

@@ -33,13 +33,14 @@ export function onSoul(ev: Any, now = Date.now()) {
   if (r) { U.merch = r.offers; saveUi(['merch']); bump() }
 }
 
-/** Take over a merchant tab read from the game; toast newly offered pets worth buying (toast() honours U.toasts). */
+/** Take over a merchant tab read from the game; toast newly offered pets worth buying (toast() honours U.toasts),
+ *  not while the merchant page is open: the list shows them already. */
 export function gameOffer(tab: number, items: GameItem[], now = Date.now()) {
   syncChar(now)
   const { offers, added } = mergeGame(freshOffers(U.merch, now), tab, items)
   U.merch = offers; saveUi(['merch']); bump()
   const buy = added.map(id => offerKind({ id })).filter(k => k.v === 'buy' || k.v === 'event')
-  if (buy.length) toast(t('merch.toast', { n: buy.length }), buy.map(k => k.name).join(', '), 1, true)
+  if (buy.length && U.tab !== 'merchant') toast(buy.length === 1 ? t('merch.toast1') : t('merch.toast', { n: buy.length }), buy.map(k => k.name).join(', '), 1, true)
 }
 
 on('init', () => { rollOffers(); syncChar() })

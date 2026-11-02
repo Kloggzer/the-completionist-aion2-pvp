@@ -135,7 +135,7 @@ function Vals({ dmg, ehp, max = 0 }: { dmg: number; ehp: number; max?: number })
 function ValHead({ children }: { children?: ReactNode }) {
   return (
     <div className="flex min-h-6 items-center gap-2 px-2.5 text-[11.5px] text-dim">
-      <span className="min-w-0 flex-1 truncate normal-case tracking-normal">{children}</span>
+      <span className="min-w-0 flex-1 truncate">{children}</span>
       <span className="flex flex-none gap-1"><span className="w-[4.6rem] text-right">{t('dae.dmgShort')}</span><span className="w-[4.6rem] text-right">{t('dae.ehpShort')}</span></span>
     </div>
   )

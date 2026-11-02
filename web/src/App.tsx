@@ -95,7 +95,9 @@ export default function App() {
       <NpcapNotice />
       <main className={cn('@container/main flex min-h-0 flex-1 flex-col', S.site && 'invisible')}>
         <div data-split className={cn('flex min-h-0 flex-1 flex-col', both && '@min-[1100px]/main:flex-row')} style={size}>
-          <section className={cn('relative min-h-0 min-w-0', view === 'list' ? 'hidden' : view === 'map' ? 'flex-1' : 'h-(--map-h) flex-none',
+          {/* the map is dark game art in both themes: `dark` resolves the tokens of its overlays (pills, HUD, tips,
+              toasts) to the dark set there; text-foreground because inherited text colour was resolved above */}
+          <section className={cn('dark @container/map relative min-h-0 min-w-0 text-foreground', view === 'list' ? 'hidden' : view === 'map' ? 'flex-1' : 'h-(--map-h) flex-none',
             both && '@min-[1100px]/main:h-auto @min-[1100px]/main:w-(--map-w)')}>
             <MapView />
             {view !== 'list' && <Toasts className="top-9 left-1.5" />}

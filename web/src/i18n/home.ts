@@ -2,7 +2,7 @@
 export default {
   de: {
     'home.open': '{tab} öffnen',
-    'home.next': 'Als Nächstes', 'home.next.none': 'Keine Termine mit Glocke in den nächsten 24 Stunden.', 'home.allTimers': 'alle Timer',
+    'home.next': 'Als Nächstes', 'home.onceOff': 'Nur diesen Termin stummschalten', 'home.onceOn': 'Diesen Termin wieder ansagen', 'home.next.none': 'Keine Termine mit Glocke in den nächsten 24 Stunden.', 'home.allTimers': 'alle Timer',
     'home.now': 'jetzt', 'home.due': 'fällig', 'home.reset': 'Daily-Reset in {d}',
     'home.kpi.pets': 'Pets hier', 'home.kpi.today': 'Checkliste', 'home.kpi.boss': 'Nächster Boss', 'home.kpi.ach': 'Erfolge',
     'home.kpi.noData': 'nach dem Login', 'home.kpi.noBoss': 'keine Zeit bekannt', 'home.kpi.close': '{n} fast fertig',
@@ -14,7 +14,7 @@ export default {
   },
   en: {
     'home.open': 'Open {tab}',
-    'home.next': 'Up next', 'home.next.none': 'No events with a bell in the next 24 hours.', 'home.allTimers': 'all timers',
+    'home.next': 'Up next', 'home.onceOff': 'Mute this occurrence only', 'home.onceOn': 'Announce this occurrence again', 'home.next.none': 'No events with a bell in the next 24 hours.', 'home.allTimers': 'all timers',
     'home.now': 'now', 'home.due': 'due', 'home.reset': 'daily reset in {d}',
     'home.kpi.pets': 'Pets here', 'home.kpi.today': 'Checklist', 'home.kpi.boss': 'Next boss', 'home.kpi.ach': 'Achievements',
     'home.kpi.noData': 'after login', 'home.kpi.noBoss': 'no time known', 'home.kpi.close': '{n} almost done',

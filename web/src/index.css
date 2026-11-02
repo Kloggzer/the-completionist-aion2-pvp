@@ -12,6 +12,7 @@
     --color-red: var(--red);
     --color-purple: var(--purple);
     --color-dim: var(--dim);
+    --color-cube: var(--cube);
     --color-warn: var(--warn);
     --color-warn-bg: var(--warn-bg);
     --color-warn-line: var(--warn-line);
@@ -93,7 +94,9 @@
     --sidebar-border: #e1d0b5;
     --sidebar-ring: #b85c0e66;
     /* "gold" is the accent (selection, important), the others are status colours */
-    --gold: #9a4a07; --cyan: #0e7490; --green: #3f6d12; --red: #b42318; --purple: #7c3aed; --dim: #96806a;
+    --gold: #9a4a07; --cyan: #0e7490; --green: #3f6d12; --red: #b42318; --purple: #7c3aed; --dim: #7a644f;
+    /* live (real) cube seen by the radar: must stand out from the gold accent */
+    --cube: #8a6100;
     --warn: #a14b05; --warn-bg: #fdebd2; --warn-line: #efc58f;
     --shadow-card: 0 1px 2px rgb(80 50 20 / 0.08);
     color-scheme: light;
@@ -132,7 +135,8 @@
     --sidebar-accent-foreground: #5eead4;
     --sidebar-border: #262b4a;
     --sidebar-ring: #5eead466;
-    --gold: #5eead4; --cyan: #7dd3fc; --green: #86efac; --red: #fb7185; --purple: #c4b5fd; --dim: #646b96;
+    --gold: #5eead4; --cyan: #7dd3fc; --green: #86efac; --red: #fb7185; --purple: #c4b5fd; --dim: #7c83ad;
+    --cube: #ffd25e;
     --warn: #f3d38b; --warn-bg: #2a2414; --warn-line: #5c4a1e;
     --shadow-card: none;
     color-scheme: dark;

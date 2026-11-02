@@ -14,8 +14,9 @@ const Paw = () => (
 
 const withKey = (label: string, id: string) => { const h = hkText(id); return h ? `${label} (${h})` : label }
 
-export function IconBtn({ on, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { on?: boolean }) {
-  return <button {...p} className={cn('grid size-7 flex-none place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&_svg]:size-4', on && 'bg-gold/15 text-gold', className)} />
+/** Icon-only header button: its tooltip's first line is also its accessible name. */
+export function IconBtn({ on, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { on?: boolean; 'data-tip'?: string }) {
+  return <button aria-label={p['data-tip']?.split('\n')[0]} aria-pressed={on} {...p} className={cn('grid size-7 flex-none place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&_svg]:size-4', on && 'bg-gold/15 text-gold', className)} />
 }
 
 function Status() {

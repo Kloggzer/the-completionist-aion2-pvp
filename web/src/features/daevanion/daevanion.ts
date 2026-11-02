@@ -375,7 +375,10 @@ export function plans(mode: Mode2 = settings().mode): PoolPlan[] {
   const d = data()
   if (!d) return []
   const s = settings(), cls = classId(), l = live()
-  const key = JSON.stringify([mode, cls, s.free, s.ariel, s.pvp, weights(cls), s.own[charKey()], s.pin[cls], l?.at, l?.cls, l?.spent, gameLevel()])
+  // every live input: a website load on top of game boards keeps the old `at` (loadLive) but brings a new level,
+  // skill levels, gear and website nodes
+  const key = JSON.stringify([mode, cls, s.free, s.ariel, s.pvp, weights(cls), s.own[charKey()], s.pin[cls], l?.at, l?.cls, l?.spent,
+    l?.level, l?.gear?.at, l?.skills, l?.webOpen, gameLevel()])
   if (memo[mode]?.key === key && memo[mode]!.res.every(r => !r.pending || !done.has(r.key))) return memo[mode]!.res
   // one pool after the other; a pool's search runs on exactly its inputs (key), so a change elsewhere (a node bought
   // in the game while planning a respec) finds the same key and the same plan: no flicker, no new search

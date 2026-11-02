@@ -36,8 +36,10 @@ for (const [w, h] of SIZES) {
       await goPage(page, name)
       await check(page, w, name)
     }
-    // Checklist character page.
+    // Checklist: opens on the own character (Testchar), then all characters, then another character's page.
     await goPage(page, 'Checkliste')
+    await page.getByRole('button', { name: 'Alle Charaktere' }).click()
+    await check(page, w, 'Checkliste-all')
     await page.getByRole('button', { name: /Zweitchar/ }).first().click()
     await expect(page.getByText('nicht eingeloggt')).toBeVisible()
     await check(page, w, 'Checkliste-char')

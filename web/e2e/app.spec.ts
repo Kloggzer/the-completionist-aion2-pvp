@@ -6,7 +6,7 @@ import { CACHE, fakeState, goPage, hasCache, navBtn, openApp } from './host'
 
 test.skip(!hasCache(), 'needs the app data cache in %LOCALAPPDATA%\TheCompletionist\cache (start the app once)')
 
-const TABS = ['Übersicht', 'Ziele', 'Spots', 'Händler', 'Farmen', 'Erfolge', 'Checkliste', 'Build', 'Arkana', 'Bosse', 'Timer']
+const TABS = ['Übersicht', 'Ziele', 'Spots', 'Händler', 'Farmen', 'Erfolge', 'Checkliste', 'Daevanion', 'Arkana', 'Bosse', 'Timer']
 const tab = (page: Page, name: string) => navBtn(page, name)
 const shot = (page: Page, name: string) => page.screenshot({ path: `e2e/.out/shots/${name}.png` })
 const box = async (page: Page, sel: string) => (await page.locator(sel).first().boundingBox())!
@@ -66,14 +66,19 @@ test('toasts never cover the navigation', async ({ page }) => {
   }
 })
 
-test('checklist: dashboard -> character page -> back', async ({ page }) => {
+test('checklist: own character page -> all characters -> other character -> back', async ({ page }) => {
   await calmClock(page)
   await openApp(page, { ui: { tab: 'check', checklist: CHK } })
-  await expect(page.getByText('Zweitchar')).toBeVisible()
+  // logged in: the checklist opens on the own character's page
+  const back = page.getByRole('button', { name: 'Alle Charaktere' })
+  await expect(back).toBeVisible()
+  await expect(page.locator('[data-char]')).toHaveCount(0)
+  await back.click()
+  await expect(page.getByText('Charaktere', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: /Zweitchar/ }).click()
   await expect(page.getByText('nicht eingeloggt')).toBeVisible()
   await shot(page, 'check-char')
-  await page.getByRole('button', { name: 'Übersicht' }).last().click()
+  await page.getByRole('button', { name: 'Alle Charaktere' }).click()
   await expect(page.getByText('Charaktere', { exact: true })).toBeVisible()
 })
 

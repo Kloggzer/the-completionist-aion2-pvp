@@ -41,9 +41,9 @@ export default {
     'set.g.list': 'Liste', 'set.g.level': 'Mob-Level',
     'set.sort': 'Sortierung',
     'set.sort.prio': 'Priorität', 'set.sort.near': 'Fast fertig', 'set.sort.spawns': 'Meiste Spawns', 'set.sort.name': 'Name',
-    'set.hideNamed': 'Named-, Held- und Elite-Mobs ausblenden', 'set.showLv3': 'Pets auf Lv3 trotzdem zeigen',
+    'set.hideNamed': 'Named-, Held- und Elite-Mobs ausblenden', 'set.showLv3': 'Pets auf Lv 3 trotzdem zeigen',
     'set.lvMin': 'Mob-Level ab', 'set.lvMax': 'Mob-Level bis',
-    'set.reset': 'Alle Filter zurücksetzen', 'set.reset.sub': 'Sortierung, Named, Lv3, Mob-Level', 'set.reset.btn': 'Zurücksetzen',
+    'set.reset': 'Alle Filter zurücksetzen', 'set.reset.sub': 'Sortierung, Named, Lv 3, Mob-Level', 'set.reset.btn': 'Zurücksetzen',
 
     'set.g.sound': 'Töne', 'set.g.tts': 'Sprachausgabe', 'set.g.ttsKinds': 'Ansagen', 'set.g.timer': 'Timer',
     'set.soundCube': 'Ton bei Hidden Cube', 'set.soundTimer': 'Ton bei Timer-Ansage', 'set.startChime': 'Start-Signal', 'set.startChime.sub': '„Pling – pling – plong“ zum Start eines angesagten Events bzw. Boss-Spawns (mit Sprachausgabe: „… startet jetzt“)',
@@ -109,9 +109,9 @@ export default {
     'set.g.list': 'List', 'set.g.level': 'Mob level',
     'set.sort': 'Sort order',
     'set.sort.prio': 'Priority', 'set.sort.near': 'Almost done', 'set.sort.spawns': 'Most spawns', 'set.sort.name': 'Name',
-    'set.hideNamed': 'Hide named, hero and elite mobs', 'set.showLv3': 'Show pets at Lv3 anyway',
+    'set.hideNamed': 'Hide named, hero and elite mobs', 'set.showLv3': 'Show pets at Lv 3 anyway',
     'set.lvMin': 'Mob level from', 'set.lvMax': 'Mob level to',
-    'set.reset': 'Reset all filters', 'set.reset.sub': 'Sort order, named, Lv3, mob level', 'set.reset.btn': 'Reset',
+    'set.reset': 'Reset all filters', 'set.reset.sub': 'Sort order, named, Lv 3, mob level', 'set.reset.btn': 'Reset',
 
     'set.g.sound': 'Sounds', 'set.g.tts': 'Voice output', 'set.g.ttsKinds': 'Announcements', 'set.g.timer': 'Timers',
     'set.soundCube': 'Sound on hidden cube', 'set.soundTimer': 'Sound on timer announcement', 'set.startChime': 'Start signal', 'set.startChime.sub': '"Pling – pling – plong" when an announced event starts or a boss spawns (with voice output: "… starts now")',

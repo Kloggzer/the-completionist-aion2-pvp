@@ -25,8 +25,8 @@ export default {
 
     'man.soul.tip': '+1 Seele für {name}',
     'man.edit': 'Stufe und Seelen von Hand setzen',
-    'man.level': 'Stufe', 'man.souls': 'Seelen', 'man.max': 'Lv3 – komplett', 'man.zero': 'Auf 0',
-    'man.petsHint': '**Manueller Modus:** **+** auf einer Kachel zählt eine Seele, über **Lv** setzt du Stufe und Seelen direkt. Fertige Pets siehst du mit „Lv3 zeigen".',
+    'man.level': 'Stufe', 'man.souls': 'Seelen', 'man.max': 'Lv 3 – komplett', 'man.zero': 'Auf 0',
+    'man.petsHint': '**Manueller Modus:** **+** auf einer Kachel zählt eine Seele, über **Lv** setzt du Stufe und Seelen direkt. Fertige Pets siehst du mit „Lv 3 zeigen".',
     'pets.age.manual': 'Manuell gepflegt · zuletzt geändert {ago}',
     'pets.age.manualNone': 'Manuell – Seelen über + und Lv auf den Kacheln eintragen',
     'pets.age.manualTip': 'Manueller Modus: nichts wird aus dem Spiel gelesen.',
@@ -36,7 +36,7 @@ export default {
 
     'ach.manualHint': '**Manueller Modus:** Erfolg antippen, dann den Zähler mit −/+ setzen oder Stufen abhaken.',
     'ach.faction': 'Fraktion', 'ach.faction.all': 'Beide Fraktionen', 'ach.faction.Elyos': 'Elyos', 'ach.faction.Asmodian': 'Asmodier',
-    'ach.set': 'Fortschritt', 'ach.tickTip': 'Stufe abhaken (Zähler auf {goal})', 'ach.untickTip': 'Haken entfernen (Zähler auf {goal})',
+    'ach.set': 'Fortschritt', 'ach.kinah': '{n} Kinah', 'ach.tickTip': 'Stufe abhaken (Zähler auf {goal})', 'ach.untickTip': 'Haken entfernen (Zähler auf {goal})',
 
     'chk.add': 'Charakter', 'chk.addTip': 'Charakter von Hand anlegen', 'chk.addPh': 'Name des Charakters',
     'chk.ok': 'OK', 'chk.cancel': 'Abbrechen', 'chk.exists': 'Den Namen gibt es schon',
@@ -73,8 +73,8 @@ export default {
 
     'man.soul.tip': '+1 soul for {name}',
     'man.edit': 'Set level and souls by hand',
-    'man.level': 'Level', 'man.souls': 'Souls', 'man.max': 'Lv3 – complete', 'man.zero': 'To 0',
-    'man.petsHint': '**Manual mode:** **+** on a tile counts one soul, **Lv** sets level and souls directly. Finished pets show up with "Show Lv3".',
+    'man.level': 'Level', 'man.souls': 'Souls', 'man.max': 'Lv 3 – complete', 'man.zero': 'To 0',
+    'man.petsHint': '**Manual mode:** **+** on a tile counts one soul, **Lv** sets level and souls directly. Finished pets show up with "Show Lv 3".',
     'pets.age.manual': 'Tracked by hand · last change {ago}',
     'pets.age.manualNone': 'Manual – enter souls with + and Lv on the tiles',
     'pets.age.manualTip': 'Manual mode: nothing is read from the game.',
@@ -84,7 +84,7 @@ export default {
 
     'ach.manualHint': '**Manual mode:** tap an achievement, then set its counter with −/+ or tick tiers.',
     'ach.faction': 'Faction', 'ach.faction.all': 'Both factions', 'ach.faction.Elyos': 'Elyos', 'ach.faction.Asmodian': 'Asmodian',
-    'ach.set': 'Progress', 'ach.tickTip': 'Tick tier (counter to {goal})', 'ach.untickTip': 'Untick (counter to {goal})',
+    'ach.set': 'Progress', 'ach.kinah': '{n} Kinah', 'ach.tickTip': 'Tick tier (counter to {goal})', 'ach.untickTip': 'Untick (counter to {goal})',
 
     'chk.add': 'Character', 'chk.addTip': 'Add a character by hand', 'chk.addPh': 'Character name',
     'chk.ok': 'OK', 'chk.cancel': 'Cancel', 'chk.exists': 'That name already exists',

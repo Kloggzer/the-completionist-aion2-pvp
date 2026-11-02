@@ -1,15 +1,16 @@
-import { useApp } from '@/core/state'
+import { useEffect } from 'react'
+import { U, useApp } from '@/core/state'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
-import { BADGE, BarInfo, BarRight, CHIP, CHIP_ON, Columns, Disclosure, Empty, Foot, Hint, Note, Page, Panel, ROW, ROWS, Sect, TopN, rich } from '@/components/kit'
+import { BADGE, BarInfo, BarRight, CHIP, CHIP_ON, Chip, Columns, Disclosure, Empty, Foot, Hint, Note, Page, Panel, ROW, ROWS, Sect, Seg, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
-import { className, data as daeData } from '@/features/daevanion/daevanion'
-import { advise } from './advise'
+import { charKey, className, data as daeData } from '@/features/daevanion/daevanion'
+import { advise, refetchCards } from './advise'
 import { GRADES, KINDS, arcClass, arcData, arcSave, arcSettings, arcSkills, classId, skillName, type ArcData, type ArcSkill, type Kind } from './arcana'
 
 const TIER_DOT = ['bg-red/70', 'bg-dim/60', 'bg-cyan/80', 'bg-gold'] as const
 const TIER_TEXT = ['text-dim line-through', 'text-muted-foreground', 'text-foreground', 'text-gold'] as const
-const GRADE_TEXT: Record<string, string> = { Common: 'text-muted-foreground', Rare: 'text-green', Epic: 'text-[#c792ff]', Unique: 'text-gold' }
+const GRADE_TEXT: Record<string, string> = { Common: 'text-muted-foreground', Rare: 'text-green', Epic: 'text-purple', Unique: 'text-gold' }
 const pct = (v: number) => fmt(v >= 10 ? Math.round(v) : Math.round(v * 10) / 10) + ' %'
 const kindName = (k: string) => t('arc.kind.' + k)
 const gradeName = (g: string) => t('arc.grade.' + g)
@@ -49,7 +50,7 @@ function Drops({ d }: { d: ArcData }) {
   const dungeons = [...new Set(d.drops.map(x => x[0]))]
   return <>
     {dungeons.map(dn => {
-      const rows = d.drops.filter(x => x[0] === dn), stages = [...new Set(rows.map(x => x[1]))].sort()
+      const rows = d.drops.filter(x => x[0] === dn), stages = [...new Set(rows.map(x => x[1]))].sort((a, b) => a - b)
       return <div key={dn} data-drops={dn}>
         <Sect sub={t('arc.dropsSub')}>{dn}</Sect>
         <div className={ROWS}>
@@ -92,7 +93,7 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
   const chalice = tm.filter(x => x.kind === 'Chalice').sort((x, y) => y.mean - x.mean)[0]
   const tmBest = [...tm].sort((x, y) => y.mean - x.mean)
   return <>
-    {a.m.state !== 'cards' && <Hint tone="cyan">{t(a.m.state === 'loading' ? 'arc.adv.loading' : 'arc.adv.noLive')}</Hint>}
+    {a.m.state !== 'cards' && <Hint tone="cyan">{t({ loading: 'arc.adv.loading', other: 'arc.adv.other', none: 'arc.adv.noLive' }[a.m.state])}</Hint>}
     {best && <Panel title={t('arc.adv.title')} sub={t('arc.adv.sub')} data-arc-advice>
       <div className="px-2.5 pb-2 text-[12.5px]" data-arc-best>
         {rich(t('arc.adv.best', { d: best.dungeon, st: t('arc.adv.st', { n: best.stage }), g: sign(best.gain), n: every(best.p) }))}
@@ -148,6 +149,8 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
 
 export function ArcanaTab() {
   useApp()
+  const char = charKey()
+  useEffect(() => refetchCards(char), [char])
   const d = arcData(), dae = daeData()
   if (d === null || dae === null) return <Empty>{t('arc.loading')}</Empty>
   if (!d || !dae) return <Empty>{t('arc.missing')}</Empty>
@@ -159,17 +162,21 @@ export function ArcanaTab() {
     <BarRight>
       <AppSelect value={cls} tip={t('arc.class')} className="h-6 text-xs"
         options={Object.entries(dae.classes).filter(([k]) => arcClass(d, k)).map(([k, x]) => ({ value: k, label: className(x) }))} onChange={v => arcSave({ cls: v })} />
-      {(['all', ...KINDS] as const).map(k => (
-        <button key={k} data-kind-filter={k} onClick={() => arcSave({ kind: k })} className={cn(CHIP, kind === k && CHIP_ON)}>{k === 'all' ? t('arc.allCards') : kindName(k)}</button>
-      ))}
-      <button data-guide-filter onClick={() => arcSave({ guide: !guide })} data-tip={t('arc.guideTip')} className={cn(CHIP, guide && CHIP_ON)}>{t('arc.guide')}</button>
     </BarRight>
   </>
+  // the filters only change the lists in the disclosure: they sit in its header and show while it is open. Six kinds
+  // do not fit a Seg on the overlay: a dropdown there, the Seg from 440 px
+  const kinds = (['all', ...KINDS] as const).map(k => ({ value: k, label: k === 'all' ? t('arc.allCards') : kindName(k) }))
+  const filters = U.open?.['arc.all'] && <span className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-1">
+    <Seg size="sm" value={kind} onChange={k => arcSave({ kind: k })} item={k => ({ 'data-kind-filter': k })} options={kinds} className="hidden @min-[440px]:flex" />
+    <AppSelect value={kind} tip={t('arc.kindTip')} className="h-6 text-xs @min-[440px]:hidden" options={kinds} onChange={k => arcSave({ kind: k })} />
+    <Chip on={guide} onChange={v => arcSave({ guide: v })} tip={t('arc.guideTip')} className="h-6" data-guide-filter="">{t('arc.guide')}</Chip>
+  </span>
   return (
     <Page w="rows" bar={bar}>
       <Advice d={d} cls={cls} />
       <Panel>
-      <Disclosure id="arc.all" title={t('arc.sect.all')} sub={t('arc.allSub')}>
+      <Disclosure id="arc.all" title={t('arc.sect.all')} sub={t('arc.allSub')} right={filters}>
       <Hint>{t('arc.hint')}</Hint>
       <Columns>
         <div>

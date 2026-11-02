@@ -62,7 +62,7 @@ export function Charges({ per, char }: { per: Per; char?: string }) {
 /** One warning; clicking it opens the character's checklist page. `flat` = a row inside a panel instead of a card. */
 export function AlertRow({ a, showChar = true, flat, onOpen }: { a: Alert; showChar?: boolean; flat?: boolean; onOpen?: (char: string | null) => void }) {
   return (
-    <button onClick={() => { V.chkPage = a.char; onOpen?.(a.char); bump() }} data-tip={`${a.char ?? t('chk.server')}: ${a.text}
+    <button onClick={() => { V.chkPage = a.char ?? null; onOpen?.(a.char); bump() }} data-tip={`${a.char ?? t('chk.server')}: ${a.text}
 ${t('alert.' + a.level)}`} data-alert={a.level}
       className={cn('group w-full text-left',
         flat ? cn(ROW, ROW_CLICK, a.level === 'red' && 'bg-red/[0.06]')

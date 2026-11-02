@@ -50,11 +50,11 @@ function BossCard({ b, s }: { b: Any; s: Any }) {
   )
 }
 
-// Highest drop item level first; within the same level the boss that spawns next.
+// What to do next first: due, then waiting by spawn time (soonest first), alive, unknown; the drop item level only breaks ties.
 function sorted(bosses: Any[]) {
   const topIl = (b: Any) => Math.max(0, ...(G.drops?.[b.id] || []).map((d: Any) => d.il[1]))
   return bosses.map(b => ({ b, s: fbStatus(b), il: topIl(b) }))
-    .sort((a, c) => c.il - a.il || ORDER[a.s.k as keyof typeof ORDER] - ORDER[c.s.k as keyof typeof ORDER] || (a.s.due || 0) - (c.s.due || 0) || a.b.key.localeCompare(c.b.key))
+    .sort((a, c) => ORDER[a.s.k as keyof typeof ORDER] - ORDER[c.s.k as keyof typeof ORDER] || (a.s.due || 0) - (c.s.due || 0) || c.il - a.il || a.b.key.localeCompare(c.b.key))
 }
 
 /** The boss that spawns next (waiting or due), with its status. */

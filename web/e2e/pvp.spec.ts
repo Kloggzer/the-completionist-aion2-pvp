@@ -46,7 +46,7 @@ test('arena: enemy team by CP (high to low), CP colours, website lookup for a mi
   expect(m.rows[0]).toEqual({ c: 'Kle', k: 8, cc: '#f2eaa0', n: 'Kanapenia', sub: 'Ereshkigal', il: '2666', cp: '144,6K', col: '#f0c75e', bar: '#f0c75e', d: '146 m', f: 1 })
   // oneself is a row of the team section: no footer text
   expect(m).toMatchObject({ foot: '', footCls: '', footK: 0, status: '', enemyHead: 'Gegner · 5', teamHead: 'Team · 5' })
-  expect(m.team[0]).toMatchObject({ n: 'Testdaeva', k: 3, d: 'ICH', me: 1, cp: '138,4K' })
+  expect(m.team[0]).toMatchObject({ n: 'Testdaeva', k: 3, d: 'Ich', me: 1, cp: '138,4K' })
   expect(m.rows.find((r: Any) => r.n === 'Miranda')).toMatchObject({ c: 'Kle', sub: 'Meslamtaeda', il: '1595', col: '#7ee0a0' })
   expect(m.rows.find((r: Any) => r.n === 'Animuz')).toMatchObject({ c: 'Gla', col: '#f0c75e', d: '151 m' })
   // shanfen had no CP in the packet: after 3 s looked up once, then shown with the website value
@@ -57,7 +57,7 @@ test('arena: enemy team by CP (high to low), CP colours, website lookup for a mi
   m = await lastRows(app)
   expect(m.rows.map((r: Any) => r.n)).toEqual(['Kanapenia', 'Animuz', 'shanfen', 'Senbonzakura', 'Miranda'])
   expect(m.rows[2]).toMatchObject({ n: 'shanfen', c: 'Bes', sub: 'Lumiel', il: '2500', col: '#7ee0a0' })
-  expect(m).toMatchObject({ status: 'PLAYNC ok', statusCol: '#60d678' })
+  expect(m).toMatchObject({ status: 'plaync ok', statusCol: '#60d678' })
   expect(await app.posted('pvpLookup')).toHaveLength(3)
   // an enemy moves away: only the distance changes, the order stays (CP)
   await app.send({ type: 'pvp', own, roster, players: players.map(p => (p[1] === 'shanfen' ? [...p.slice(0, 8), 150, 40] : p)) })

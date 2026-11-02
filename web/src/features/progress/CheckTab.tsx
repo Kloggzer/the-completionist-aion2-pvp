@@ -2,7 +2,7 @@
 // rows, then the server/account items (shared by all characters); a character's own list on its page. Entries and
 // charges are tiles: icon column left, name, bar + footer, −/+ column at the right edge; the explanation of an entry
 // is in its tooltip, the explanation of the page in a closed "how it works".
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Pencil, Percent, Plus, RefreshCw, RotateCcw, Server, Sun, Trash2, UserCheck, Users } from 'lucide-react'
 import { S, V, bump, manual, useApp } from '@/core/state'
 import { t, hm } from '@/core/i18n'
@@ -220,6 +220,10 @@ export function CheckTab() {
   useApp()
   const [adding, setAdding] = useState(false)
   const chars = characters(), live = S.state.charName, man = manual()
+  // default page (once per visit, so nothing jumps while the dashboard is in use): the logged-in character's own page;
+  // the dashboard is one click away ("All characters"). null = the dashboard was chosen (back, links).
+  if (V.chkPage === undefined) V.chkPage = !man && live && chars.includes(live) ? live : null
+  useEffect(() => () => { V.chkPage = undefined }, [])
   if (V.chkPage && !chars.includes(V.chkPage)) V.chkPage = null
   const warn = alerts()
   const more = (k: number) => t('common.moreN', { n: k })

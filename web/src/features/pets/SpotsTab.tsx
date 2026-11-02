@@ -36,7 +36,7 @@ function Spot({ s }: { s: Any }) {
   const sel = V.spot === s.rank, pets = s.pets.slice(0, 3), more = s.pets.length - pets.length
   return (
     <div data-spot={s.rank} data-sel={sel || undefined} onClick={() => { V.spot = sel ? null : s.rank; V.sel = null; emit('fit'); bump() }}
-      data-tip={[t('pets.spot.tip', { n: s.n, r: R, pets: s.pets.length }), ...s.pets.map(({ t: x, n }: Any) => `${petName(x.p)}: ${n}× · ${x.souls}/${x.need} (Lv${x.lv})`)].join('\n')} className={cn(TILE, sel && SEL)}>
+      data-tip={[t('pets.spot.tip', { n: s.n, r: R, pets: s.pets.length }), ...s.pets.map(({ t: x, n }: Any) => `${petName(x.p)}: ${n}× · ${x.souls}/${x.need} (Lv ${x.lv})`)].join('\n')} className={cn(TILE, sel && SEL)}>
       <Portrait por={pets[0] && mobGroups(pets[0].t)[0]?.mob.por} size={null} className={T_PORTRAIT} />
       <div className={T_BODY}>
         <div className="flex items-center gap-1.5">
@@ -51,7 +51,7 @@ function Spot({ s }: { s: Any }) {
             if (!e) return <span key={i} className="h-4" />
             const x = e.t
             return (
-              <span key={x.p.id} className="flex h-4 min-w-0 items-center gap-1 text-[#c3cad8]">
+              <span key={x.p.id} className="flex h-4 min-w-0 items-center gap-1 text-muted-foreground">
                 <Portrait por={mobGroups(x)[0]?.mob.por} size={16} className="rounded-[2px]" />
                 <span className="flex-none text-[9px]" style={{ color: x.col }}>●</span>
                 <span className={cn('min-w-0 flex-1 truncate', x.lv === 0 && 'text-cyan')}>{petName(x.p)}</span>

@@ -199,7 +199,7 @@ function OfferTile({ o }: { o: Offer }) {
           <span className={cn(T_TITLE, 'min-w-0 flex-1')}>{name ?? t('merch.unknown', { id: o.item ?? o.id })}</span>
           {o.tab != null && <GameTag />}
           <span data-tip={t('merch.v.' + v + '.tip')}
-            className={cn('flex-none rounded-sm border px-1.5 text-[10.5px] leading-[17px] font-bold tracking-wide', VERDICT_PILL[v])}>{t('merch.v.' + v)}</span>
+            className={cn('flex-none rounded-sm border px-1.5 text-[10.5px] leading-[17px] font-semibold', VERDICT_PILL[v])}>{t('merch.v.' + v)}</span>
         </div>
         <div className={cn(SUB, 'mt-0.5 truncate')}>
           {v === 'event' ? t('merch.event.sub') : !p || !d ? t('merch.v.unknown.tip')
@@ -263,7 +263,7 @@ function Bought({ list }: { list: Offer[] }) {
           <div key={o.id} data-boughtoffer={o.id} data-tip={t('merch.bought.tip', { t: at, s: SOULS_PER_BUY })}
             className="flex min-h-7 min-w-0 items-center gap-2 rounded-sm px-1 text-[12px] text-muted-foreground">
             <PetPic p={p ?? (name ? { n: name } : null)} size={20} />
-            <span className="min-w-0 flex-1 truncate line-through decoration-white/25">{name ?? t('merch.unknown', { id: o.item ?? o.id })}</span>
+            <span className="min-w-0 flex-1 truncate line-through decoration-foreground/25">{name ?? t('merch.unknown', { id: o.item ?? o.id })}</span>
             <span className="flex-none text-[11px] text-dim tabular-nums">
               {t('merch.bought.row', { s: SOULS_PER_BUY })}{o.price ? ' · ' + fmt(o.price) : ''}
             </span>

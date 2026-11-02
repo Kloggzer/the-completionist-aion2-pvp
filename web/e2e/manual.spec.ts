@@ -48,7 +48,7 @@ test('pets: +1 soul on the tile, unlock at 5', async ({ page }) => {
   expect(await app.posted('addSoul')).toEqual([{ type: 'addSoul', id: +id!, n: 1 }])
   await expect(page.getByText('Manueller Modus:')).toHaveCount(0) // hint gone once something is entered
   for (let i = 0; i < 4; i++) await tile.locator('[data-add-soul]').click()
-  await expect(tile).toContainText('Lv1')
+  await expect(tile).toContainText('Lv 1')
   await expect(tile).toContainText('0/25')
   await expect(page.locator('[data-toasts]').first()).toContainText('freigeschaltet')
   await expect(page.locator('[data-pin]')).toHaveCount(0) // the buttons do not select the tile
@@ -63,11 +63,11 @@ test('pets: level and souls in the popover', async ({ page }) => {
   const pop = page.locator('[data-slot="popover-content"]')
   await expect(pop).toBeVisible()
   await pop.locator('[data-tip="+1"]').first().click() // level 0 -> 1
-  await expect(tile).toContainText('Lv1')
+  await expect(tile).toContainText('Lv 1')
   await pop.locator('[data-tip="+1"]').nth(1).click() // one soul (counted by the host)
   await expect(pop).toContainText('1/25')
   await shot(page, 'manual-pet-popover')
-  await pop.getByRole('button', { name: 'Lv3 – komplett' }).click()
+  await pop.getByRole('button', { name: 'Lv 3 – komplett' }).click()
   await expect(tile).toContainText('✓')
   const sets = await app.posted('setPet')
   expect(sets[0]).toEqual({ type: 'setPet', id: +id!, level: 1, souls: 0 })
@@ -98,7 +98,7 @@ test('characters: add, select, rename by hand', async ({ page }) => {
   await page.getByPlaceholder('Name des Charakters').fill('Borin2')
   await page.keyboard.press('Enter')
   await expect(page.locator('[data-list]').getByText('Borin2', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Übersicht' }).last().click()
+  await page.getByRole('button', { name: 'Alle Charaktere' }).click()
   await expect(page.locator('[data-char="Borin2"]')).toBeVisible()
   await expect(page.locator('[data-char="Borin"]')).toHaveCount(0)
 })

@@ -25,10 +25,18 @@ async function petIcons(page: Page, missing: string[] = []) {
   return asked
 }
 
+// The UI shows German pet names (petName); the picker also finds the English one. English -> shown name.
+const DE = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'src', 'features', 'pets', 'petNamesDe.json'), 'utf8')) as Record<string, string>
+const shown = (name: string) => {
+  if (!hasCache()) return name
+  const p = (JSON.parse(fs.readFileSync(path.join(CACHE, 'pets.json'), 'utf8')).pets as { id: number; n: string }[]).find(x => x.n === name)
+  return (p && DE[p.id]) || name
+}
+
 async function addOffer(page: Page, name: string) {
   const box = page.locator('[data-merchpicker]')
   await box.fill(name)
-  await expect(page.getByRole('option').first()).toContainText(name)
+  await expect(page.getByRole('option').first()).toContainText(shown(name))
   await box.press('Enter')
   await expect(box).toHaveValue('')
 }
@@ -57,7 +65,7 @@ test('offers get verdicts and clear on the full hour', async ({ page }) => {
   await expect(offers).toHaveCount(3)
   // buy first, owned last
   await expect(offers.nth(0)).toHaveAttribute('data-verdict', 'buy')
-  await expect(offers.nth(0)).toContainText('KAUFEN')
+  await expect(offers.nth(0)).toContainText('Kaufen')
   await expect(offers.nth(0)).toContainText(hard)
   await expect(offers.nth(1)).toHaveAttribute('data-verdict', 'opt')
   await expect(offers.nth(1)).toContainText(/Spawns/)
@@ -141,7 +149,7 @@ test('offer read from the game fills the list with verdicts and prices', async (
   await expect(page.locator('[data-offer] [data-game]')).toHaveCount(10)
   await expect(page.locator('[data-offer="1084"]')).toContainText('Kalgolem')
   await expect(page.locator('[data-offer="1095"] [data-game]')).toHaveAttribute('aria-label', 'aus dem Spiel')
-  await expect(page.locator('[data-offer="1095"]')).toContainText('Superior Wind Spirit')
+  await expect(page.locator('[data-offer="1095"]')).toContainText('Großer Windgeist') // German name like everywhere
   await expect(page.locator('[data-offer="1095"] [data-price]')).toHaveValue('90.000')
   await expect(page.locator('[data-offer="1095"] [data-discount]')).toHaveText('-10 %')
   await expect(page.locator('[data-offer="1095"] [data-missing]')).toHaveAttribute('data-missing', '65')
@@ -151,10 +159,10 @@ test('offer read from the game fills the list with verdicts and prices', async (
   await expect(page.locator('[data-offer="1084"]')).toHaveAttribute('data-verdict', 'have')
   await expect(page.locator('[data-offer="1084"] [data-discount]')).toHaveText('-50 %')
   await expect(page.locator('[data-offer="1084"] [data-price]')).toHaveValue('50.000')
-  await expect(page.locator('[data-offer="1132"]')).toContainText('Ashen Lupyllini')
+  await expect(page.locator('[data-offer="1132"]')).toContainText('Aschgraue Lupyllini')
   await expect(page.locator('[data-offer="1132"] [data-missing]')).toHaveAttribute('data-missing', '105')
   await expect(page.locator('[data-offer="1132"] [data-discount]')).toHaveText('-30 %')
-  await expect(page.locator('[data-offer="1210"]')).toContainText('Dry Leaf Agrint')
+  await expect(page.locator('[data-offer="1210"]')).toContainText('Trockenblattagrint')
   // buy first, then optional, Lv 3 done
   const rank: Record<string, number> = { event: 0, buy: 1, opt: 2, have: 3, unknown: 4 }
   const sortedRanks = async () => {
@@ -163,9 +171,9 @@ test('offer read from the game fills the list with verdicts and prices', async (
   }
   await sortedRanks()
   const verdicts = await offers.evaluateAll(els => els.map(e => e.getAttribute('data-verdict') || ''))
-  // toast for the pets worth buying
-  const nBuy = verdicts.filter(v => v === 'buy').length
-  if (nBuy) await expect(page.getByText(`Händler: ${nBuy} Pets zum Kaufen`)).toBeVisible()
+  // no toast while the merchant page is open: the list shows the pets worth buying already
+  expect(verdicts.some(v => v === 'buy')).toBe(true)
+  await expect(page.getByText(/Händler: \d+ Pets? zum Kaufen/)).toHaveCount(0)
   await expect.poll(async () => (await posted('ui')).filter((m: { patch: { merch?: { items: { tab?: number }[] } } }) => m.patch.merch)
     .at(-1)?.patch.merch?.items.filter(x => x.tab === 1356).length).toBe(10)
   await shot(page, 'merchant-game')
@@ -300,7 +308,7 @@ test('a +5 soul update moves the bought offer to "Gekauft"; offers are kept per 
   await expect(offers).toHaveCount(9)
   await expect(page.locator('[data-offer="1132"]')).toHaveCount(0)
   const bought = page.locator('[data-boughtoffer="1132"]')
-  await expect(bought).toContainText('Ashen Lupyllini')
+  await expect(bought).toContainText('Aschgraue Lupyllini')
   await expect(bought).toContainText('+5 Seelen · 70.000')
   await expect(page.locator('[data-bought]')).toContainText('Gekauft')
   await expect.poll(async () => (await posted('ui')).filter((m: { patch: { merch?: { items: { id: number; bought?: number }[] } } }) => m.patch.merch)
@@ -321,7 +329,7 @@ test('a +5 soul update moves the bought offer to "Gekauft"; offers are kept per 
   await expect(offers).toHaveCount(0)
   await expect(page.locator('[data-charchips]')).toBeVisible()
   const main = page.locator('[data-charchip="Testchar"]')
-  await expect(main).toContainText(/Testchar: (\d+× KAUFEN|10)/)
+  await expect(main).toContainText(/Testchar: (\d+× kaufen|10)/)
   await send({ type: 'merchant', tab: 1353, at: Date.now(), items: TAB1 })
   await expect(offers).toHaveCount(4)
   await main.click()

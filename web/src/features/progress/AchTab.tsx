@@ -104,7 +104,7 @@ function Tile({ r }: { r: AchRow }) {
                   <b className={cn('w-3.5 text-dim', ok && 'text-green', now && 'text-cyan')}>{man ? (ok ? '☑' : '☐') : ok ? '✓' : y.tier}</b>
                   {loc(y, 'objective')} <span className="text-foreground tabular-nums">{fmt(y.goal)}</span>
                   {y.rewards?.title && <em className="flex items-center gap-1 text-gold not-italic"><Award className="size-3" /> {y.rewards.title.name}</em>}
-                  {y.rewards?.kina ? <i className="text-dim not-italic">{fmt(y.rewards.kina)} Kina</i> : null}
+                  {y.rewards?.kina ? <i className="text-dim not-italic">{t('ach.kinah', { n: fmt(y.rewards.kina) })}</i> : null}
                 </div>
               )
             })}

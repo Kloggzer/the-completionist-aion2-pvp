@@ -32,6 +32,10 @@ test('class skills with their card, card blocks, drops and the filters', async (
   expect(g).toBeGreaterThan(5)
   expect(g).toBeLessThan(22)
   await expect(page.locator('[data-arc-skill="Defiance"]')).toHaveCount(0)
+  // the filters sit in the disclosure's header; on the overlay they wrap below its title
+  await page.setViewportSize({ width: 360, height: 700 })
+  await page.locator('[data-disclosure="arc.all"] > div').first().evaluate(el => el.scrollIntoView({ block: 'center' }))
+  await page.screenshot({ path: 'e2e/.out/shots/arcana-filters-360.png' })
 })
 
 test('advice: best dungeon stage, the cards, farm list and Transmute', async ({ page }) => {

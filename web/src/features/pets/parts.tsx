@@ -75,7 +75,7 @@ export function Toolbar({ kind }: { kind: 'targets' | 'spots' }) {
 
 /** Checkbox of a target tile: only shown while something is selected, so the multi-selection is obvious. */
 export const PinBox = ({ on }: { on: boolean }) => (
-  <span data-pin className={cn('mt-px ml-auto grid size-4 flex-none place-items-center rounded-[3px] border transition-colors', on ? 'border-gold bg-gold text-[#1b1607]' : 'border-dim/80')}>
+  <span data-pin className={cn('mt-px ml-auto grid size-4 flex-none place-items-center rounded-[3px] border transition-colors', on ? 'border-gold bg-gold text-primary-foreground' : 'border-dim/80')}>
     {on && <Check className="size-3 stroke-3" />}
   </span>
 )
@@ -89,7 +89,7 @@ export function SelBar() {
   const one = sel.length === 1 ? mobGroups(sel[0])[0] : null
   const spotsTab = U.tab === 'spots'
   return (
-    <div data-selbar className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-gold/35 bg-[#262112f5] px-2 py-1 text-[12px]">
+    <div data-selbar className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-gold/35 bg-card/95 px-2 py-1 text-[12px]">
       <b className="flex-none font-semibold text-gold">{t('sel.n', { n: V.multi.size })}</b>
       <span data-tip={names} className="min-w-0 flex-1 truncate text-muted-foreground">{spotsTab && V.spotsSel ? t('sel.spotsFor') : names}</span>
       {spotsTab && V.spotsSel
@@ -97,9 +97,9 @@ export function SelBar() {
           onClick={() => { V.spotsSel = false; V.spot = null; recompute(); emit('fit') }}>{t('sel.allSpots')}</button>
         : <button className={cn(barBtn, 'border-gold/60 bg-gold/15 text-gold hover:bg-gold/25')} data-tip={t('sel.find.tip')}
           onClick={() => { spotsForSelection(); goTab('spots', '[data-spot="1"]') }}><Search />{t('sel.find')}</button>}
-      {one && <button className={cn(barBtn, 'text-muted-foreground hover:text-foreground')} data-tip={t('pets.site')}
+      {one && <button className={cn(barBtn, 'text-muted-foreground hover:text-foreground')} data-tip={t('pets.site')} aria-label={t('pets.site')}
         onClick={() => host({ type: 'site', on: true, map: U.map, search: one.n })}><Globe /></button>}
-      <button className={cn(barBtn, 'text-muted-foreground hover:text-foreground')} data-tip={t('sel.clear')} onClick={clearMulti}><X /><span className="max-[420px]:hidden">{t('sel.clear')}</span></button>
+      <button className={cn(barBtn, 'text-muted-foreground hover:text-foreground')} data-tip={t('sel.clear')} onClick={clearMulti}><X /><span className="@max-[420px]:hidden">{t('sel.clear')}</span></button>
     </div>
   )
 }

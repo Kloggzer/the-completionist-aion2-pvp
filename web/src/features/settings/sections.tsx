@@ -84,10 +84,10 @@ export function General() {
 // ---------------------------------------------------------------- map & radar
 
 export function MapRadar() {
-  // The cube layer explains its two symbols (same colours as on the map).
+  // The cube layer explains its two symbols (tokens close to the fixed map colours in engine.ts).
   const cubeSub = <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-    {ext.features.has('liveCubes') && <span className="inline-flex items-center gap-1"><Star className="size-3 fill-[#ffd25e] text-[#ffd25e]" />{t('set.l.cubes.real')}</span>}
-    <span className="inline-flex items-center gap-1"><Box className="size-3 text-[#d9a8ff]" />{t('set.l.cubes.spot')}</span>
+    {ext.features.has('liveCubes') && <span className="inline-flex items-center gap-1"><Star className="size-3 fill-cube text-cube" />{t('set.l.cubes.real')}</span>}
+    <span className="inline-flex items-center gap-1"><Box className="size-3 text-purple" />{t('set.l.cubes.spot')}</span>
   </span>
   const layer = (l: string) =>
     <Toggle key={l} label={t('set.l.' + l)} sub={l === 'cubes' ? cubeSub : undefined} on={!!U.layers[l]} onChange={() => { U.layers[l] = !U.layers[l]; saveUi(['layers']); emit('draw'); bump() }} />

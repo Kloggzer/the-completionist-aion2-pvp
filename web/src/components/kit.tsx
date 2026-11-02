@@ -1,7 +1,7 @@
 // Shared building blocks of every view: one page frame, one top bar, one section header, one tile, one flat row, one
 // chip, one bar, and the primitives below (Seg, Chip, Stepper, Panel, Disclosure, TopN, PanelTabs on Base UI).
 // Spacing scale: 6 px gaps (gap-1.5), 10 px outer padding (px-2.5), 12 px text inset (px-3). Type scale (Manrope):
-// section 12 px semibold (no capitals anywhere), title 13 px semibold, text 13 px, sub 12 px muted, meta 11.5 px; page titles 17 px bold.
+// section 12 px semibold (no capitals anywhere), title 13 px semibold, text 13 px, sub 12 px muted, meta 11.5 px; page titles 19 px bold.
 // Radius: rounded-lg for controls and tiles, rounded-xl for panels. Colours only via tokens (index.css: light "Aion
 // Ember", dark "Night Indigo"; `gold` = the accent). Controls never wrap (index.css): long labels truncate.
 // Icons: 14 px (size-3.5) in rows and bars, 28 px / stroke 1.5 in tile icon columns, 18 px in bell / step columns.
@@ -9,7 +9,7 @@
 // Responsive system (container queries, never the viewport: the overlay can be any size):
 // - Every tab renders inside <Page>: full width and dense at overlay sizes, centred with a max width on large
 //   windows (tiles 1680 px, rows 1400 px, forms 760 px). The page is the @container all breakpoints below refer to.
-// - Every tab has one bar at the top of its list (BAR, 32 px): info text left (its empty space drags the window),
+// - Every tab has one bar at the top of its list (BAR, min 40 px): info text left (its empty space drags the window),
 //   filter chips / actions right-aligned (<BarRight>). Map tabs: <ToolbarStrip> between map and list; the other
 //   tabs: <Page bar={…}> (sticky, full width, content aligned with the page).
 // - Tile grids (grid()): auto-fill columns with a minimum tile width that grows on wide pages, so tiles never get
@@ -64,7 +64,7 @@ export type TileSize = keyof typeof TILE_W
 export const grid = (size: TileSize = 'md') =>
   cn('grid grid-cols-[repeat(auto-fill,minmax(min(var(--tile),100%),1fr))] gap-1.5 px-2.5 pb-1.5', TILE_W[size])
 
-/** Top bar of a tab (32 px): info left, chips right. */
+/** Top bar of a tab (min 40 px, wraps as a whole): info left, chips right. */
 export const BAR = 'flex min-h-10 flex-none flex-wrap items-center gap-x-1.5 gap-y-1 border-b bg-card px-2.5 py-1.5 text-[12.5px] text-muted-foreground'
 
 /** Page frame of every tab: the container the responsive rules query, centred with a max width on big windows.
@@ -107,7 +107,7 @@ export const ROWS = 'border-t border-border/50'
 /** Icon slot of a row (time | icon | name …). */
 export const ROW_ICON = 'grid w-[22px] flex-none place-items-center [&_svg]:size-4'
 
-/** Toggle chip (filters) – same look in every bar, 24 px high like the dropdowns. */
+/** Toggle chip (filters) – same look in every bar, 28 px high like Seg md and Button sm. */
 export const CHIP = 'inline-flex h-7 max-w-full min-w-0 flex-none items-center gap-1.5 truncate rounded-lg border border-border bg-card px-2.5 text-[12.5px] whitespace-nowrap text-muted-foreground transition-colors hover:border-gold/40 hover:text-foreground [&_svg]:size-3.5 [&_svg]:flex-none'
 export const CHIP_ON = 'border-gold/45 bg-gold/[0.12] font-semibold text-gold hover:border-gold/60 hover:bg-gold/[0.16] hover:text-gold'
 
@@ -119,13 +119,13 @@ export const SECT_BTN = 'flex items-center gap-1 rounded-sm px-1 py-0.5 text-[11
 
 // ---------------------------------------------------------------- components
 
-/** Section header: small caps line; `sub` inline after it, `right` (link/action) at the end. */
+/** Section header: 12 px semibold line (sentence case); `sub` inline after it, `right` (link/action) at the end. */
 export function Sect({ children, sub, right, className }: { children: ReactNode; sub?: ReactNode; right?: ReactNode; className?: string }) {
   return (
     <div className={cn('flex min-h-7 items-center gap-1.5 px-3 pt-2.5 pb-1 text-[12px] font-semibold text-muted-foreground', className)}>
       <span className="flex-none">{children}</span>
-      {sub && <span className="min-w-0 truncate font-normal tracking-normal normal-case">{sub}</span>}
-      {right && <span className="ml-auto flex flex-none items-center gap-1 font-normal tracking-normal normal-case">{right}</span>}
+      {sub && <span className="min-w-0 truncate font-normal">{sub}</span>}
+      {right && <span className="ml-auto flex flex-none items-center gap-1 font-normal">{right}</span>}
     </div>
   )
 }
@@ -203,8 +203,8 @@ export function StepCol({ onStep, minus = true, plus = true, tips }: { onStep: (
   const b = 'flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-gold disabled:pointer-events-none disabled:opacity-25 [&_svg]:size-4.5'
   return (
     <span className="-my-1 flex w-10 flex-none flex-col self-stretch border-l">
-      <button className={b} disabled={!plus} data-tip={tips[1]} onClick={e => { e.stopPropagation(); onStep(1) }}><Plus /></button>
-      <button className={cn(b, 'border-t')} disabled={!minus} data-tip={tips[0]} onClick={e => { e.stopPropagation(); onStep(-1) }}><Minus /></button>
+      <button className={b} disabled={!plus} data-tip={tips[1]} aria-label={tips[1]} onClick={e => { e.stopPropagation(); onStep(1) }}><Plus /></button>
+      <button className={cn(b, 'border-t')} disabled={!minus} data-tip={tips[0]} aria-label={tips[0]} onClick={e => { e.stopPropagation(); onStep(-1) }}><Minus /></button>
     </span>
   )
 }
@@ -212,7 +212,7 @@ export function StepCol({ onStep, minus = true, plus = true, tips }: { onStep: (
 /** Big bell toggle at the right end of an event row or tile: full height, wide hit area. */
 export function BellBtn({ on, onClick, tip, className }: { on: boolean; onClick: (e: MouseEvent) => void; tip: string; className?: string }) {
   return (
-    <button onClick={onClick} data-tip={tip}
+    <button onClick={onClick} data-tip={tip} aria-label={tip} aria-pressed={on}
       className={cn('flex w-10 flex-none items-center justify-center self-stretch transition-colors', on ? 'bg-gold/10 text-gold hover:bg-gold/20' : 'text-dim hover:bg-foreground/10 hover:text-muted-foreground', className)}>
       {on ? <Bell className="size-4.5" /> : <BellOff className="size-4.5" />}
     </button>
@@ -257,7 +257,7 @@ export function TextEntry({ value, onChange, onSubmit, onCancel, placeholder, cl
 }
 
 // ---------------------------------------------------------------- primitives (Base UI) with the house look
-// Design language "calm & compact": the density of the overlay, softer corners (rounded-md), panels as slightly raised
+// Design language "calm & compact": the density of the overlay, rounded-lg controls / rounded-xl panels, panels as slightly raised
 // cards, gold only for selection / the one action that matters, segmented controls instead of rows of chips.
 // Progressive disclosure: a view shows its answer first (a number, a board, a list of the top few); details sit in a
 // <Disclosure> or behind "show all" and are remembered (U.open) – never everything at once.
@@ -331,11 +331,12 @@ export function Disclosure({ id, title, sub, children, defaultOpen = false, righ
   const toggle = () => { U.open = { ...U.open, [id]: !open }; saveUi(['open']); bump() }
   return (
     <div data-disclosure={id} data-open={open ? 'on' : 'off'}>
-      <div className="flex min-h-8 items-center gap-1.5 px-3 pt-1.5">
-        <button onClick={toggle} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[12px] font-semibold text-muted-foreground hover:text-foreground [&_svg]:size-3.5">
+      {/* `right` (controls) wraps below the title when both do not fit */}
+      <div className="flex min-h-8 flex-wrap items-center gap-x-1.5 gap-y-1 px-3 pt-1.5">
+        <button onClick={toggle} aria-expanded={open} className="flex min-h-6 min-w-0 flex-[1_1_12rem] items-center gap-1.5 text-left text-[12px] font-semibold text-muted-foreground hover:text-foreground [&_svg]:size-3.5">
           <ChevronRight className={cn('flex-none transition-transform', open && 'rotate-90')} />
           <span className="flex-none">{title}</span>
-          {sub && <span className="min-w-0 truncate font-normal tracking-normal normal-case">{sub}</span>}
+          {sub && <span className="min-w-0 truncate font-normal">{sub}</span>}
         </button>
         {right}
       </div>
@@ -383,9 +384,9 @@ export function MiniStepper({ label, value, onStep, minus = true, plus = true, t
   return (
     <div className="flex items-center gap-1.5 text-[12px]">
       <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
-      <button className={b} disabled={!minus} data-tip={tips?.[0]} onClick={e => { e.stopPropagation(); onStep(-1) }}><Minus /></button>
+      <button className={b} disabled={!minus} data-tip={tips?.[0]} aria-label={tips?.[0] ?? '−1'} onClick={e => { e.stopPropagation(); onStep(-1) }}><Minus /></button>
       <output className="min-w-10 text-center font-semibold text-foreground tabular-nums">{value}</output>
-      <button className={b} disabled={!plus} data-tip={tips?.[1]} onClick={e => { e.stopPropagation(); onStep(1) }}><Plus /></button>
+      <button className={b} disabled={!plus} data-tip={tips?.[1]} aria-label={tips?.[1] ?? '+1'} onClick={e => { e.stopPropagation(); onStep(1) }}><Plus /></button>
     </div>
   )
 }

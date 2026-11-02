@@ -10,7 +10,7 @@ function Pill({ tt }: { tt: Toast }) {
   useEffect(() => { const r = requestAnimationFrame(() => setW(tt.frac)); return () => cancelAnimationFrame(r) }, [tt.frac])
   return (
     <div className={cn('relative flex max-w-full items-center gap-2 overflow-hidden rounded-sm border py-0.5 pr-2.5 pl-0.5 shadow-lg transition-all duration-400',
-      tt.up ? 'border-gold bg-[linear-gradient(90deg,#3a2f12f2,#1f2638f2)] shadow-[0_0_22px_#e8c87255]' : 'border-border bg-card/95',
+      tt.up ? 'border-gold bg-linear-to-r from-gold/15 to-card shadow-[0_0_22px_color-mix(in_srgb,var(--gold)_33%,transparent)]' : 'border-border bg-card/95',
       tt.out && '-translate-x-4 opacity-0')}>
       <span className={cn('grid size-6 flex-none place-items-center rounded-sm', tt.up ? 'bg-gold/20 text-gold' : 'bg-cyan/15 text-cyan')}>
         {tt.up ? <Star className="size-3.5" /> : <Plus className="size-3.5" />}

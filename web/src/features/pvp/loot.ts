@@ -87,7 +87,7 @@ export function ownLootPanel(name: string, chance: Record<string, number> = {}):
   const out: PanelSection[] = []
   const run = d.cur, ri = Object.entries(run?.items || {})
   const rl = byGrade(ri).slice(0, 4).map(([id, n]) => ({ t: `${item(id)[0]}${n > 1 ? ' ×' + n : ''}`, col: GRADE_COL[item(id)[1]] || FG }))
-  if (run?.kina) rl.push({ t: `+${kfmt(run.kina)} Kina`, col: KINA_COL })
+  if (run?.kina) rl.push({ t: `+${kfmt(run.kina)} Kinah`, col: KINA_COL })
   if (!rl.length) rl.push({ t: t('pvp.dng.lootNone'), col: MUTED })
   out.push({ h: t('pvp.dng.lootRun', { n: ri.reduce((s, [, n]) => s + n, 0) }), tab, l: rl })
   const all = Object.entries(d.items), n = all.reduce((s, [, v]) => s + v[0], 0)

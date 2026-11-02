@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { Bar, BarInfo, BellBtn, Disclosure, Kpi, KpiRow, META, More, Note, Page, Panel, ROW, ROW_CLICK, ROW_ICON, ROWS, SUB, TONE, TopN } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
 import { soulPets } from '@/features/pets/logic'
-import { allBosses, fbStatus, occOn, occurrences, timerName, timerWhere, toggleBossBell, toggleTimer } from '@/features/events/events'
+import { allBosses, fbStatus, occOn, occurrences, timerName, timerOn, timerWhere, toggleBossBell, toggleOnce } from '@/features/events/events'
 import { KIND_ICON } from '@/features/events/TimerTab'
 import { CHECK, CHECK_ICON, CHECK_ICON_DEFAULT, TIER, TIER_TONE, charKey, checkCount, checkSet, nextReset, resetIn, type Kind, type Per } from '@/features/progress/checklist'
 import { alerts } from '@/features/progress/alerts'
@@ -25,19 +25,21 @@ const leftTxt = (ms: number, now: number) => {
 
 // ---------------------------------------------------------------- data
 
-type Next = { ms: number; key: string; Icon: LucideIcon; por?: number; name: string; where: string; due: boolean; go: () => void; bell: boolean; toggle: () => void }
+type Next = { ms: number; key: string; Icon: LucideIcon; por?: number; name: string; where: string; due: boolean; go: () => void; bell: boolean; toggle: () => void; tip: string }
 
-/** Enabled events and field bosses (current map + belled ones), by time. */
+/** Enabled events and field bosses (current map + belled ones), by time. An event's bell here mutes / unmutes only
+ *  that occurrence (toggleOnce), never the whole series; a muted occurrence of an enabled series stays listed. */
 function upNext(now: number, n: number): Next[] {
   const evs = (G.timers || []).filter((ev: Any) => ev.kind !== 'reset')
-    .flatMap((ev: Any) => occurrences(ev, now - 60e3, now + 864e5).filter(ms => occOn(ev, ms)).map(ms => ({ ms, ev }))).sort((a: Any, b: Any) => a.ms - b.ms).slice(0, n)
+    .flatMap((ev: Any) => occurrences(ev, now - 60e3, now + 864e5).filter(ms => occOn(ev, ms) || timerOn(ev)).map(ms => ({ ms, ev }))).sort((a: Any, b: Any) => a.ms - b.ms).slice(0, n)
   const bosses = nextBosses(n)
   return [
     ...evs.map(({ ms, ev }: Any) => ({ ms, key: ev.id + ms, Icon: KIND_ICON[ev.kind] || Clock, name: timerName(ev), where: timerWhere(ev), due: false,
-      go: () => goTab('timer'), bell: true, toggle: () => toggleTimer(ev) })),
+      go: () => goTab('timer'), bell: occOn(ev, ms), toggle: () => toggleOnce(ev, ms), tip: occOn(ev, ms) ? t('home.onceOff') : t('home.onceOn') })),
     ...bosses.map(({ b, s }) => ({ ms: s.due!, key: b.key, Icon: Skull, por: bossPor(b), name: b.name, due: s.k === 'due',
       where: b.map === U.map ? '' : mapName(G.maps.find((m: Any) => m.key === b.map)?.name || ''),
-      go: () => { if (b.map !== U.map) selectMap(b.map); goTab('boss') }, bell: !!U.bossBells?.[b.key], toggle: () => toggleBossBell(b.key) })),
+      go: () => { if (b.map !== U.map) selectMap(b.map); goTab('boss') }, bell: !!U.bossBells?.[b.key], toggle: () => toggleBossBell(b.key),
+      tip: U.bossBells?.[b.key] ? t('timer.bellOn') : t('timer.bellOff') })),
   ].sort((a, b) => a.ms - b.ms).slice(0, n)
 }
 /** Portrait index of a field boss (its species on the boss's map). */
@@ -73,7 +75,7 @@ function NextRows({ rows, now }: { rows: Next[]; now: number }) {
       <span className={cn('flex-none text-[11px] whitespace-nowrap text-cyan tabular-nums', (r.due || r.ms - now < 10 * 60e3) && 'font-semibold text-gold')}>
         {r.due ? t('home.due') : leftTxt(r.ms, now)}
       </span>
-      <BellBtn on={r.bell} onClick={e => { e.stopPropagation(); r.toggle() }} tip={r.bell ? t('timer.bellOn') : t('timer.bellOff')} />
+      <BellBtn on={r.bell} onClick={e => { e.stopPropagation(); r.toggle() }} tip={r.tip} />
     </div>
   )} /></div>
 }

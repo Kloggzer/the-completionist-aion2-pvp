@@ -1,7 +1,7 @@
 // Checklist dashboard (server progress, characters).
 export default {
   de: {
-    'chk.title': 'Übersicht · Charaktere und Server', 'chk.titleChar': 'Charakter', 'chk.back': 'Übersicht', 'chk.openN': '{n} offen',
+    'chk.title': 'Alle Charaktere und Server', 'chk.titleChar': 'Charakter', 'chk.back': 'Alle Charaktere', 'chk.openN': '{n} offen',
     'chk.server': 'Server', 'chk.serverSub': 'gilt für alle Charaktere',
     'chk.chars': 'Charaktere', 'chk.noChars': 'Charaktere erscheinen hier nach dem ersten Login mit laufender App.',
     'chk.live': 'Gerade eingeloggt', 'chk.unknownChar': 'Unbekannt',
@@ -17,7 +17,7 @@ export default {
     'chk.hint': 'Reset: täglich {hh} Uhr, wöchentlich mittwochs {hh} Uhr. „A" = zählt automatisch mit (nur beim eingeloggten Charakter). Prozent = Durchschnitt aller Einträge.',
   },
   en: {
-    'chk.title': 'Overview · characters and server', 'chk.titleChar': 'Character', 'chk.back': 'Overview', 'chk.openN': '{n} open',
+    'chk.title': 'All characters and server', 'chk.titleChar': 'Character', 'chk.back': 'All characters', 'chk.openN': '{n} open',
     'chk.server': 'Server', 'chk.serverSub': 'shared by all characters',
     'chk.chars': 'Characters', 'chk.noChars': 'Characters appear here after logging in once with the app running.',
     'chk.live': 'Logged in now', 'chk.unknownChar': 'Unknown',

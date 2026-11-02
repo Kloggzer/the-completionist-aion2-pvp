@@ -2,7 +2,7 @@
 export default {
   de: {
     'arc.loading': 'Arkana-Daten werden geladen …', 'arc.missing': 'Keine Arkana-Daten (arcana.json oder daevanion.json fehlt).',
-    'arc.info': '{cls} · {n} Skills auf Arkana', 'arc.class': 'Klasse', 'arc.allCards': 'Alle', 'arc.guide': 'Nur Guide-Skills', 'arc.guideTip': 'Nur Skills, die der Klassen-Guide nutzt (Daevanion-Standards)',
+    'arc.info': '{cls} · {n} Skills auf Arkana', 'arc.class': 'Klasse', 'arc.allCards': 'Alle', 'arc.kindTip': 'Kartenart', 'arc.guide': 'Nur Guide-Skills', 'arc.guideTip': 'Nur Skills, die der Klassen-Guide nutzt (Daevanion-Standards)',
     'arc.hint': 'Eine Seelenbindung zieht 1–4 verschiedene Skills (Gewöhnlich 1 … Einzigartig 4) aus der Liste der Karte, jeder +Stufe. Pergament und Kompass tragen je 6 aktive, Glocke und Spiegel je 5 passive Skills, der Kelch alle 22 – dort ist die Chance pro Skill viel kleiner. Gold = Kern-Skill des Guides, „noch n“ = Stufen bis zur höchsten Spezialisierung nach Skillpunkten und Daevanion.',
     'arc.sect.skills': 'Skills und ihre Karte', 'arc.colUnique': 'Einzig.', 'arc.colChalice': 'Kelch',
     'arc.uniqueTip': 'Chance, dass eine Bindung einer Einzigartigen Karte dieser Art den Skill gibt', 'arc.chaliceTip': 'Dieselbe Chance auf einem Einzigartigen Kelch',
@@ -15,7 +15,8 @@ export default {
     'arc.stage': 'T{n}', 'arc.dropsSub': 'Chance pro Clear je Transzendenz-Stufe · Farbe = Seltenheit',
     'arc.transmute': 'Umwandeln ({grade}): {n}× {mat} + {kinah} Kinah, bis zu {picks} Skills selbst wählen (jede weitere Wahl +{en} Material, +{ek} Kinah).',
     'arc.sect.all': 'Alle Skills, Karten und Drops', 'arc.allSub': 'welche Karte welchen Skill trägt, Chancen pro Clear', 'arc.moreN': '{n} weitere',
-    'arc.adv.noLive': 'Keine Arkana-Karten von der plaync-Seite (Charakter im Build-Tab laden). Bis dahin rechnet die Empfehlung mit leeren Karten.',
+    'arc.adv.noLive': 'Keine Arkana-Karten von der plaync-Seite (Charakter auf der Seite „Daevanion“ laden). Bis dahin rechnet die Empfehlung mit leeren Karten.',
+    'arc.adv.other': 'Diese Klasse ist nicht die deines Charakters: die Empfehlung rechnet mit Grundwerten und leeren Karten. Deinen Charakter lädst du auf der Seite „Daevanion“.',
     'arc.adv.title': 'Empfehlung', 'arc.adv.sub': 'für deinen Charakter · nur Schaden (PvE)',
     'arc.adv.best': 'Am meisten Schaden pro Clear: **{d} {st}** – im Schnitt **{g}** pro Clear, eine bessere Karte {n}. Lauf die höchste Stufe, die du sicher schaffst.',
     'arc.adv.st': 'T{n}',
@@ -33,7 +34,7 @@ export default {
   },
   en: {
     'arc.loading': 'Loading arcana data …', 'arc.missing': 'No arcana data (arcana.json or daevanion.json is missing).',
-    'arc.info': '{cls} · {n} skills on arcana', 'arc.class': 'Class', 'arc.allCards': 'All', 'arc.guide': 'Guide skills only', 'arc.guideTip': 'Only skills the class guide uses (Daevanion defaults)',
+    'arc.info': '{cls} · {n} skills on arcana', 'arc.class': 'Class', 'arc.allCards': 'All', 'arc.kindTip': 'Card kind', 'arc.guide': 'Guide skills only', 'arc.guideTip': 'Only skills the class guide uses (Daevanion defaults)',
     'arc.hint': 'One soul binding draws 1–4 different skills (Common 1 … Unique 4) from the card’s list, each +level. Parchment and Compass hold 6 active skills each, Bell and Mirror 5 passives each, the Chalice all 22 – there the chance per skill is much lower. Gold = the guide’s core skill, “n more” = levels to the highest specialization after skill points and Daevanion.',
     'arc.sect.skills': 'Skills and their card', 'arc.colUnique': 'Unique', 'arc.colChalice': 'Chalice',
     'arc.uniqueTip': 'Chance one binding of a Unique card of this kind gives the skill', 'arc.chaliceTip': 'The same chance on a Unique Chalice',
@@ -46,7 +47,8 @@ export default {
     'arc.stage': 'T{n}', 'arc.dropsSub': 'chance per clear per Transcendence stage · colour = grade',
     'arc.transmute': 'Transmute ({grade}): {n}× {mat} + {kinah} Kinah, pick up to {picks} skills yourself (each further pick +{en} materials, +{ek} Kinah).',
     'arc.sect.all': 'All skills, cards and drops', 'arc.allSub': 'which card carries which skill, chances per clear', 'arc.moreN': '{n} more',
-    'arc.adv.noLive': 'No arcana cards from the plaync page (load the character in the Build tab). Until then the advice assumes empty cards.',
+    'arc.adv.noLive': 'No arcana cards from the plaync page (load the character on the Daevanion page). Until then the advice assumes empty cards.',
+    'arc.adv.other': 'This class is not the one of your character: the advice uses base values and empty cards. Load your character on the Daevanion page.',
     'arc.adv.title': 'Advice', 'arc.adv.sub': 'for your character · damage only (PvE)',
     'arc.adv.best': 'Most damage per clear: **{d} {st}** – on average **{g}** per clear, a better card {n}. Run the highest stage you clear safely.',
     'arc.adv.st': 'T{n}',

@@ -50,7 +50,7 @@ function Near() {
     <Sect sub={'· ' + t('pets.nearPos', { est: S.pos?.est ? t('pets.nearEst') : '', ago: ago(posAge()) })}>{t('pets.near')}</Sect>
     <div className={GRID}>
       {n.close.map((o: Any) => (
-        <div key={'m' + o.t.p.id} data-pet={o.t.p.id} className={cn(TILE, V.multi.has(o.t.p.id) && SEL)} data-tip={`${o.mob.n} → ${petName(o.t.p)} (Lv${o.t.lv})`} onClick={() => selectPet(o.t.p.id)}>
+        <div key={'m' + o.t.p.id} data-pet={o.t.p.id} className={cn(TILE, V.multi.has(o.t.p.id) && SEL)} data-tip={`${o.mob.n} → ${petName(o.t.p)} (Lv ${o.t.lv})`} onClick={() => selectPet(o.t.p.id)}>
           <Portrait por={o.mob.por} size={null} className={T_PORTRAIT} />
           <div className={T_BODY}>
             <div className="flex items-start gap-1.5"><Dot col={o.t.col} /><span className={T_TITLE}>{o.mob.n}</span></div>
@@ -67,10 +67,10 @@ function Near() {
       ))}
       {real.map((l: Any) => (
         <div key={'c' + l.c.key} data-cube={l.c.key} data-tip={t('pets.cube.realTip')} onClick={() => selectCube(l.c.key)}
-          className={cn(TILE, 'border-[#ffd25e] bg-[linear-gradient(135deg,#5a4410,#2c2410)] shadow-[0_0_10px_#ffd25e66] hover:border-[#ffd25e] hover:bg-[linear-gradient(135deg,#6a5214,#342b12)]', V.cube === l.c.key && 'ring-2 ring-gold')}>
-          <span className={cn(T_PORTRAIT, 'grid flex-none place-items-center rounded-sm border border-[#ffd25e]/40 bg-black/25 text-[#ffd25e]')}><Star className="size-1/2 fill-current" /></span>
+          className={cn(TILE, 'border-cube bg-linear-135 from-cube/20 to-card shadow-[0_0_10px_color-mix(in_srgb,var(--cube)_40%,transparent)] hover:border-cube hover:from-cube/30', V.cube === l.c.key && 'ring-2 ring-gold')}>
+          <span className={cn(T_PORTRAIT, 'grid flex-none place-items-center rounded-sm border border-cube/40 bg-cube/10 text-cube')}><Star className="size-1/2 fill-current" /></span>
           <div className={T_BODY}>
-            <span className={cn(T_TITLE, 'text-[#ffd25e]')}>{t('pets.cube.real')}</span>
+            <span className={cn(T_TITLE, 'text-cube')}>{t('pets.cube.real')}</span>
             <div className={T_SUB}>{l.c.name}{l.out ? t('pets.cube.lastSeen') : ''}</div>
             <div className={T_FOOT}>
               <Bar frac={0} className="invisible" />
@@ -90,7 +90,7 @@ const tagTxt = (mob: Any) => [mob.named ? t('pets.tag.named') : mob.r === 'Hero'
 function TargetTile({ x }: { x: Any }) {
   const on = V.multi.has(x.p.id), groups = mobGroups(x), g0 = groups[0], man = manual()
   const where = `${g0.n} ${lvTxt(g0.lv)}${groups.length > 1 ? ` +${groups.length - 1}` : ''}${x.area.name ? ` · ${x.area.name}` : ''}`
-  const tip = [`${petName(x.p)} (${x.p.c}, Lv${x.lv})${x.area.name ? ' · ' + x.area.name : ''}`,
+  const tip = [`${petName(x.p)} (${x.p.c}, Lv ${x.lv})${x.area.name ? ' · ' + x.area.name : ''}`,
     ...groups.map(g => `${g.n} ${lvTxt(g.lv)} · ${g.count}× ${t('pets.spawnsTip')}${tagTxt(g.mob) ? ' · ' + tagTxt(g.mob) : ''}`)].join('\n')
   return (
     <div data-pet={x.p.id} data-sel={on || undefined} className={cn(TILE, on && SEL, man && 'pr-0')} data-tip={tip} onClick={() => selectPet(x.p.id)}>
@@ -102,7 +102,7 @@ function TargetTile({ x }: { x: Any }) {
           {x.done ? <Bar frac={1} /> : <Pbar lv={x.lv} frac={x.souls / x.need} />}
           <div className={T_META}>
             <span>{x.done ? <b className="text-green">✓</b> : <><b className="font-semibold text-foreground">{x.souls}</b>/{x.need}</>}</span>
-            <span>Lv{x.lv}</span>
+            <span>Lv {x.lv}</span>
           </div>
         </div>
       </div>
