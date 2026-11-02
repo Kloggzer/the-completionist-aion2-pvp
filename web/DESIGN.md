@@ -88,14 +88,14 @@ modifiers on tokens are fine (`bg-gold/10`, `border-foreground/10`).
 | `background` / `card` / `popover` | page / raised block / floating | parchment | indigo |
 | `foreground` / `muted-foreground` / `dim` | text / secondary / off | warm brown | pale indigo |
 | `border`, `accent` | hairlines / hover fill | sand | indigo |
-| `gold` | **the accent**: selection, the key action, "best" | burnt amber | teal |
+| `gold` | **the accent**: selection, the key action, "best" | burnt amber | warm amber |
 | `green` | ok, done, gain | olive | mint |
 | `red` | bad, loss, overflow | brick | rose |
 | `cyan` | info, unlocking, live position | petrol | sky |
 | `purple` | a fourth category (soul stones, challenge) | violet | lavender |
 | `warn` / `warn-bg` / `warn-line` | attention boxes (`Hint` gold) only | amber on cream | sand on brown |
 
-- `gold` is not yellow and not a warning. In dark mode it is teal. Never use it to mean "medium" or "rare".
+- `gold` is not yellow and not a warning. In dark mode it is a lighter warm amber. Never use it to mean "medium" or "rare".
 - Status colours (`TONE`): ok green, bad red, info cyan, off dim. `TONE.warn` is gold text for "close to a limit".
 - Tinted boxes: `BOX.<tone>` (icon columns, badges). Tile borders by traffic light: `ACCENT`.
 - Colour never carries meaning alone: pair it with a word, a sign (`+`/`−`) or an icon.
