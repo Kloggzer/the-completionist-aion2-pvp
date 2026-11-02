@@ -11,6 +11,9 @@ export default {
     'chk.liveSub': 'eingeloggt · „A" zählt automatisch mit', 'chk.manualSub': 'nicht eingeloggt · wird von Hand gepflegt',
     'chk.tier.1': 'Pflicht', 'chk.tier.2': 'Empfohlen', 'chk.tier.3': 'Optional',
     'chk.remove': 'Charakter aus der Liste entfernen', 'chk.removeAsk': 'Wirklich entfernen?',
+    'chk.kpi.daily': 'Täglich offen', 'chk.kpi.weekly': 'Wöchentlich offen', 'chk.kpi.openAll': 'inkl. Server',
+    'chk.kpi.done': 'Komplett', 'chk.kpi.charsDone': 'Charaktere fertig', 'chk.kpi.reset': 'Daily-Reset', 'chk.kpi.progress': 'Fortschritt', 'chk.kpi.progressSub': 'Schnitt aller Einträge',
+    'chk.how': 'So funktioniert die Checkliste',
     'chk.hint': 'Reset: täglich {hh} Uhr, wöchentlich mittwochs {hh} Uhr. „A" = zählt automatisch mit (nur beim eingeloggten Charakter). Prozent = Durchschnitt aller Einträge.',
   },
   en: {
@@ -24,6 +27,9 @@ export default {
     'chk.liveSub': 'logged in · "A" is counted automatically', 'chk.manualSub': 'not logged in · tracked by hand',
     'chk.tier.1': 'Must', 'chk.tier.2': 'Recommended', 'chk.tier.3': 'Optional',
     'chk.remove': 'Remove character from the list', 'chk.removeAsk': 'Really remove?',
+    'chk.kpi.daily': 'Daily open', 'chk.kpi.weekly': 'Weekly open', 'chk.kpi.openAll': 'incl. server',
+    'chk.kpi.done': 'Complete', 'chk.kpi.charsDone': 'characters done', 'chk.kpi.reset': 'Daily reset', 'chk.kpi.progress': 'Progress', 'chk.kpi.progressSub': 'average of all entries',
+    'chk.how': 'How the checklist works',
     'chk.hint': 'Reset: daily at {hh}, weekly on Wednesday at {hh}. "A" = counted automatically (logged-in character only). Percent = average of all entries.',
   },
 }

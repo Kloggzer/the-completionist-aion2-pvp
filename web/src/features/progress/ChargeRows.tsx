@@ -1,9 +1,9 @@
 // Charge tiles (Odyle energy, Nightmare attempts, …) and the traffic-light warning list.
-import { ChevronRight, Key, KeyRound, Moon, TriangleAlert, Zap, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Crown, Key, KeyRound, Moon, TriangleAlert, Zap, type LucideIcon } from 'lucide-react'
 import { U, V, saveUi, bump } from '@/core/state'
 import { t } from '@/core/i18n'
 import { Slider } from '@/components/ui/slider'
-import { ACCENT, AutoBadge, Bar, CHIP, CHIP_ON, Sect, StepCol, T_BODY, T_FOOT, T_META, T_SUB, T_TITLE, TILE, TILE_P, TONE, TileIcon, grid, type BoxTone } from '@/components/kit'
+import { ACCENT, AutoBadge, Bar, Chip, ROW, ROW_CLICK, Sect, StepCol, T_BODY, T_FOOT, T_META, T_SUB, T_TITLE, TILE, TILE_P, TONE, TileIcon, grid, type BoxTone } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { resetIn, type Per } from './checklist'
 import { chargeAuto, chargeBonus, chargeFullIn, chargeLight, chargeNow, chargesOf, setCharge, stepCharge, type ChargeDef, type Light } from './charges'
@@ -51,21 +51,22 @@ export function Charges({ per, char }: { per: Per; char?: string }) {
   const list = chargesOf(per)
   if (!list.length) return null
   return <div>
-    <Sect sub={'· ' + t('charge.sub')} right={per === 'server' &&
-      <button onClick={() => { U.member = !U.member; saveUi(['member']); bump() }} data-tip={t('charge.memberTip')} className={cn(CHIP, 'h-5 px-1.5 text-[11px]', U.member && CHIP_ON)}>
-        {t('charge.member')} {U.member ? '✓' : ''}
-      </button>}>{t('charge.title')}</Sect>
+    <Sect sub={t('charge.sub')} right={per === 'server' &&
+      <Chip on={!!U.member} onChange={on => { U.member = on; saveUi(['member']); bump() }} tip={t('charge.memberTip')} className="h-6 px-2 text-[11.5px]" data-member={U.member ? 'on' : 'off'}>
+        <Crown />{t('charge.member')}
+      </Chip>}>{t('charge.title')}</Sect>
     <div className={grid('row')}>{list.map(d => <ChargeTile key={d.id} d={d} char={char} />)}</div>
   </div>
 }
 
-/** Warning rows; clicking one opens the character's checklist page. */
-export function AlertList({ alerts, showChar = true, onOpen }: { alerts: Alert[]; showChar?: boolean; onOpen?: (char: string | null) => void }) {
-  if (!alerts.length) return null
-  return <div className="flex flex-col gap-1.5 px-2.5">{alerts.map((a, i) => (
-    <button key={i} onClick={() => { V.chkPage = a.char; onOpen?.(a.char); bump() }} data-tip={`${a.char ?? t('chk.server')}: ${a.text}
-${t('alert.' + a.level)}`}
-      className={cn('group flex min-h-9 min-w-0 items-center gap-2 rounded-lg border bg-card px-2.5 py-1 text-left text-[12.5px] transition-colors hover:bg-foreground/5', ACCENT[a.level])}>
+/** One warning; clicking it opens the character's checklist page. `flat` = a row inside a panel instead of a card. */
+export function AlertRow({ a, showChar = true, flat, onOpen }: { a: Alert; showChar?: boolean; flat?: boolean; onOpen?: (char: string | null) => void }) {
+  return (
+    <button onClick={() => { V.chkPage = a.char; onOpen?.(a.char); bump() }} data-tip={`${a.char ?? t('chk.server')}: ${a.text}
+${t('alert.' + a.level)}`} data-alert={a.level}
+      className={cn('group w-full text-left',
+        flat ? cn(ROW, ROW_CLICK, a.level === 'red' && 'bg-red/[0.06]')
+          : cn('flex min-h-9 min-w-0 items-center gap-2 rounded-lg border bg-card px-2.5 py-1 text-[12.5px] transition-colors hover:bg-foreground/5', ACCENT[a.level]))}>
       <TriangleAlert className={cn('size-3.5 flex-none', a.level === 'red' ? TONE.bad : TONE.warn)} />
       <span className="min-w-0 flex-1 truncate">
         {showChar && <b className="mr-1 font-semibold">{a.char ?? t('chk.server')}:</b>}
@@ -73,5 +74,11 @@ ${t('alert.' + a.level)}`}
       </span>
       <ChevronRight className="size-3.5 flex-none text-dim transition-colors group-hover:text-gold" />
     </button>
-  ))}</div>
+  )
+}
+
+/** Warning cards (checklist pages). */
+export function AlertList({ alerts, showChar = true, onOpen }: { alerts: Alert[]; showChar?: boolean; onOpen?: (char: string | null) => void }) {
+  if (!alerts.length) return null
+  return <div className="flex flex-col gap-1.5 px-2.5">{alerts.map((a, i) => <AlertRow key={i} a={a} showChar={showChar} onOpen={onOpen} />)}</div>
 }

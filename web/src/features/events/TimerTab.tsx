@@ -2,12 +2,13 @@
 // events as blocks at their time, coloured by kind. Events that repeat every hour (Shugo festival, invasion) would
 // drown the calendar: they are one row each above it (series bell), in the calendar only as small ticks.
 // Clicking a block opens a small popover with both bells: this occurrence only, or the whole series.
+// Above it: number tiles (next event, today, bells, lead time) and the hourly rows (the next four, the rest on demand).
 import { useEffect, useState } from 'react'
-import { Bell, BellDot, BellOff, ChevronLeft, ChevronRight, Clock, RefreshCw, Skull, Swords, Tent, Tornado, type LucideIcon } from 'lucide-react'
+import { Bell, BellDot, BellOff, BellRing, CalendarClock, ChevronLeft, ChevronRight, Clock, Eye, Megaphone, RefreshCw, Skull, Swords, Tent, Timer, Tornado, type LucideIcon } from 'lucide-react'
 import { G, U, V, saveUi, bump, useApp, type Any } from '@/core/state'
 import { hm, locale, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
-import { BOX, BarInfo, BarRight, BellBtn, CHIP, CHIP_ON, Empty, Page, ROW, ROW_ICON, ROWS, Sect, type BoxTone } from '@/components/kit'
+import { BOX, BarInfo, BarRight, BellBtn, Chip, Empty, Kpi, KpiRow, Page, Panel, ROW, ROW_ICON, ROWS, Sect, TopN, type BoxTone } from '@/components/kit'
 import { TIMER_KINDS, hourly, kindOn, lead, occOn, occurrences, onceOf, timerName, timerOn, timerWhere, toggleKind, toggleOnce, toggleTimer } from './events'
 
 export const KIND_ICON: Record<string, LucideIcon> = { boss: Skull, rift: Tornado, field: Tent, abyss: Swords, reset: RefreshCw }
@@ -86,7 +87,7 @@ function BellPop({ p, onClose }: { p: Pop; onClose: () => void }) {
     </button>
   )
   return (
-    <div data-calpop className="fixed z-40 flex flex-col gap-1 rounded-sm border bg-popover p-1.5 shadow-lg shadow-black/50"
+    <div data-calpop className="fixed z-40 flex flex-col gap-1 rounded-lg border bg-popover p-1.5 shadow-lg"
       style={{ left, width: W, ...(p.up ? { bottom: innerHeight - p.y + 4 } : { top: p.y + 4 }) }}>
       <div className="flex items-center gap-1.5 px-0.5 pb-0.5">
         <I className={cn('size-3.5 flex-none', TXT[KIND_TONE[ev.kind] || 'dim'])} />
@@ -113,9 +114,9 @@ function DayCol({ k, from, now, pop, onOpen }: { k: number; from: number; now: n
         {today ? t('timer.today') : d.toLocaleDateString(locale(), { weekday: 'short' })}
         <span className="font-normal text-dim">{d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' })}</span>
       </div>
-      <div className="relative" style={{ height: 24 * H, backgroundImage: `repeating-linear-gradient(to bottom, transparent 0 ${H - 1}px, rgb(255 255 255 / 0.05) ${H - 1}px ${H}px)` }}>
+      <div className="relative" style={{ height: 24 * H, backgroundImage: `repeating-linear-gradient(to bottom, transparent 0 ${H - 1}px, color-mix(in oklab, var(--foreground) 7%, transparent) ${H - 1}px ${H}px)` }}>
         {today && <>
-          <i className="absolute inset-x-0 top-0 bg-black/20" style={{ height: (now - from) / 3600e3 * H }} />
+          <i className="absolute inset-x-0 top-0 bg-foreground/[0.05]" style={{ height: (now - from) / 3600e3 * H }} />
           <i data-now className="absolute inset-x-0 z-[2] h-px bg-red shadow-[0_0_4px_var(--red)]" style={{ top: (now - from) / 3600e3 * H }}>
             <i className="absolute -top-[3px] -left-[3px] size-[7px] rounded-full bg-red" />
           </i>
@@ -134,27 +135,45 @@ function DayCol({ k, from, now, pop, onOpen }: { k: number; from: number; now: n
   )
 }
 
-/** Hourly events: one row each (series bell, next time); in the calendar only as ticks. */
+/** Hourly events: one row each (series bell, next time), the next four first; in the calendar only as ticks. */
 function HourlyRows({ now }: { now: number }) {
-  const evs = G.timers.filter((ev: Any) => ev.kind !== 'reset' && hourly(ev))
+  const evs: { ev: Any; next?: number }[] = G.timers.filter((ev: Any) => ev.kind !== 'reset' && hourly(ev))
+    .map((ev: Any) => ({ ev, next: occurrences(ev, now - 5 * 60e3, now + 3 * 3600e3).sort((a, b) => a - b)[0] }))
+    .sort((a: Any, b: Any) => (a.next ?? Infinity) - (b.next ?? Infinity))
   if (!evs.length) return null
-  return <>
-    <Sect sub={'· ' + t('timer.hourlySub')}>{t('timer.hourly')}</Sect>
-    <div className={cn(ROWS, 'grid @min-[900px]:grid-cols-2 @min-[900px]:gap-x-4')}>
-      {evs.map((ev: Any) => {
-        const on = timerOn(ev), next = occurrences(ev, now - 5 * 60e3, now + 3 * 3600e3).sort((a, b) => a - b)[0], I = KIND_ICON[ev.kind] || Clock
-        const mins = [...new Set(ev.times.map((m: number) => ':' + String(m % 60).padStart(2, '0')))].join(' ')
-        return (
-          <div key={ev.id} className={cn(ROW, 'pr-0')}>
-            <span className={cn(ROW_ICON, TXT[KIND_TONE[ev.kind] || 'dim'])}><I /></span>
-            <span className={cn('min-w-0 flex-1 truncate', !on && 'text-muted-foreground')}>{timerName(ev)}<i className="ml-1 text-[11px] not-italic text-dim">{t('timer.everyHour', { m: mins })}</i></span>
-            {next && <span className="flex-none text-[11px] whitespace-nowrap text-cyan tabular-nums">{hm(next)} · {leftTxt(next, now)}</span>}
-            <BellBtn on={on} onClick={() => toggleTimer(ev)} tip={on ? t('timer.bellOn') : t('timer.bellOff')} />
-          </div>
-        )
-      })}
-    </div>
-  </>
+  return (
+    <Panel title={t('timer.hourly')} sub={t('timer.hourlySub')} data-hourly>
+      <div className={cn(ROWS, 'grid @min-[900px]:grid-cols-2 @min-[900px]:gap-x-4 [&>[data-more]]:col-span-full')}>
+        <TopN id="timer.hourly" items={evs} n={4} more={k => t('common.moreN', { n: k })} render={({ ev, next }) => {
+          const on = timerOn(ev), I = KIND_ICON[ev.kind] || Clock
+          const mins = [...new Set(ev.times.map((m: number) => ':' + String(m % 60).padStart(2, '0')))].join(' ')
+          return (
+            <div key={ev.id} data-hourly-ev={ev.id} className={cn(ROW, 'pr-0')}>
+              <span className={cn(ROW_ICON, TXT[KIND_TONE[ev.kind] || 'dim'])}><I /></span>
+              <span className={cn('min-w-0 flex-1 truncate', !on && 'text-muted-foreground')}>{timerName(ev)}<i className="ml-1 text-[11px] not-italic text-dim">{t('timer.everyHour', { m: mins })}</i></span>
+              {next && <span className="flex-none text-[11px] whitespace-nowrap text-cyan tabular-nums">{hm(next)} · {leftTxt(next, now)}</span>}
+              <BellBtn on={on} onClick={() => toggleTimer(ev)} tip={on ? t('timer.bellOn') : t('timer.bellOff')} />
+            </div>
+          )
+        }} />
+      </div>
+    </Panel>
+  )
+}
+
+/** Next enabled occurrence (not the resets) and how many are still to come today (hourly ones left out). */
+function upcoming(now: number) {
+  const end = new Date(now); end.setHours(24, 0, 0, 0)
+  let next: { ev: Any; ms: number } | null = null, today = 0
+  for (const ev of G.timers) {
+    if (ev.kind === 'reset') continue
+    for (const ms of occurrences(ev, now, now + 2 * 864e5)) {
+      if (!occOn(ev, ms)) continue
+      if (!next || ms < next.ms) next = { ev, ms }
+      if (ms < end.getTime() && !hourly(ev)) today++
+    }
+  }
+  return { next, today }
 }
 
 export function TimerTab() {
@@ -189,29 +208,40 @@ export function TimerTab() {
   }
   const range = (ms: number) => new Date(ms).toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' })
   const bar = <>
-    <BarInfo tip={t('timer.leadTip')}>{t('timer.leadInfo', { n: lead() })}</BarInfo>
+    <BarInfo tip={t('timer.leadTip')}>{t('timer.barInfo')}</BarInfo>
     <BarRight>
       {TIMER_KINDS.filter(k => G.timers.some((e: Any) => e.kind === k)).map(k => {
         const on = kindOn(k)
         return (
-          <button key={k} onClick={() => toggleKind(k)} data-tip={t(on ? 'timer.kindOff' : 'timer.kindOn', { kind: t('timer.kind.' + k) })} className={cn(CHIP, on && CHIP_ON)}>
+          <Chip key={k} on={on} onChange={() => toggleKind(k)} tip={t(on ? 'timer.kindOff' : 'timer.kindOn', { kind: t('timer.kind.' + k) })} data-kind={k}>
             <i className={cn('size-2 flex-none rounded-[2px]', DOT[KIND_TONE[k]])} />{t('timer.kind.' + k)}{on ? <Bell className="text-gold" /> : <BellOff className="text-dim" />}
-          </button>
+          </Chip>
         )
       })}
-      <button onClick={() => { U.timerAll = !U.timerAll; saveUi(['timerAll']); bump() }} data-tip={t('timer.allTip')} className={cn(CHIP, U.timerAll && CHIP_ON)}>{t('timer.all')}</button>
+      <Chip on={!!U.timerAll} onChange={on => { U.timerAll = on; saveUi(['timerAll']); bump() }} tip={t('timer.allTip')} data-timer-all={U.timerAll ? 'on' : 'off'}><Eye />{t('timer.all')}</Chip>
     </BarRight>
   </>
-  const nav = 'grid h-6 min-w-6 place-items-center rounded-sm border px-1.5 text-[11px] text-muted-foreground transition-colors hover:border-gold/50 hover:text-foreground disabled:pointer-events-none disabled:opacity-30 [&_svg]:size-3.5'
+  const { next, today } = upcoming(now)
+  const series = G.timers.filter((e: Any) => e.kind !== 'reset'), seriesOn = series.filter(timerOn).length
+  // prev / today / next as one group (segmented look): "today" is pressed while the calendar starts today.
+  const nav = 'grid h-6 min-w-6 place-items-center rounded-md px-1.5 text-[11.5px] text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground disabled:pointer-events-none disabled:opacity-30 [&_svg]:size-3.5'
   return (
     <Page bar={bar}>
+      <KpiRow>
+        <Kpi icon={CalendarClock} label={t('timer.kpi.next')} value={next ? hm(next.ms) : '–'} tone={next ? (next.ms - now < 10 * 60e3 ? 'warn' : 'info') : undefined}
+          sub={next ? [leftTxt(next.ms, now), timerName(next.ev)].filter(Boolean).join(' · ') : t('timer.kpi.none')} tip={next ? timerName(next.ev) + (timerWhere(next.ev) ? ' · ' + timerWhere(next.ev) : '') : undefined} data-kpi="next" />
+        <Kpi icon={Timer} label={t('timer.kpi.today')} value={today} sub={t('timer.kpi.todaySub')} data-kpi="today" />
+        <Kpi icon={BellRing} label={t('timer.kpi.bells')} value={`${seriesOn}/${series.length}`} tone={seriesOn ? 'warn' : undefined} sub={t('timer.kpi.bellsSub')} data-kpi="bells" />
+        <Kpi icon={Megaphone} label={t('timer.kpi.lead')} value={t('timer.kpi.leadV', { n: lead() })} sub={t('timer.kpi.leadSub')} tip={t('timer.leadTip')} data-kpi="lead" />
+      </KpiRow>
       <HourlyRows now={now} />
-      <Sect sub={'· ' + range(days[0]) + ' – ' + range(days[DAYS - 1])} right={<>
-        <button className={nav} disabled={start <= 0} onClick={() => go(-1)} data-tip={t('timer.prev')}><ChevronLeft /></button>
-        <button className={nav} disabled={start === 0} onClick={() => go(-start)}>{t('timer.today')}</button>
-        <button className={nav} disabled={start >= DAYS} onClick={() => go(1)} data-tip={t('timer.next')}><ChevronRight /></button>
-      </>}>{t('timer.calendar')}</Sect>
-      <div data-cal className="mx-1.5 flex rounded-sm border bg-card/60 [--bar-h:33px]">
+      <Sect className="pt-3" sub={range(days[0]) + ' – ' + range(days[DAYS - 1])} right={
+        <span data-calnav className="flex items-center gap-0.5 rounded-lg border bg-background p-0.5">
+          <button className={nav} disabled={start <= 0} onClick={() => go(-1)} data-tip={t('timer.prev')}><ChevronLeft /></button>
+          <button className={cn(nav, start === 0 && 'bg-gold/[0.14] font-semibold text-gold disabled:opacity-100')} disabled={start === 0} onClick={() => go(-start)}>{t('timer.today')}</button>
+          <button className={nav} disabled={start >= DAYS} onClick={() => go(1)} data-tip={t('timer.next')}><ChevronRight /></button>
+        </span>}>{t('timer.calendar')}</Sect>
+      <div data-cal className="mx-2.5 flex overflow-clip rounded-xl border bg-card shadow-(--shadow-card) [--bar-h:41px]">
         <div className="w-9 flex-none">
           <div className="sticky top-(--bar-h) z-[3] h-7 border-b bg-card" />
           <div className="relative" style={{ height: 24 * H }}>

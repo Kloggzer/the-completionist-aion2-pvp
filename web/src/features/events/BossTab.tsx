@@ -1,12 +1,13 @@
-// "Bosse" tab: field bosses of the current map, then the Abyss bosses (always shown, whatever map is selected).
-import { Bell, Skull } from 'lucide-react'
+// "Bosse" tab: number tiles (next boss here, alive, bells, next Abyss boss), the field bosses of the current map, then
+// the Abyss bosses behind a disclosure (available whatever map is selected, open by default on the Abyss map).
+import { BellRing, HeartPulse, Skull, Swords } from 'lucide-react'
 import { G, U, manual, useApp, type Any } from '@/core/state'
 import { mapName } from '@/core/data'
 import { hm, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
-import { BarInfo, BarRight, BellBtn, Empty, LEAD, Page, Sect, T_BODY, T_FOOT, T_PORTRAIT, T_TITLE, TILE, TILE_P, grid } from '@/components/kit'
+import { BarInfo, BellBtn, Disclosure, Empty, Kpi, KpiRow, Page, Sect, T_BODY, T_FOOT, T_PORTRAIT, T_TITLE, TILE, TILE_P, grid } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
-import { ABYSS, abyssBosses, bossShort, fbServer, fbStatus, fieldBosses, killBoss, lead, toggleBossBell, whenTxt } from './events'
+import { ABYSS, abyssBosses, allBosses, bossShort, fbServer, fbStatus, fieldBosses, killBoss, lead, toggleBossBell, whenTxt } from './events'
 
 const ORDER = { due: 0, wait: 1, alive: 2, stale: 3, unknown: 4 }
 // Tile accent per boss status.
@@ -56,26 +57,45 @@ function sorted(bosses: Any[]) {
     .sort((a, c) => c.il - a.il || ORDER[a.s.k as keyof typeof ORDER] - ORDER[c.s.k as keyof typeof ORDER] || (a.s.due || 0) - (c.s.due || 0) || a.b.key.localeCompare(c.b.key))
 }
 
+/** The boss that spawns next (waiting or due), with its status. */
+function nextOf(list: { b: Any; s: Any }[]) {
+  return list.filter(x => (x.s.k === 'wait' || x.s.k === 'due') && x.s.due).sort((a, c) => a.s.due - c.s.due)[0]
+}
+const leftTxt = (ms: number) => {
+  const m = Math.round((ms - Date.now()) / 60000)
+  return m <= 0 ? t('home.due') : m < 60 ? t('timer.inMin', { m }) : m < 1440 ? t('timer.inHMin', { h: Math.floor(m / 60), m: m % 60 }) : whenTxt(ms)
+}
+function NextKpi({ x, label, icon, none, ...rest }: { x?: { b: Any; s: Any }; label: string; icon: typeof Skull; none: string } & Record<`data-${string}`, string>) {
+  return <Kpi icon={icon} label={label} value={x ? (x.s.k === 'due' ? t('home.due') : whenTxt(x.s.due)) : '–'} tone={x ? (x.s.k === 'due' ? 'warn' : 'info') : undefined}
+    sub={x ? `${x.s.k === 'due' ? hm(x.s.due) : leftTxt(x.s.due)} · ${bossShort(x.b).short}` : none} tip={x?.b.name} {...rest} />
+}
+
 export function BossTab() {
   useApp()
   const m = G.md[U.map], field = fieldBosses(m), abyss = abyssBosses()
   const tbl = field.length ? U.bossTables?.[field[0].mapId] : null
   const note = manual() ? t('boss.manual') : tbl ? t('boss.server', { at: hm(tbl.at) }) : t('boss.estimate')
-  const bar = <>
-    <BarInfo>{m ? mapName(m.name) + ' · ' : ''}{note}</BarInfo>
-    <BarRight><span className="inline-flex items-center gap-1 px-1 text-[11.5px]"><Bell className="size-3" />{t('boss.legend', { n: lead() })}</span></BarRight>
-  </>
+  const fs = sorted(field), as = sorted(abyss)
+  const alive = fs.filter(x => x.s.k === 'alive').length, bells = allBosses().filter(b => U.bossBells?.[b.key]).length
+  const bar = <BarInfo tip={note}>{m ? mapName(m.name) + ' · ' : ''}{note}</BarInfo>
   return (
     <Page bar={bar}>
+      <KpiRow>
+        <NextKpi x={nextOf(fs)} icon={Skull} label={t('boss.kpi.next')} none={field.length ? t('home.kpi.noBoss') : t('boss.kpi.noField')} data-kpi="next" />
+        <Kpi icon={HeartPulse} label={t('boss.kpi.alive')} value={field.length ? alive : '–'} tone={alive ? 'ok' : undefined} sub={t('boss.kpi.ofN', { n: field.length })} data-kpi="alive" />
+        <Kpi icon={BellRing} label={t('boss.kpi.bells')} value={bells} tone={bells ? 'warn' : undefined} sub={t('boss.kpi.lead', { n: lead() })} data-kpi="bells" />
+        <NextKpi x={nextOf(as)} icon={Swords} label={t('boss.kpi.abyss')} none={t('home.kpi.noBoss')} data-kpi="abyss" />
+      </KpiRow>
       {field.length > 0 && <>
-        {abyss.length > 0 && <Sect sub={'· ' + t('boss.fieldSub')}>{m ? mapName(m.name) : ''}</Sect>}
-        <div className={cn(grid('boss'), !abyss.length && LEAD)}>{sorted(field).map(({ b, s }) => <BossCard key={b.key} b={b} s={s} />)}</div>
+        <Sect sub={t('boss.fieldSub')}>{m ? mapName(m.name) : ''}</Sect>
+        <div className={grid('boss')}>{fs.map(({ b, s }) => <BossCard key={b.key} b={b} s={s} />)}</div>
       </>}
       {!field.length && U.map !== ABYSS && <Empty>{t('boss.none', { map: m ? mapName(m.name) : t('boss.thisMap') })}</Empty>}
-      {abyss.length > 0 && <>
-        <Sect sub={'· ' + mapName(G.md[ABYSS].name) + ' · ' + t('boss.abyssSub')}>{t('boss.abyss')}</Sect>
-        <div className={grid('boss')}>{sorted(abyss).map(({ b, s }) => <BossCard key={b.key} b={b} s={s} />)}</div>
-      </>}
+      {abyss.length > 0 && <div className="pt-1.5">
+        <Disclosure id="boss.abyss" defaultOpen={U.map === ABYSS} title={t('boss.abyss')} sub={mapName(G.md[ABYSS].name) + ' · ' + t('boss.abyssN', { n: abyss.length })}>
+          <div className={cn(grid('boss'), 'pt-1')}>{as.map(({ b, s }) => <BossCard key={b.key} b={b} s={s} />)}</div>
+        </Disclosure>
+      </div>}
     </Page>
   )
 }

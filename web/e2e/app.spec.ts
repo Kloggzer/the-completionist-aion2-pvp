@@ -210,7 +210,8 @@ test('tooltips: shadcn tooltip on hover, no native titles', async ({ page }) => 
   await page.locator('[data-tip="Einstellungen"]').hover()
   await expect(page.locator('[data-slot=tooltip-content]')).toHaveText('Einstellungen')
   await shot(page, 'tooltip')
-  await page.mouse.move(300, 600)
+  const bar = await box(page, '[data-bar]') // empty end of the page bar: nothing with a tooltip below the mouse
+  await page.mouse.move(bar.x + bar.width - 8, bar.y + bar.height / 2)
   await expect(page.locator('[data-slot=tooltip-content]')).toHaveCount(0)
 })
 
@@ -228,10 +229,14 @@ test('bosses + timers: big bell toggles', async ({ page }) => {
   await shot(page, 'timer-bells')
 })
 
-test('bosses: abyss bosses always shown in their own group', async ({ page }) => {
+test('bosses: abyss bosses always available in their own group', async ({ page }) => {
   await openApp(page, { ui: { tab: 'boss' } })
-  await expect(page.locator('[data-boss="2600089"]')).toBeVisible({ timeout: 15000 }) // Watcher Kaira (Abyss)
-  await expect(page.getByText('Abyss', { exact: true })).toBeVisible()
+  const abyss = page.locator('[data-disclosure="boss.abyss"]')
+  await expect(abyss).toBeVisible({ timeout: 15000 })
+  await expect(abyss.getByText('Abyss', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-boss="2600089"]')).toHaveCount(0) // closed by default off the Abyss map
+  await abyss.locator('button').first().click()
+  await expect(page.locator('[data-boss="2600089"]')).toBeVisible() // Watcher Kaira (Abyss)
   await page.locator('[data-boss="2600089"]').scrollIntoViewIfNeeded()
   await shot(page, 'boss-abyss')
 })

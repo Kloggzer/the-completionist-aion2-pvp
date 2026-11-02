@@ -1,22 +1,23 @@
-// Checklist dashboard: the characters with their completion, then the server/account items (shared by all
-// characters); a character's own list on its page. Entries, charges and owners are tiles in the shared anatomy:
-// icon / ring column left, name, two-line sub, bar + footer, −/+ column at the right edge.
+// Checklist dashboard: number tiles (open daily / weekly, characters, reset), the warnings, the characters as compact
+// rows, then the server/account items (shared by all characters); a character's own list on its page. Entries and
+// charges are tiles: icon column left, name, bar + footer, −/+ column at the right edge; the explanation of an entry
+// is in its tooltip, the explanation of the page in a closed "how it works".
 import { useState } from 'react'
-import { CheckCheck, ChevronLeft, ChevronRight, Pencil, Plus, RotateCcw, Server, Trash2, UserCheck } from 'lucide-react'
+import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Pencil, Percent, Plus, RefreshCw, RotateCcw, Server, Sun, Trash2, UserCheck, Users } from 'lucide-react'
 import { S, V, bump, manual, useApp } from '@/core/state'
 import { t, hm } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CHECK, CHECK_ICON, CHECK_ICON_DEFAULT, TIER, TIER_TONE, resetIn, checkAuto, checkCount, checkSet, characters, nextReset, progressOf, removeChar, setAll, addChar, renameChar, selectChar, type Kind, type Per } from './checklist'
 import { AppSelect } from '@/components/AppSelect'
-import { ACCENT, AutoBadge, BOX, Bar, BarInfo, BarRight, Columns, Foot, Note, Page, SECT_BTN, Sect, StepCol, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE, TILE_CLICK, TILE_P, TONE, TextEntry, TileIcon, grid } from '@/components/kit'
+import { ACCENT, AutoBadge, BOX, Bar, BarInfo, BarRight, Columns, HowTo, Kpi, KpiRow, META, Note, Page, Panel, ROW, ROW_CLICK, ROWS, SECT_BTN, SUB, Sect, StepCol, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_TITLE, TILE, TILE_P, TONE, TextEntry, TileIcon, TopN, grid } from '@/components/kit'
 import { alerts, ownerAlertsOf, ownerLevel } from './alerts'
-import { AlertList, Charges, LIGHT_DOT } from './ChargeRows'
+import { AlertList, AlertRow, Charges, LIGHT_DOT } from './ChargeRows'
 
 const pct = (f: number) => Math.round(f * 100) + ' %'
 const GRID = grid('row')
 
-/** One entry: icon in the priority colour, name, tip, bar, count + badges, −/+ column. */
+/** One entry: icon in the priority colour, name, bar, count + badges, −/+ column; the explanation is in the tooltip. */
 function Entry({ id, max, per, kind, char }: { id: string; max: number; per: Per; kind: Kind; char?: string }) {
   const c = checkCount(id, per, kind, char), full = c >= max, auto = checkAuto(id, per, kind, char), tier = TIER[id] ?? 2
   const tip = t('progress.item.' + id) + ' – ' + t('progress.tip.' + id) + (per === 'server' ? t('progress.perServer') : '') + (auto ? t('progress.isAuto') : '')
@@ -25,7 +26,6 @@ function Entry({ id, max, per, kind, char }: { id: string; max: number; per: Per
       <TileIcon icon={CHECK_ICON[id] || CHECK_ICON_DEFAULT} tone={full ? 'green' : TIER_TONE[tier]} tip={t('chk.tier.' + tier)} />
       <div className={T_BODY}>
         <span className={cn(T_TITLE, full && TONE.ok)}>{t('progress.item.' + id)}</span>
-        <div className={T_SUB}>{t('progress.tip.' + id)}</div>
         <div className={T_FOOT}>
           <Bar frac={c / max} />
           <div className={T_META}>
@@ -68,7 +68,7 @@ function RingBox({ frac, level, live, icon: I }: { frac: number; level: 'red' | 
   return (
     <span className={cn(T_PORTRAIT, 'relative grid flex-none place-items-center rounded-sm border', frac >= 1 ? BOX.green : level === 'red' ? BOX.red : level === 'yellow' ? BOX.gold : live ? BOX.cyan : BOX.dim)}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#ffffff14" strokeWidth="3.5" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="stroke-foreground/10" strokeWidth="3.5" />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${c * frac} ${c}`} />
       </svg>
       <span className="absolute inset-0 grid place-items-center text-[11px] font-bold text-foreground tabular-nums">
@@ -78,8 +78,19 @@ function RingBox({ frac, level, live, icon: I }: { frac: number; level: 'red' | 
   )
 }
 
-/** Owner tile body: name (live dot, alert dot), daily/weekly split, open entries. */
-function OwnerBody({ name, live, level, per, char, sub, right }: { name: string; live?: boolean; level: 'red' | 'yellow' | null; per: Per; char?: string; sub?: string; right?: React.ReactNode }) {
+/** Small completion ring of a list row. */
+function MiniRing({ frac }: { frac: number }) {
+  const size = 20, r = 7.5, c = 2 * Math.PI * r, col = frac >= 1 ? 'var(--green)' : frac > 0 ? 'var(--gold)' : 'var(--dim)'
+  return (
+    <svg width={size} height={size} className="flex-none -rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="stroke-foreground/10" strokeWidth="3" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${c * frac} ${c}`} />
+    </svg>
+  )
+}
+
+/** Owner tile body (character page head): name (live dot, alert dot), status, daily/weekly split, open entries. */
+function OwnerBody({ name, live, level, per, char, right }: { name: string; live?: boolean; level: 'red' | 'yellow' | null; per: Per; char?: string; right?: React.ReactNode }) {
   const d = progressOf(per, char, 'd'), w = progressOf(per, char, 'w'), open = openList(per, char)
   return (
     <div className={T_BODY}>
@@ -89,7 +100,7 @@ function OwnerBody({ name, live, level, per, char, sub, right }: { name: string;
         {level && <i className={cn('size-2 flex-none rounded-full', LIGHT_DOT[level])} data-tip={t('alert.' + level)} />}
         {right && <span className="ml-auto flex flex-none items-center gap-1">{right}</span>}
       </span>
-      <div className={T_SUB}>{sub ?? (manual() ? t(live ? 'chk.activeSub' : 'chk.inactiveSub') : live ? t('chk.liveSub') : t('chk.manualSub'))}</div>
+      <div className={cn(SUB, 'mt-0.5 truncate')}>{manual() ? t(live ? 'chk.activeSub' : 'chk.inactiveSub') : live ? t('chk.liveSub') : t('chk.manualSub')}</div>
       <div className={T_FOOT}>
         <Bar frac={progressOf(per, char)} />
         <div className={T_META}>
@@ -104,18 +115,27 @@ function OwnerBody({ name, live, level, per, char, sub, right }: { name: string;
 /** What an owner still needs, for the tooltip. */
 const openList = (per: Per, char?: string) => CHECK.flatMap(([kind, items]) => items.filter(([id, max, p]) => p === per && checkCount(id, p, kind, char) < max)
   .map(([id, max, p]) => `${t('progress.item.' + id)} ${checkCount(id, p, kind, char)}/${max}`))
+/** Number of open entries of an owner in one period. */
+const openOf = (per: Per, kind: Kind, char?: string) =>
+  CHECK.filter(([k]) => k === kind).flatMap(([, items]) => items).filter(([id, max, p]) => p === per && checkCount(id, p, kind, char) < max).length
 
 const charName = (name: string) => (name === 'Standard' ? t('chk.unknownChar') : name)
 
-// Character tile on the dashboard: completion ring, name + status, split, open entries. Opens the character's page.
-function CharTile({ name, live }: { name: string; live: boolean }) {
+// Character row on the dashboard: small completion ring, name + status dots, split, open count. Opens the character's page.
+function CharRow({ name, live }: { name: string; live: boolean }) {
   const open = openList('char', name), lvl = ownerLevel('char', name)
   return (
     <button data-char={name} data-tip={open.length ? `${t('chk.open')}: ${open.join(', ')}` : t('chk.everything')} onClick={() => { V.chkPage = name; bump(); document.querySelector('[data-list]')?.scrollTo(0, 0) }}
-      className={cn('group', TILE, TILE_P, TILE_CLICK, 'pr-1', live && 'border-green/30', lvl && ACCENT[lvl])}>
-      <RingBox frac={progressOf('char', name)} level={lvl} live={live} />
-      <OwnerBody name={charName(name)} live={live} level={lvl} per="char" char={name} sub={open.length ? open.join(' · ') : '✓ ' + t('chk.everything')} />
-      <ChevronRight className="size-4 flex-none self-center text-dim transition-colors group-hover:text-gold" />
+      className={cn('group w-full text-left', ROW, ROW_CLICK, lvl === 'red' && 'bg-red/[0.06]')}>
+      <MiniRing frac={progressOf('char', name)} />
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="truncate font-semibold">{charName(name)}</span>
+        {live && <i className="size-1.5 flex-none rounded-full bg-green shadow-[0_0_5px_var(--green)]" data-tip={t(manual() ? 'chk.active' : 'chk.live')} />}
+        {lvl && <i className={cn('size-2 flex-none rounded-full', LIGHT_DOT[lvl])} data-tip={t('alert.' + lvl)} />}
+      </span>
+      <span className={cn(META, 'hidden flex-none @min-[480px]:inline')}>{t('progress.sect.d')} {pct(progressOf('char', name, 'd'))} · {t('progress.sect.w')} {pct(progressOf('char', name, 'w'))}</span>
+      <span className={cn('w-16 flex-none text-right text-[12px] tabular-nums', open.length ? TONE.warn : TONE.ok)}>{open.length ? t('chk.openN', { n: open.length }) : '✓'}</span>
+      <ChevronRight className="size-4 flex-none text-dim transition-colors group-hover:text-gold" />
     </button>
   )
 }
@@ -153,12 +173,22 @@ function ManualCharActions({ name, live, onRename }: { name: string; live: boole
   </>
 }
 
+/** Reset countdown tile (daily, weekly below). */
+const ResetKpi = () => <Kpi icon={RefreshCw} label={t('chk.kpi.reset')} value={resetIn(nextReset('d'))} sub={t('home.kpi.weekly', { d: resetIn(nextReset('w')) })} data-kpi="reset" />
+
 /** One character's own page (reached from the dashboard): owner tile with remove, alerts, charges, lists. */
 function CharPage({ name, live }: { name: string; live: boolean }) {
   const lvl = ownerLevel('char', name), man = manual(), [renaming, setRenaming] = useState(false)
   const right = <>{man && <ManualCharActions name={name} live={live} onRename={() => setRenaming(true)} />}{!live && <RemoveButton name={name} />}</>
+  const d = openOf('char', 'd', name), w = openOf('char', 'w', name)
   return <>
-    <div className="px-1.5 pt-1.5">
+    <KpiRow>
+      <Kpi icon={Sun} label={t('chk.kpi.daily')} value={d || '✓'} tone={d ? undefined : 'ok'} sub={pct(progressOf('char', name, 'd'))} data-kpi="daily" />
+      <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={w || '✓'} tone={w ? undefined : 'ok'} sub={pct(progressOf('char', name, 'w'))} data-kpi="weekly" />
+      <Kpi icon={Percent} label={t('chk.kpi.progress')} value={pct(progressOf('char', name))} tone={progressOf('char', name) >= 1 ? 'ok' : undefined} sub={t('chk.kpi.progressSub')} data-kpi="progress" />
+      <ResetKpi />
+    </KpiRow>
+    <div className="px-2.5 pt-2.5">
       <div className={cn(TILE, TILE_P, live && 'border-green/30', lvl && ACCENT[lvl])}>
         <RingBox frac={progressOf('char', name)} level={lvl} live={live} />
         {renaming
@@ -167,21 +197,22 @@ function CharPage({ name, live }: { name: string; live: boolean }) {
           : <OwnerBody name={charName(name)} live={live} level={lvl} per="char" char={name} right={right} />}
       </div>
     </div>
-    <div className="pt-1"><AlertList alerts={ownerAlertsOf('char', name)} showChar={false} /></div>
+    <div className="pt-1.5"><AlertList alerts={ownerAlertsOf('char', name)} showChar={false} /></div>
     <Columns><Charges per="char" char={name} /><Lists per="char" char={name} /></Columns>
   </>
 }
 
-/** Server block header: the same owner tile, not clickable. */
+/** Server block header: one section line with icon, share, progress and open count. */
 function ServerHead() {
-  const lvl = ownerLevel('server', null)
+  const lvl = ownerLevel('server', null), open = openList('server')
   return (
-    <div className="px-1.5 pt-3">
-      <div data-server className={cn(TILE, TILE_P, 'border-cyan/25', lvl && ACCENT[lvl])}>
-        <RingBox frac={progressOf('server')} level={lvl} icon={Server} />
-        <OwnerBody name={t('chk.server') + ' · ' + pct(progressOf('server'))} level={lvl} per="server" sub={t('chk.serverSub')} />
-      </div>
-    </div>
+    <Sect className="pt-4" sub={<>{t('chk.serverSub')} · {pct(progressOf('server'))}</>}
+      right={<span data-tip={open.length ? `${t('chk.open')}: ${open.join(', ')}` : undefined} className={cn('flex items-center gap-1.5 text-[12px]', open.length ? TONE.warn : TONE.ok)}>
+        {lvl && <i className={cn('size-2 flex-none rounded-full', LIGHT_DOT[lvl])} data-tip={t('alert.' + lvl)} />}
+        {open.length ? t('chk.openN', { n: open.length }) : '✓ ' + t('chk.complete')}
+      </span>}>
+      <span data-server className="flex items-center gap-1.5 text-[13px] text-foreground"><Server className="size-3.5 text-cyan" />{t('chk.server')}</span>
+    </Sect>
   )
 }
 
@@ -191,28 +222,43 @@ export function CheckTab() {
   const chars = characters(), live = S.state.charName, man = manual()
   if (V.chkPage && !chars.includes(V.chkPage)) V.chkPage = null
   const warn = alerts()
+  const more = (k: number) => t('common.moreN', { n: k })
+  const sumOpen = (kind: Kind) => chars.reduce((s, c) => s + openOf('char', kind, c), openOf('server', kind))
+  const dOpen = sumOpen('d'), wOpen = sumOpen('w'), complete = chars.filter(c => progressOf('char', c) >= 1).length
   const bar = <>
     {V.chkPage
       ? <Button variant="ghost" size="xs" className="h-6 text-[12px] text-muted-foreground" onClick={() => { V.chkPage = null; bump() }}><ChevronLeft />{t('chk.back')}</Button>
       : <BarInfo>{t('chk.title')}</BarInfo>}
     {V.chkPage && <span data-drag className="h-6 min-w-2 flex-1 cursor-grab" />}
-    <BarRight>{man && chars.length > 0 && <AppSelect value={live && chars.includes(live) ? live : ''} tip={t('chk.activeSel')} className="h-6 max-w-40 text-xs"
+    {man && chars.length > 0 && <BarRight><AppSelect value={live && chars.includes(live) ? live : ''} tip={t('chk.activeSel')} className="h-6 max-w-40 text-xs"
       options={[...(live && chars.includes(live) ? [] : [{ value: '', label: '–' }]), ...chars.map(c => ({ value: c, label: charName(c) }))]}
-      onChange={c => c && selectChar(c)} />}<span className="px-1 text-[11.5px] tabular-nums">{t('progress.resetIn', { d: resetIn(nextReset('d')), w: resetIn(nextReset('w')) })}</span></BarRight>
+      onChange={c => c && selectChar(c)} /></BarRight>}
   </>
   return (
     <Page w="rows" bar={bar}>
       {V.chkPage ? <CharPage name={V.chkPage} live={V.chkPage === live} /> : <>
-        {warn.length > 0 && <><Sect sub={'· ' + t('alert.sub')}>{t('alert.title')}</Sect><AlertList alerts={warn} /></>}
-        <Sect right={man && !adding && <button data-add-char className={SECT_BTN} data-tip={t('chk.addTip')} onClick={() => setAdding(true)}><Plus />{t('chk.add')}</button>}>{t('chk.chars')}</Sect>
-        {adding && <div className="px-1.5 pb-1"><div className={cn(TILE, 'flex-row items-center gap-1.5 py-1')}><NameEntry onDone={addChar} onCancel={() => setAdding(false)} /></div></div>}
-        {chars.length
-          ? <div className={GRID}>{chars.map(c => <CharTile key={c} name={c} live={c === live} />)}</div>
-          : !adding && <Note>{t(man ? 'chk.noCharsManual' : 'chk.noChars')}</Note>}
+        <KpiRow>
+          <Kpi icon={Sun} label={t('chk.kpi.daily')} value={dOpen || '✓'} tone={dOpen ? undefined : 'ok'} sub={t('chk.kpi.openAll')} data-kpi="daily" />
+          <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={wOpen || '✓'} tone={wOpen ? undefined : 'ok'} sub={t('chk.kpi.openAll')} data-kpi="weekly" />
+          <Kpi icon={Users} label={t('chk.kpi.done')} value={chars.length ? `${complete}/${chars.length}` : '–'} tone={chars.length && complete === chars.length ? 'ok' : undefined} sub={t('chk.kpi.charsDone')} data-kpi="chars" />
+          <ResetKpi />
+        </KpiRow>
+        {warn.length > 0 && (
+          <Panel title={t('alert.title')} sub={t('alert.sub')} data-chk-alerts>
+            <div className={ROWS}><TopN id="chk.alerts" items={warn} n={3} more={more} render={(a, i) => <AlertRow key={i} a={a} flat />} /></div>
+          </Panel>
+        )}
+        <Panel title={t('chk.chars')} right={man && !adding && <button data-add-char className={SECT_BTN} data-tip={t('chk.addTip')} onClick={() => setAdding(true)}><Plus />{t('chk.add')}</button>} data-chars>
+          <div className={ROWS}>
+            {adding && <div className={cn(ROW, 'py-1')}><NameEntry onDone={addChar} onCancel={() => setAdding(false)} /></div>}
+            {chars.map(c => <CharRow key={c} name={c} live={c === live} />)}
+            {!chars.length && !adding && <Note>{t(man ? 'chk.noCharsManual' : 'chk.noChars')}</Note>}
+          </div>
+        </Panel>
         <ServerHead />
         <Columns><Charges per="server" /><Lists per="server" /></Columns>
       </>}
-      <Foot>{t(man ? 'chk.hintManual' : 'chk.hint', { hh: hm(nextReset('d')) })}</Foot>
+      <div className="pt-2"><HowTo id="chk.how" title={t('chk.how')}>{t(man ? 'chk.hintManual' : 'chk.hint', { hh: hm(nextReset('d')) })}</HowTo></div>
     </Page>
   )
 }
