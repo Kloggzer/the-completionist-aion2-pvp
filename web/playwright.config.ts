@@ -7,6 +7,8 @@ export default defineConfig({
   outputDir: 'e2e/.out',
   timeout: 30000,
   fullyParallel: true,
+  // more workers time the calendar and layout tests out on a normal machine
+  workers: 4,
   reporter: [['list']],
   use: { baseURL: 'http://localhost:4173/', channel: 'msedge', viewport: { width: 640, height: 800 }, locale: 'de-DE' },
   webServer: { command: 'npx vite preview --port 4173 --strictPort', url: 'http://localhost:4173/', reuseExistingServer: true },
