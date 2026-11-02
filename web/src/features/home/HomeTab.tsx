@@ -60,7 +60,7 @@ function checkItems() {
 function Kpi({ label, value, sub, tab, frac, tone }: { label: string; value: React.ReactNode; sub?: React.ReactNode; tab: string; frac?: number; tone?: 'cyan' | 'gold' | 'green' }) {
   return (
     <button onClick={() => goTab(tab)} data-tip={t('home.open', { tab: t('tab.' + tab) })} className={cn(TILE, TILE_CLICK, 'pb-1')}>
-      <span className="text-[10.5px] font-semibold tracking-wider text-dim uppercase">{label}</span>
+      <span className="text-[11.5px] font-semibold text-dim">{label}</span>
       <span className={cn(TITLE, 'mt-0.5 truncate text-[13.5px]')}>{value}</span>
       {sub != null && <span className={cn(SUB, 'truncate')}>{sub}</span>}
       <Bar frac={frac ?? 0} tone={tone} className={cn('mt-auto mb-0', frac == null && 'invisible')} />
@@ -121,7 +121,7 @@ function FarmHere() {
       {n?.mob && (
         <div className={cn(ROW, ROW_CLICK)} data-tip={`${n.mob.mob.n} → ${petName(n.mob.t.p)}`}
           onClick={() => { V.multi = new Set([n.mob.t.p.id]); V.spotsSel = false; V.spot = V.cube = null; goTab('targets', `[data-pet="${n.mob.t.p.id}"][data-sel]`) }}>
-          <span className="w-10 flex-none text-[10.5px] tracking-wide text-dim uppercase">{t('map.hudMob')}</span>
+          <span className="w-10 flex-none text-[11.5px] text-dim">{t('map.hudMob')}</span>
           <Portrait por={n.mob.mob.por} size={22} className="-my-1" />
           <span className="min-w-0 flex-1 truncate">{n.mob.mob.n} <i className="text-muted-foreground not-italic">{n.mob.t.souls}/{n.mob.t.need}</i></span>
           <b className="flex-none text-[11px] font-semibold text-cyan tabular-nums">{fmtDist(n.mob.dist)} {n.mob.dir}</b>
@@ -130,7 +130,7 @@ function FarmHere() {
       {spot && (
         <div className={cn(ROW, ROW_CLICK)} data-tip={spot.pets.map((p: Any) => petName(p.t.p)).join(', ')}
           onClick={() => { V.spot = spot.rank; V.cube = null; goTab('spots', `[data-spot="${spot.rank}"]`) }}>
-          <span className="w-10 flex-none text-[10.5px] tracking-wide text-dim uppercase">{t('map.hudSpot')}</span>
+          <span className="w-10 flex-none text-[11.5px] text-dim">{t('map.hudSpot')}</span>
           <Portrait por={spot.pets[0]?.t.mobs[0]?.por} size={22} className="-my-1" />
           <span className="min-w-0 flex-1 truncate">{spot.name}</span>
           <span className={META}>{t('pets.spot.pets.other', { n: spot.pets.length })}</span>

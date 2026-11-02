@@ -2,7 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/manrope";
-@import "@fontsource/cinzel/600.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -16,8 +15,8 @@
     --color-warn: var(--warn);
     --color-warn-bg: var(--warn-bg);
     --color-warn-line: var(--warn-line);
-    --font-heading: 'Cinzel', Georgia, serif;
-    --font-display: 'Cinzel', Georgia, serif;
+    --font-heading: var(--font-sans);
+    --font-display: var(--font-sans);
     --font-sans: 'Manrope Variable', 'Segoe UI', system-ui, sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);

@@ -1,5 +1,5 @@
 // Navigation: four areas (Today, Pets, Farming, Character) with their pages. Wide windows: a sidebar with every page
-// under its area; narrow windows (< 900 px) or the collapsed sidebar (U.navMini): area icons only, the pages of the
+// under its area; narrow windows (< 760 px) or the collapsed sidebar (U.navMini): area icons only, the pages of the
 // current area as a segmented control above the content (SubNav). Page keys are the tab keys (U.tab) plus the build
 // pages (dae.stats, dae.gear); an area remembers its last page (U.lastPage).
 import { BarChart3, Clock, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
@@ -51,19 +51,19 @@ export function Sidebar() {
   const on = 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
   return (
     <nav data-tabs data-mini={mini ? 'on' : undefined}
-      className={cn('flex flex-none flex-col gap-0.5 overflow-y-auto border-r bg-sidebar p-1.5', mini ? 'w-12' : 'w-12 @min-[900px]/app:w-[176px] @min-[900px]/app:p-2')}>
+      className={cn('flex flex-none flex-col gap-0.5 overflow-y-auto border-r bg-sidebar p-1.5', mini ? 'w-12' : 'w-12 @min-[760px]/app:w-[176px] @min-[760px]/app:p-2')}>
       {AREAS.map(a => {
         const inArea = areaOf(cur) === a, sum = a.pages.reduce((n, p) => n + (p.count?.() || 0), 0)
         return (
           <div key={a.key} className="flex flex-col gap-0.5">
             {/* icon-only area button (narrow / collapsed) */}
             <button data-area={a.key} data-nav={a.pages.length === 1 ? a.pages[0].key : undefined} data-on={inArea ? 'on' : undefined} onClick={() => goArea(a)} data-tip={t('area.' + a.key)}
-              className={cn(item, 'relative justify-center px-0', inArea && on, !mini && '@min-[900px]/app:hidden')}>
+              className={cn(item, 'relative justify-center px-0', inArea && on, !mini && '@min-[760px]/app:hidden')}>
               <a.icon />{sum > 0 && !inArea && <i className="absolute top-1 right-1 size-1.5 rounded-full bg-gold" />}
             </button>
             {/* wide: area caption + every page */}
-            <div className={cn('hidden flex-col gap-0.5', !mini && '@min-[900px]/app:flex')}>
-              <span className="flex items-center gap-1.5 px-2 pt-2.5 pb-1 text-[10.5px] font-bold tracking-[0.1em] text-muted-foreground uppercase [&_svg]:size-3.5">
+            <div className={cn('hidden flex-col gap-0.5', !mini && '@min-[760px]/app:flex')}>
+              <span className="flex items-center gap-1.5 px-2 pt-2.5 pb-1 text-[12px] font-semibold text-muted-foreground [&_svg]:size-3.5">
                 <a.icon />{t('area.' + a.key)}
               </span>
               {a.pages.map(p => {
@@ -80,7 +80,7 @@ export function Sidebar() {
         )
       })}
       <span className="flex-1" />
-      <button onClick={toggle} data-tip={t(mini ? 'nav.expand' : 'nav.collapse')} className={cn(item, 'hidden justify-center px-0 @min-[900px]/app:flex', !mini && '@min-[900px]/app:justify-start @min-[900px]/app:px-2')}>
+      <button onClick={toggle} data-tip={t(mini ? 'nav.expand' : 'nav.collapse')} className={cn(item, 'hidden justify-center px-0 @min-[760px]/app:flex', !mini && '@min-[760px]/app:justify-start @min-[760px]/app:px-2')}>
         {mini ? <PanelLeftOpen /> : <><PanelLeftClose /><span className="truncate">{t('nav.collapse')}</span></>}
       </button>
     </nav>
@@ -92,8 +92,8 @@ export function SubNav() {
   const cur = navKey(), a = areaOf(cur)
   if (a.pages.length < 2) return null
   return (
-    <div data-subnav className={cn('flex flex-none border-b bg-card px-2.5 py-1.5', !U.navMini && '@min-[900px]/app:hidden')}>
-      <Seg value={cur} onChange={k => goPage(a.pages.find(p => p.key === k)!)} className="w-full [&>*]:flex-1 @max-[560px]/app:[&>:not([data-pressed])]:flex-none @max-[560px]/app:[&>:not([data-pressed])>span]:hidden" item={v => ({ 'data-nav': v, 'data-on': v === cur ? 'on' : undefined })}
+    <div data-subnav className={cn('flex flex-none border-b bg-card px-2.5 py-1.5', !U.navMini && '@min-[760px]/app:hidden')}>
+      <Seg value={cur} onChange={k => goPage(a.pages.find(p => p.key === k)!)} className="[&>*]:flex-none @max-[560px]/app:[&>:not([data-pressed])]:flex-none @max-[560px]/app:[&>:not([data-pressed])>span]:hidden" item={v => ({ 'data-nav': v, 'data-on': v === cur ? 'on' : undefined })}
         options={a.pages.map(p => ({ value: p.key, label: p.label(), icon: p.icon, tip: p.label() }))} />
     </div>
   )

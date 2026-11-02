@@ -136,7 +136,7 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
           <div key={x.kind + x.n} data-tm={x.kind + x.n} className={cn(ROW, 'gap-1.5')}>
             <span className="w-[74px] flex-none text-muted-foreground">{kindName(x.kind)}</span>
             <span className="min-w-0 flex-1 truncate text-[11.5px]">{x.picks.map(i => enName(cls, a.m.names[i])).join(' + ')}</span>
-            <span className="w-24 flex-none text-right text-[11px] text-dim tabular-nums">{t('arc.adv.cost', { n: x.mats, k: fmt(x.kinah / 1e6) })}</span>
+            <span className="flex-none text-right text-[11px] whitespace-nowrap text-dim tabular-nums">{t('arc.adv.cost', { n: x.mats, k: fmt(x.kinah / 1e6) })}</span>
             <span className="w-14 flex-none text-right text-[11.5px] text-muted-foreground tabular-nums" data-tip={t('arc.adv.betterTip')}>{Math.round(x.p * 100)} %</span>
             <span className={cn('w-16 flex-none text-right font-semibold tabular-nums', x.mean > 0 ? 'text-gold' : 'text-red')} data-tip={t('arc.adv.meanTip')}>{sign(x.mean)}</span>
           </div>

@@ -1,7 +1,7 @@
 // Shared building blocks of every view: one page frame, one top bar, one section header, one tile, one flat row, one
 // chip, one bar, and the primitives below (Seg, Chip, Stepper, Panel, Disclosure, TopN, PanelTabs on Base UI).
 // Spacing scale: 6 px gaps (gap-1.5), 10 px outer padding (px-2.5), 12 px text inset (px-3). Type scale (Manrope):
-// section 10.5 px caps, title 13 px semibold, text 13 px, sub 12 px muted, meta 11.5 px; page titles Cinzel (font-display).
+// section 12 px semibold (no capitals anywhere), title 13 px semibold, text 13 px, sub 12 px muted, meta 11.5 px; page titles 17 px bold.
 // Radius: rounded-lg for controls and tiles, rounded-xl for panels. Colours only via tokens (index.css: light "Aion
 // Ember", dark "Night Indigo"; `gold` = the accent). Controls never wrap (index.css): long labels truncate.
 // Icons: 14 px (size-3.5) in rows and bars, 28 px / stroke 1.5 in tile icon columns, 18 px in bell / step columns.
@@ -122,7 +122,7 @@ export const SECT_BTN = 'flex items-center gap-1 rounded-sm px-1 py-0.5 text-[11
 /** Section header: small caps line; `sub` inline after it, `right` (link/action) at the end. */
 export function Sect({ children, sub, right, className }: { children: ReactNode; sub?: ReactNode; right?: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex min-h-7 items-center gap-1.5 px-3 pt-2.5 pb-1 text-[10.5px] font-bold tracking-[0.1em] text-muted-foreground uppercase', className)}>
+    <div className={cn('flex min-h-7 items-center gap-1.5 px-3 pt-2.5 pb-1 text-[12px] font-semibold text-muted-foreground', className)}>
       <span className="flex-none">{children}</span>
       {sub && <span className="min-w-0 truncate font-normal tracking-normal normal-case">{sub}</span>}
       {right && <span className="ml-auto flex flex-none items-center gap-1 font-normal tracking-normal normal-case">{right}</span>}
@@ -332,7 +332,7 @@ export function Disclosure({ id, title, sub, children, defaultOpen = false, righ
   return (
     <div data-disclosure={id} data-open={open ? 'on' : 'off'}>
       <div className="flex min-h-8 items-center gap-1.5 px-3 pt-1.5">
-        <button onClick={toggle} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10.5px] font-bold tracking-[0.1em] text-muted-foreground uppercase hover:text-foreground [&_svg]:size-3.5">
+        <button onClick={toggle} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[12px] font-semibold text-muted-foreground hover:text-foreground [&_svg]:size-3.5">
           <ChevronRight className={cn('flex-none transition-transform', open && 'rotate-90')} />
           <span className="flex-none">{title}</span>
           {sub && <span className="min-w-0 truncate font-normal tracking-normal normal-case">{sub}</span>}
@@ -390,11 +390,11 @@ export function MiniStepper({ label, value, onStep, minus = true, plus = true, t
   )
 }
 
-/** Page head: Cinzel title, muted sub line, actions at the right (filters, switches). */
+/** Page head: bold title, muted sub line, actions at the right (filters, switches). */
 export function PageHead({ title, sub, right, icon: I }: { title: ReactNode; sub?: ReactNode; right?: ReactNode; icon?: LucideIcon }) {
   return (
     <div data-drag className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1.5 px-3 pt-3">
-      <h1 className="m-0 flex min-w-0 items-center gap-2 font-display text-[19px] leading-none font-semibold tracking-[0.04em] text-foreground">
+      <h1 className="m-0 flex min-w-0 items-center gap-2 font-display text-[19px] leading-none font-bold text-foreground">
         {I && <I className="size-4.5 flex-none text-gold" />}<span className="truncate">{title}</span>
       </h1>
       {sub && <span className="min-w-0 flex-[1_1_8rem] truncate text-[12.5px] text-muted-foreground">{sub}</span>}

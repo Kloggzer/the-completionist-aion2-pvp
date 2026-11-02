@@ -41,7 +41,7 @@ function HudLine({ lbl, o, children }: { lbl: string; o: Any; children: React.Re
   if (!o) return null
   return (
     <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-      <span className="w-8 flex-none text-[10.5px] tracking-wide text-dim uppercase">{lbl}</span>
+      <span className="w-8 flex-none text-[11.5px] text-dim">{lbl}</span>
       <span className="min-w-0 flex-1 truncate">{children}</span>
       <b className="font-semibold text-cyan tabular-nums">{fmtDist(o.dist)} {o.dir}</b>
     </div>

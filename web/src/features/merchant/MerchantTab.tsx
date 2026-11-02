@@ -391,7 +391,7 @@ export function MerchantTab() {
     <Page w="rows" bar={bar}>
       {!mapsLoaded() && <Hint tone="cyan">{t('merch.loading')}</Hint>}
       {!hasState() && <Hint>{t('merch.noState')}</Hint>}
-      <div className="grid items-start gap-x-2 @min-[900px]:grid-cols-[minmax(0,330px)_minmax(0,1fr)] @min-[1300px]:grid-cols-[minmax(0,370px)_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-2 @min-[900px]:grid-cols-[minmax(0,330px)_minmax(0,1fr)] @min-[1300px]:grid-cols-[minmax(0,370px)_minmax(0,1fr)]">
         <OfferList />
         <Wishlist />
       </div>

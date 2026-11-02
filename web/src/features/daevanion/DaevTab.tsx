@@ -134,7 +134,7 @@ function Vals({ dmg, ehp, max = 0 }: { dmg: number; ehp: number; max?: number })
 }
 function ValHead({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex min-h-6 items-center gap-2 px-2.5 text-[10.5px] tracking-wide text-dim uppercase">
+    <div className="flex min-h-6 items-center gap-2 px-2.5 text-[11.5px] text-dim">
       <span className="min-w-0 flex-1 truncate normal-case tracking-normal">{children}</span>
       <span className="flex flex-none gap-1"><span className="w-[4.6rem] text-right">{t('dae.dmgShort')}</span><span className="w-[4.6rem] text-right">{t('dae.ehpShort')}</span></span>
     </div>
@@ -146,7 +146,7 @@ const maxOf = (rows: { dmg: number; ehp: number }[]) => Math.max(0.01, ...rows.f
 function Tiles({ dmg, ehp, heal, sub }: { dmg: number; ehp: number; heal?: number; sub?: { dmg: number; ehp: number } }) {
   const tile = (name: string, v: number, s: number | undefined, tip: string) => (
     <div className="min-w-0 flex-1 rounded-sm border bg-card px-2 py-1" data-tip={tip}>
-      <div className="text-[10.5px] tracking-wide text-dim uppercase">{name}</div>
+      <div className="text-[11.5px] text-dim">{name}</div>
       <div className={cn('text-[17px] leading-tight font-semibold tabular-nums', tone(v))}>{pc(v)}</div>
       {s != null && <div className={cn('text-[10.5px] tabular-nums', tone(s))}>{t('dae.vsNowShort', { v: pc(s) })}</div>}
     </div>
