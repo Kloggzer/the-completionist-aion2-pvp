@@ -2,6 +2,7 @@
 export default {
   de: {
     'charge.title': 'Vorräte', 'charge.sub': 'laufen voll – was drüber geht, verfällt',
+    'charge.old': 'geschätzt, gelesen vor {t}', 'charge.oldTip': 'Der Wert kommt aus dem Spiel nur beim Login oder wenn du das Fenster öffnest – seitdem hochgerechnet. Einloggen oder das Fenster öffnen aktualisiert ihn.',
     'charge.perDay': '+{n} pro Tag', 'charge.perH': '+{n} alle {h} h',
     'charge.enter': 'Wert eintragen', 'charge.bonus': 'Bonus', 'charge.bonusTip': 'Bonus-Energie aus benutzten Odyle-Items, zusätzlich zum normalen Vorrat',
     'charge.autoTip': 'Wert kommt direkt aus dem Spiel (wenn er sich ändert oder du das Fenster im Spiel öffnest)', 'charge.member': 'Mitgliedschaft', 'charge.memberTip': 'Mit Mitgliedschaft: Odyle bis 840, Shugo-Schlüssel bis 21',
@@ -18,6 +19,7 @@ export default {
   },
   en: {
     'charge.title': 'Charges', 'charge.sub': 'they fill up – anything above the cap is lost',
+    'charge.old': 'estimated, read {t} ago', 'charge.oldTip': 'The game sends the value only at login or when you open the window – projected since then. Logging in or opening the window updates it.',
     'charge.perDay': '+{n} per day', 'charge.perH': '+{n} every {h} h',
     'charge.enter': 'enter value', 'charge.bonus': 'bonus', 'charge.bonusTip': 'Bonus energy from used Odyle items, on top of the regular energy',
     'charge.autoTip': 'Value comes straight from the game (when it changes or you open its window in the game)', 'charge.member': 'Membership', 'charge.memberTip': 'With membership: Odyle up to 840, Shugo keys up to 21',

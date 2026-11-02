@@ -6,7 +6,7 @@ import { Slider } from '@/components/ui/slider'
 import { ACCENT, AutoBadge, Bar, Chip, ROW, ROW_CLICK, Sect, StepCol, T_BODY, T_FOOT, T_META, T_SUB, T_TITLE, TILE, TILE_P, TONE, TileIcon, grid, type BoxTone } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { resetIn, type Per } from './checklist'
-import { chargeAuto, chargeBonus, chargeFullIn, chargeLight, chargeNow, chargesOf, setCharge, stepCharge, type ChargeDef, type Light } from './charges'
+import { chargeAuto, chargeBonus, chargeFullIn, chargeLight, chargeNow, chargeReadAt, chargesOf, setCharge, stepCharge, type ChargeDef, type Light } from './charges'
 import type { Alert } from './alerts'
 
 export const LIGHT_DOT: Record<Light | 'red' | 'yellow', string> = {
@@ -21,6 +21,9 @@ function ChargeTile({ d, char }: { d: ChargeDef; char?: string }) {
   const v = chargeNow(d, char), cap = d.cap(), light = chargeLight(d, char), ms = chargeFullIn(d, char), bonus = chargeBonus(d, char)
   const status = v == null ? t('charge.enter') : ms === 0 ? t('alert.full') : t('alert.fullIn', { d: resetIn(new Date(Date.now() + ms!)) })
   const regen = d.every === 'day' ? t('charge.perDay', { n: d.regen }) : t('charge.perH', { n: d.regen, h: d.every / 3600e3 })
+  // an old reading is projected forward: say how old, the value is an estimate (the game sends it only at login /
+  // when the window opens, so a character that was not played since is not known exactly)
+  const at = chargeReadAt(d, char), age = at == null ? 0 : Date.now() - at, old = age > 12 * 3600e3
   return (
     <div data-charge={d.id} data-tip={t('charge.tip.' + d.id)} className={cn(TILE, TILE_P, 'pr-0', ACCENT[light])}>
       <TileIcon icon={CHARGE_ICON[d.id]} tone={LIGHT_TONE[light]} tip={light === 'red' || light === 'yellow' ? t('alert.' + light) : undefined} />
@@ -29,6 +32,7 @@ function ChargeTile({ d, char }: { d: ChargeDef; char?: string }) {
         <div className={cn(T_SUB, LIGHT_TXT[light])}>
           {status}
           {!!bonus && <span className="text-cyan" data-tip={t('charge.bonusTip')}> · +{bonus} {t('charge.bonus')}</span>}
+          {old && <span className="text-dim" data-tip={t('charge.oldTip')} data-old> · {t('charge.old', { t: resetIn(new Date(Date.now() + age)) })}</span>}
         </div>
         <div className={T_FOOT}>
           {/* Odyle has large values: a slider sets it in one move (keyboard input needs focus, the overlay never takes it). */}

@@ -3,7 +3,8 @@
 // charges are tiles: icon column left, name, bar + footer, −/+ column at the right edge; the explanation of an entry
 // is in its tooltip, the explanation of the page in a closed "how it works".
 import { useEffect, useState } from 'react'
-import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Pencil, Percent, Plus, RefreshCw, RotateCcw, Server, Sun, Trash2, UserCheck, Users } from 'lucide-react'
+import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw, RotateCcw, Server, Sun, Trash2, UserCheck, Users, Zap } from 'lucide-react'
+import { chargeLight, chargesOf } from './charges'
 import { S, V, bump, manual, useApp } from '@/core/state'
 import { t, hm } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
@@ -43,11 +44,11 @@ function Entry({ id, max, per, kind, char }: { id: string; max: number; per: Per
 }
 
 /** Daily + weekly blocks of one owner (one <Columns> cell each), each a section line with progress and an "all done" / "reset" action. */
-function Lists({ per, char }: { per: Per; char?: string }) {
+function Lists({ per, char, only }: { per: Per; char?: string; only?: Kind }) {
   return <>
     {CHECK.map(([kind, all]) => {
       const items = all.filter(i => i[2] === per)
-      if (!items.length) return null
+      if (!items.length || (only && kind !== only)) return null
       const done = items.filter(([id, max]) => checkCount(id, per, kind, char) >= max).length, allDone = done === items.length
       return (
         <div key={kind}>
@@ -116,6 +117,7 @@ function OwnerBody({ name, live, level, per, char, right }: { name: string; live
 const openList = (per: Per, char?: string) => CHECK.flatMap(([kind, items]) => items.filter(([id, max, p]) => p === per && checkCount(id, p, kind, char) < max)
   .map(([id, max, p]) => `${t('progress.item.' + id)} ${checkCount(id, p, kind, char)}/${max}`))
 /** Number of open entries of an owner in one period. */
+const countOf = (per: Per, kind: Kind) => CHECK.filter(([k]) => k === kind).flatMap(([, items]) => items).filter(i => i[2] === per).length
 const openOf = (per: Per, kind: Kind, char?: string) =>
   CHECK.filter(([k]) => k === kind).flatMap(([, items]) => items).filter(([id, max, p]) => p === per && checkCount(id, p, kind, char) < max).length
 
@@ -146,7 +148,7 @@ function RemoveButton({ name }: { name: string }) {
   return (
     <Button variant={armed ? 'destructive' : 'ghost'} size="xs" className={cn('h-6 text-[11px]', !armed && 'text-muted-foreground hover:text-red')}
       data-tip={t('chk.remove')} onMouseLeave={() => setArmed(false)} onClick={() => (armed ? removeChar(name) : setArmed(true))}>
-      <Trash2 />{armed && t('chk.removeAsk')}
+      <Trash2 />{armed ? t('chk.removeAsk') : t('chk.remove')}
     </Button>
   )
 }
@@ -179,13 +181,16 @@ const ResetKpi = () => <Kpi icon={RefreshCw} label={t('chk.kpi.reset')} value={r
 /** One character's own page (reached from the dashboard): owner tile with remove, alerts, charges, lists. */
 function CharPage({ name, live }: { name: string; live: boolean }) {
   const lvl = ownerLevel('char', name), man = manual(), [renaming, setRenaming] = useState(false)
-  const right = <>{man && <ManualCharActions name={name} live={live} onRename={() => setRenaming(true)} />}{!live && <RemoveButton name={name} />}</>
-  const d = openOf('char', 'd', name), w = openOf('char', 'w', name)
+  const right = man ? <ManualCharActions name={name} live={live} onRename={() => setRenaming(true)} /> : null
+  const d = openOf('char', 'd', name), w = openOf('char', 'w', name), nd = countOf('char', 'd'), nw = countOf('char', 'w')
+  // charges: the worst light decides the tile (their own tiles below say the details)
+  const lights = chargesOf('char').map(c => chargeLight(c, name)), full = lights.filter(l => l === 'red').length, soon = lights.filter(l => l === 'yellow').length
   return <>
     <KpiRow>
-      <Kpi icon={Sun} label={t('chk.kpi.daily')} value={d || '✓'} tone={d ? undefined : 'ok'} sub={pct(progressOf('char', name, 'd'))} data-kpi="daily" />
-      <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={w || '✓'} tone={w ? undefined : 'ok'} sub={pct(progressOf('char', name, 'w'))} data-kpi="weekly" />
-      <Kpi icon={Percent} label={t('chk.kpi.progress')} value={pct(progressOf('char', name))} tone={progressOf('char', name) >= 1 ? 'ok' : undefined} sub={t('chk.kpi.progressSub')} data-kpi="progress" />
+      <Kpi icon={Sun} label={t('chk.kpi.daily')} value={d || '✓'} tone={d ? undefined : 'ok'} sub={d ? t('chk.kpi.ofN', { n: nd }) : t('chk.kpi.allDone', { n: nd })} data-kpi="daily" />
+      <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={w || '✓'} tone={w ? undefined : 'ok'} sub={w ? t('chk.kpi.ofN', { n: nw }) : t('chk.kpi.allDone', { n: nw })} data-kpi="weekly" />
+      <Kpi icon={Zap} label={t('chk.kpi.charges')} value={full ? t('chk.kpi.full', { n: full }) : soon ? t('chk.kpi.soon', { n: soon }) : '✓'}
+        tone={full ? 'bad' : soon ? 'warn' : 'ok'} sub={t('chk.kpi.chargesSub')} data-kpi="charges" />
       <ResetKpi />
     </KpiRow>
     <div className="px-2.5 pt-2.5">
@@ -197,8 +202,11 @@ function CharPage({ name, live }: { name: string; live: boolean }) {
           : <OwnerBody name={charName(name)} live={live} level={lvl} per="char" char={name} right={right} />}
       </div>
     </div>
-    <div className="pt-1.5"><AlertList alerts={ownerAlertsOf('char', name)} showChar={false} /></div>
-    <Columns><Charges per="char" char={name} /><Lists per="char" char={name} /></Columns>
+    {/* charge warnings are left out here: the charge tiles below show them */}
+    <div className="pt-1.5"><AlertList alerts={ownerAlertsOf('char', name).filter(a => !a.charge)} showChar={false} /></div>
+    {/* daily first (the most frequent), charges next to it, the weekly list in its own column */}
+    <Columns><div><Lists per="char" char={name} only="d" /><Charges per="char" char={name} /></div><Lists per="char" char={name} only="w" /></Columns>
+    {!live && <div className="flex justify-end px-2.5 pt-3"><RemoveButton name={name} /></div>}
   </>
 }
 
@@ -260,7 +268,7 @@ export function CheckTab() {
           </div>
         </Panel>
         <ServerHead />
-        <Columns><Charges per="server" /><Lists per="server" /></Columns>
+        <Columns><div><Lists per="server" only="d" /><Charges per="server" /></div><Lists per="server" only="w" /></Columns>
       </>}
       <div className="pt-2"><HowTo id="chk.how" title={t('chk.how')}>{t(man ? 'chk.hintManual' : 'chk.hint', { hh: hm(nextReset('d')) })}</HowTo></div>
     </Page>

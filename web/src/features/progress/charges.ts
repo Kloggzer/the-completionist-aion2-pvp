@@ -32,6 +32,9 @@ function resetsBetween(from: number, to: number) {
   return n
 }
 
+/** Time of the last reading (game or by hand), null without one. */
+export const chargeReadAt = (d: ChargeDef, char?: string) => reading(d, char)?.at ?? null
+
 /** Projected value now (null without a reading). */
 export function chargeNow(d: ChargeDef, char?: string, now = Date.now()): number | null {
   const r = reading(d, char)

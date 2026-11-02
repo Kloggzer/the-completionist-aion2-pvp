@@ -5,7 +5,8 @@ import { CHECK, LAST_DAY, TIER, characters, checkCount, nextReset, resetIn, type
 import { CHARGES, chargeFullIn, chargeLight, chargeNow } from './charges'
 
 export type Level = 'red' | 'yellow'
-export type Alert = { level: Level; char: string | null; text: string }
+/** `charge`: the warning is about a charge (its tile shows the same, the character page leaves it out). */
+export type Alert = { level: Level; char: string | null; text: string; charge?: string }
 
 const H = 3600e3
 const fullText = (ms: number) => (ms <= 0 ? t('alert.full') : t('alert.fullIn', { d: resetIn(new Date(Date.now() + ms)) }))
@@ -16,7 +17,7 @@ function ownerAlerts(per: Per, char: string | null): Alert[] {
     if (d.per !== per) continue
     const light = chargeLight(d, c)
     if (light !== 'red' && light !== 'yellow') continue
-    out.push({ level: light, char, text: `${t('charge.' + d.id)} ${chargeNow(d, c)}/${d.cap()} · ${fullText(chargeFullIn(d, c)!)} – ${t('charge.act.' + d.id)}` })
+    out.push({ level: light, char, charge: d.id, text: `${t('charge.' + d.id)} ${chargeNow(d, c)}/${d.cap()} · ${fullText(chargeFullIn(d, c)!)} – ${t('charge.act.' + d.id)}` })
   }
   // Open weekly items before the weekly reset, open daily musts shortly before the daily reset.
   const wLeft = nextReset('w').getTime() - now, dLeft = nextReset('d').getTime() - now

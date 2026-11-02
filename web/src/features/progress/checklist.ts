@@ -73,22 +73,36 @@ const AUTO: Record<string, number[]> = {
   dutyCommands: [400100400, 300100400],    // Schriftrollen (Wochenquests)
 }
 const autoKind = (id: string) => CHECK.find(([, items]) => items.some(i => i[0] === id))?.[0]
+const itemOf = (id: string) => CHECK.flatMap(([, items]) => items).find(i => i[0] === id)
 // Baselines must be taken in the background: right after a reset and before every live update, whether or not
 // the checklist tab is open. Otherwise the first update after a reset finds no baseline and nothing is counted.
-export function refreshBaselines() { for (const id in AUTO) { const k = autoKind(id); if (k) autoCount(id, k) } }
+// The counted progress is stored in the owner's list too: the counters only ever describe the logged-in character,
+// so without that a character's progress was gone as soon as another one logged in.
+export function refreshBaselines() {
+  let dirty = false
+  for (const id of new Set([...Object.keys(AUTO), ...Object.keys(USAGE)])) {
+    const k = autoKind(id), item = itemOf(id)
+    if (!k || !item || manual() || (item[2] === 'char' && !S.state.charName)) continue
+    const n = Math.min(item[1], Math.max(autoCount(id, k) ?? 0, usageCount(id, k) ?? 0))
+    if (n > manualCount(id, item[2], k)) { checkSlot(id, item[2])[id] = { c: n, at: Date.now() }; dirty = true }
+  }
+  if (dirty) { saveUi(['checklist']); bump() }
+}
 
 export function autoCount(item: string, kind: Kind): number | null {
   const ids = AUTO[item], st: Any = S.state.ach || {}
   if (!ids) return null
   const reset = lastReset(kind).getTime()
   let sum = 0, known = false, dirty = false
+  // baselines per character: the counters are the logged-in character's, another character has other values
   U.checkBaselines ||= {}
+  const base = (U.checkBaselines['@' + charKey()] ||= {})
   for (const id of ids) {
     const r = st[id]
     if (!r) continue
-    const [val, , ts] = r, b = U.checkBaselines[id]
+    const [val, , ts] = r, b = base[id]
     if (!ts || ts < reset) { // nothing since the reset: this value is the baseline
-      if (!b || b.v !== val || b.r !== reset) { U.checkBaselines[id] = { v: val, r: reset }; dirty = true }
+      if (!b || b.v !== val || b.r !== reset) { base[id] = { v: val, r: reset }; dirty = true }
       known = true
     } else if (b && b.r === reset) { sum += val - b.v; known = true }
   }

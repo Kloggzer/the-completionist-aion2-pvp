@@ -190,3 +190,23 @@ describe('manual mode: characters by hand', () => {
     expect(renameChar('Neu', 'Standard')).toBe(false)
   })
 })
+
+describe('checklist: counted progress is kept per character', async () => {
+  const { S } = await import('@/core/state')
+  const { checkCount, lastReset, refreshBaselines } = await import('@/features/progress/checklist')
+  it('the counted supply request stays with its character after another one logs in', () => {
+    const after = lastReset('d').getTime() + 1000, before = lastReset('w').getTime() - 864e5
+    U.checklist = { srv: {}, chars: {} }; U.checkBaselines = {}
+    // character A: counter 10 before the reset (baseline), then 11 after it
+    S.state = { levels: {}, souls: {}, charName: 'A', ach: { 400100500: [10, 0, before] } }
+    refreshBaselines()
+    S.state = { levels: {}, souls: {}, charName: 'A', ach: { 400100500: [11, 0, after] } }
+    refreshBaselines()
+    expect(checkCount('supplyEmergency', 'char', 'd', 'A')).toBe(1)
+    // character B logs in with its own counter values: A keeps its 1, B starts at 0
+    S.state = { levels: {}, souls: {}, charName: 'B', ach: { 400100500: [50, 0, before] } }
+    refreshBaselines()
+    expect(checkCount('supplyEmergency', 'char', 'd', 'A')).toBe(1)
+    expect(checkCount('supplyEmergency', 'char', 'd', 'B')).toBe(0)
+  })
+})
