@@ -110,6 +110,24 @@ static class Native
         }
     }
 
+    [DllImport("user32.dll")] static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint affinity);
+    [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr hWnd, out RECT r);
+    [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr hWnd, ref Point p);
+
+    /// Leave a window out of screenshots and screen capture (WDA_EXCLUDEFROMCAPTURE, Windows 10 2004+).
+    public static void ExcludeFromCapture(IntPtr hWnd, bool on) => SetWindowDisplayAffinity(hWnd, on ? 0x11u : 0u);
+
+    /// Client area of a window in screen pixels.
+    public static bool ClientRectOnScreen(IntPtr hWnd, out Rectangle r)
+    {
+        r = Rectangle.Empty;
+        if (!GetClientRect(hWnd, out var c)) return false;
+        var p = Point.Empty;
+        if (!ClientToScreen(hWnd, ref p)) return false;
+        r = new Rectangle(p.X, p.Y, c.Right - c.Left, c.Bottom - c.Top);
+        return true;
+    }
+
     // Games in borderless mode like to steal the top spot; re-assert it without stealing focus.
     public static void KeepOnTop(IntPtr hWnd) =>
         SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);

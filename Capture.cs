@@ -46,6 +46,17 @@ abstract class PetSource : IDisposable
     public event Action<int, List<MerchantItem>>? MerchantReceived;
     /// Own Daevanion boards (0x26e2 at login): board id -> open node ids.
     public event Action<Dictionary<int, uint[]>>? DaevanionReceived;
+    /// Own Daevanion nodes bought (0x03e5, 0x28e2) or reset (0x2be2) while playing: (bought, reset).
+    public event Action<uint[], uint[]>? DaevanionChanged;
+    /// Spent Daevanion points per pool (0x2ee2, on every buy / reset): pool -> points.
+    public event Action<Dictionary<int, int>>? DaevanionPoints;
+    /// Daevanion research (on while the tab asks for it): every other frame that carries node ids of the own boards
+    /// (u32 board * 10000 + 1..225 at any offset), to find the frames of buying and resetting a node. (op, body, ids)
+    public event Action<int, byte[], uint[]>? DaeNodeFrame;
+    /// Research, same switch: every frame's opcode and length (to find what opening the board window sends).
+    public event Action<int, int>? DaeOpFrame;
+    public volatile bool DaeLog;
+    HashSet<int> daeBoardIds = new();
     // Other players (PvP overlay, PlayerFrames): spawn in range (0x4536), moves (0x1a37 family), gone (0x4736),
     // killed (0x048d, killer also out of range), arena roster at match start (0x19e3), own character (0x3336) and own
     // combat power (0x5636).
@@ -101,6 +112,21 @@ abstract class PetSource : IDisposable
             pending.Enqueue((DateTime.UtcNow, ts, data));
     }
 
+    /// Node ids of the own boards in a frame (any byte offset); before the login frame: any board of any class.
+    uint[] NodeIds(byte[] b)
+    {
+        List<uint>? found = null;
+        for (int o = 0; o + 4 <= b.Length; o++)
+        {
+            uint v = BitConverter.ToUInt32(b, o);
+            int board = (int)(v / 10000), idx = (int)(v % 10000);
+            if (idx is < 1 or > 225 || board is < 11 or > 106 || board % 10 is < 1 or > 6) continue;
+            if (daeBoardIds.Count > 0 && !daeBoardIds.Contains(board)) continue;
+            (found ??= new()).Add(v);
+        }
+        return found?.Distinct().ToArray() ?? [];
+    }
+
     protected void SetPorts(HashSet<int> now)
     {
         bool added = !now.IsSubsetOf(ports);
@@ -115,6 +141,11 @@ abstract class PetSource : IDisposable
     void Frame(int op, byte[] body, DateTime ts)
     {
         GameFrames++;
+        if (DaeLog)
+        {
+            DaeOpFrame?.Invoke(op, body.Length);
+            if (op != 0x26e2 && DaeNodeFrame != null && NodeIds(body) is { Length: > 0 } ids) DaeNodeFrame(op, body, ids);
+        }
         if (OwnId != null) tracker.Feed(op, body, ts, OwnId); // own position: exact fixes (its estimate is not used)
         PlayerFrame(op, body);
         if (op == Frames.OpPetList && PetFrames.ParseList(body) is { } list)
@@ -129,8 +160,19 @@ abstract class PetSource : IDisposable
             tracker.MapChanged();
             MapChanged?.Invoke(BitConverter.ToUInt32(body, 0));
         }
+        else if (op == 0x2ee2 && PetFrames.ParseDaePoints(body) is { } pts)
+            DaevanionPoints?.Invoke(pts);
+        else if (op == 0x03e5 && PetFrames.ParseDaeBought(body) is { } bought)
+            DaevanionChanged?.Invoke(bought, []);
+        else if (op == 0x28e2 && PetFrames.ParseDaeNode(body) is { } one)
+            DaevanionChanged?.Invoke([one], []);
+        else if (op == 0x2be2 && PetFrames.ParseDaeNode(body) is { } reset)
+            DaevanionChanged?.Invoke([], [reset]);
         else if (op == 0x26e2 && PetFrames.ParseDaevanion(body) is { } dae)
+        {
+            daeBoardIds = dae.Keys.ToHashSet();
             DaevanionReceived?.Invoke(dae);
+        }
         else if (op == 0x9156 && PetFrames.ParseMerchant(body) is { } merch)
             MerchantReceived?.Invoke(merch.tab, merch.items);
         else if (op == 0x0c61 && body.Length == 8 && body[1] == 0x04)

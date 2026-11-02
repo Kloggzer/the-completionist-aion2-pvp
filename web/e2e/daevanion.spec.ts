@@ -11,7 +11,7 @@ const TABS = ['Übersicht', 'Ziele', 'Spots', 'Händler', 'Farmen', 'Erfolge', '
 const tab = (page: Page) => page.locator('[data-tabs] button').nth(TABS.indexOf('Build'))
 
 test('without character data: class, points and goal give a plan on the boards', async ({ page }) => {
-  await openApp(page, { ui: { tab: 'dae' } })
+  const app = await openApp(page, { ui: { tab: 'dae' } })
   await expect(tab(page)).toHaveClass(/border-gold/)
   await expect(page.locator('[data-board="Nezekan"]')).toBeVisible()
   // points for the four boards: the plan uses them, the boards show new (gold) nodes
@@ -20,11 +20,60 @@ test('without character data: class, points and goal give a plan on the boards',
   await expect(pve.locator('output')).toHaveText('30')
   await expect(page.locator('[data-result="pve"]')).toBeVisible()
   expect(await page.locator('[data-node="new"]').count()).toBeGreaterThan(5)
-  await expect(page.getByText(/\/30 Punkte verplant/)).toBeVisible()
-  // skill tiers: switching a core skill off changes nothing about the layout, but is saved per class
+  // exactly the player's points: 30 of 30
+  await expect(page.getByText('30/30 Punkte verplant')).toBeVisible()
+  // in-game frames: on while the tab is open, the host gets every board with its marks
+  await expect(page.locator('[data-ingame]')).toBeVisible()
+  await expect.poll(async () => (await app.posted('daeOverlay')).some((m: { on: boolean; boards: { marks: unknown[] }[] }) => m.on && m.boards.length === 6 && m.boards.some(b => b.marks.length > 0))).toBe(true)
+  await page.locator('[data-ingame-toggle]').click()
+  await expect.poll(async () => (await app.posted('daeOverlay')).at(-1)?.on).toBe(false)
+  await page.locator('[data-ingame-toggle]').click()
+  // the packet research log runs on its own while the tab is open
+  expect((await app.posted('daeLog')).at(-1)?.on).toBe(true)
+  // the tab follows the board the overlay found in the game
+  await app.send({ type: 'daeOverlay', state: 'found', slot: '2' })
+  await expect(page.locator('[data-board="Zikel"]')).toBeVisible()
+  await expect(page.locator('[data-ingame="found"]')).toContainText('Zikel erkannt')
+  await page.locator('[data-board-tab="Nezekan"]').click()
+  await expect(page.locator('[data-board="Nezekan"]')).toBeVisible()
+  // one board at a time: tiles switch it, the side panel lists its skill levels and stats
+  await expect(page.locator('[data-board-side="Nezekan"]')).toBeVisible()
+  await page.locator('[data-board-tab="Zikel"]').click()
+  await expect(page.locator('[data-board="Zikel"]')).toBeVisible()
+  await expect(page.locator('[data-board-side="Zikel"]')).toBeVisible()
+  await page.locator('[data-board-tab="Nezekan"]').click()
+  // a click pins a node: want -> never -> free
+  const node = page.locator('[data-board="Nezekan"] [data-node="free"]').first()
+  await node.click()
+  await expect(page.locator('[data-board="Nezekan"] [data-pin="want"]')).toHaveCount(1)
+  await page.locator('[data-board="Nezekan"] [data-pin="want"]').click()
+  await expect(page.locator('[data-board="Nezekan"] [data-pin="never"]')).toHaveCount(1)
+  await page.locator('[data-board="Nezekan"] [data-pin="never"]').click()
+  await expect(page.locator('[data-board="Nezekan"] [data-pin]')).toHaveCount(0)
+  await page.locator('[data-board="Nezekan"]').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'e2e/.out/shots/dae-board.png' })
+  // the plan says what it gives in damage / effective HP, and where that comes from
+  await expect(page.locator('[data-gain="pve"]')).toContainText(/Schaden\s*\+/)
+  await expect(page.locator('[data-why="pve"] > div').first()).toBeVisible()
+  // goal presets: max damage vs defensive change the plan's numbers
+  await page.locator('[data-preset="def"]').click()
+  await expect(page.locator('[data-preset="def"]')).toHaveClass(/border-gold/)
+  await page.locator('[data-pmode="pve"] [data-pm="pvp"]').click()
+  await expect(page.locator('[data-pmode="pve"] [data-pm="pvp"]')).toHaveClass(/border-gold/)
+  await expect(page.locator('[data-gain="pve"]').locator('..')).toBeVisible()
+  // a skill taken out of the rotation is saved per class
   const skill = page.locator('[data-skill="Ruinous Blow"]')
-  await skill.getByRole('button', { name: 'Nie' }).click()
-  await expect(skill.getByRole('button', { name: 'Nie' })).toHaveClass(/border-red/)
+  await skill.locator('[data-use]').click()
+  await expect(skill.locator('[data-use]')).toHaveAttribute('data-use', 'off')
+  await expect(page.locator('[data-skill="Overhead Slam"] [data-lvworth]')).toContainText('+1 Stufe')
+  // stat values and the numbers / assumptions panel
+  await page.locator('[data-panel="stats"]').click()
+  await expect(page.locator('[data-stat="Combat Speed"]')).toContainText('+')
+  await page.locator('[data-panel="stats"]').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'e2e/.out/shots/dae-stats.png' })
+  await page.locator('[data-panel="inputs"]').click()
+  await expect(page.locator('[data-assume-key="critCap"]')).toContainText('Spieltext')
+  await expect(page.locator('[data-sheet-key="crit"]')).toContainText('typisch')
   await page.screenshot({ path: 'e2e/.out/shots/dae-respec.png', fullPage: true })
 })
 
@@ -33,5 +82,10 @@ test('boards from the game (0x26e2): own nodes on the boards, marked as from the
   await app.send({ type: 'pvp', own: { name: 'Testdaeva', srv: 2306, pc: 10, race: 2, lv: 45, il: 3000, cp: 0 }, players: [], party: [], kills: [] })
   await app.send({ type: 'daeGame', boards: { 21: [210113, 210033, 210034], 26: [260113] } })
   await expect(page.getByText(/Boards aus dem Spiel/)).toBeVisible()
-  await expect(page.locator('[data-board="Nezekan"] [data-node="own"], [data-board="Nezekan"] [data-node="drop"]')).toHaveCount(2)
+  // spent points from the game (0x2ee2): the total follows without entering it
+  await app.send({ type: 'daePoints', pools: { 1: 248, 2: 0 } })
+  await expect(page.locator('[data-points="pve"] output')).toHaveText('248')
+  // a node bought in the game (0x28e2): owned on the board at once
+  await app.send({ type: 'daeNodes', bought: [210034 + 1], reset: [] })
+  await expect(page.locator('[data-board="Nezekan"] [data-node="own"], [data-board="Nezekan"] [data-node="drop"]')).toHaveCount(3) // 2 from the login + 1 bought
 })

@@ -10,10 +10,9 @@ import { toast } from '@/core/toast'
 import { charKey, data, live, pos } from '@/features/daevanion/daevanion'
 import { equipUrl, infoUrl } from '@/features/daevanion/daevanion'
 import { getJson, profile, resolve } from '@/features/daevanion/source'
-import { unitHook } from '@/features/daevanion/values'
 import { measure, parseFight, type Measured } from './abyss'
 import { ASSUME, calibrate, marginals, type Assume, type State } from './model'
-import { keyOfName, parseDeity, parseItem, totals, type Key, type Snapshot, type Totals } from './stats'
+import { parseDeity, parseItem, totals, type Key, type Snapshot, type Totals } from './stats'
 import type { GearRow } from './gear'
 
 export type Page = 'dae' | 'stats' | 'gear'
@@ -26,7 +25,7 @@ export function bs(): Any {
   b.page ||= 'dae'; b.assume ||= {}; b.over ||= {}; b.snaps ||= {}; b.meas ||= {}; b.fight ||= {}
   return b
 }
-export function setBuild(patch: Any) { Object.assign(bs(), patch); saveUi(['build']); bump(); unitHook.ver++ }
+export function setBuild(patch: Any) { Object.assign(bs(), patch); saveUi(['build']); bump() }
 export const assume = (): Assume => ({ ...ASSUME, ...bs().assume })
 export const snap = (char = charKey()): Snapshot | undefined => bs().snaps[char]?.at(-1)
 export const measured = (char = charKey()): (Measured & { label: string }) | undefined => bs().meas[char]
@@ -140,19 +139,4 @@ export function model(char = charKey()): Model {
   const state = calibrate(all, m ?? null, assume())
   memo = { key, m: { state, by: tt.by, auto: tt.all, all, marg: marginals(state, assume()) } }
   return memo.m
-}
-
-/** Values per unit for the Daevanion optimizer from the model, scaled so a 1.5 % combat speed corner keeps its 16
- *  (the other offensive stats relative to it); only with gear or a measured fight. Taken at the character without
- *  its Daevanion stats, so the ideal board does not move when the current board changes. */
-unitHook.fn = () => {
-  const char = charKey()
-  if (!snap(char) && !measured(char)) return null
-  const d = data(), md = model(char)
-  const noDae = Object.fromEntries(Object.entries(md.by.dae).map(([k, v]) => [k, -(v as number)])) as Totals
-  const mg = marginals(md.state, assume(), noDae)
-  if (!d || !(mg.speed > 0)) return null
-  const scale = 16 / (mg.speed * 1.5), out: Record<string, number> = {}
-  for (const s of d.stats) { const k = keyOfName(s.key); if (k && mg[k] != null) out[s.key] = Math.max(0, mg[k]) * scale }
-  return out
 }

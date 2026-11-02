@@ -164,6 +164,111 @@ def add_aion2data(classes, stats, stat_idx):
         sk = c and next((x for x in classes[c]["skills"] if x["en"] == r["skill"]), None)
         if sk:
             sk["spec"] = {k.replace("level ", ""): v for k, v in r["specializations"].items()}
+    add_skill_values(classes, by_name)
+
+
+MAX_LV = 30
+TABLE = re.compile(r'<table class="data">(.*?)</table>', re.S)
+CELL = re.compile(r"<t[hd][^>]*>(.*?)</t[hd]>", re.S)
+TAG = re.compile(r"<[^>]+>")
+
+
+def page(url):
+    """HTML of an aion2data page (polite, like get)."""
+    global _last
+    for attempt in range(4):
+        time.sleep(max(0.0, _last + 0.4 - time.time()))
+        _last = time.time()
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=30) as r:
+                return r.read().decode("utf-8")
+        except Exception as e:  # noqa: BLE001
+            print(f"  {url}: {e} - retry", file=sys.stderr)
+            time.sleep(2 ** attempt)
+    return ""
+
+
+def level_table(html_text):
+    """The skill page's "all levels" table: (column names, {level: [values]}), numbers only."""
+    import html as h
+    best = None
+    for t in TABLE.findall(html_text):
+        rows = re.findall(r"<tr[^>]*>(.*?)</tr>", t, re.S)
+        if not rows:
+            continue
+        head = [h.unescape(TAG.sub("", c)).strip() for c in CELL.findall(rows[0])]
+        if not head or head[0] != "Level":
+            continue
+        body = {}
+        for r in rows[1:]:
+            cells = [h.unescape(TAG.sub("", c)).strip() for c in CELL.findall(r)]
+            try:
+                body[int(cells[0])] = [float(c.replace(",", "").rstrip("%")) for c in cells[1:]]
+            except ValueError:
+                continue
+        if best is None or len(body) > len(best[1]):
+            best = (head[1:], body)
+    return best
+
+
+def add_skill_values(classes, by_name):
+    """What every skill level does, from aion2data (skills.json: damage / healing by level, cooldown; builds.json: the
+    computed build's attack share per second; the skill page's level table for skills without damage, e.g. passives):
+      dmg  {kind, flat: [per use, level 1..MAX_LV], pct: % Attack per use, pvp: [flat, pct] at the points cap}
+      fx   {cols: [column names], lv: [[values], level 1..MAX_LV]}   (passive / buff values by level)
+      cd   cooldown in seconds at the points cap, max = points cap, share {pve, pvp} = attack share per second,
+      icon the game's icon file (assets.playnccdn.com/static-aion2-gamedata/resources/<icon>.png)."""
+    recs = get(A2D + "skills.json")["records"]
+    builds = get(A2D + "builds.json")["records"]
+    idx = {(r["class"], r["name"]): r for r in recs}
+    share = {}
+    for b in builds:
+        if b.get("attackSharePerSecond") is not None:
+            share.setdefault((b["class"], b["skill"]), {})[b["mode"].lower()] = b["attackSharePerSecond"]
+        elif b["group"] == "filler":
+            share.setdefault((b["class"], b["skill"]), {})[b["mode"].lower() + "Filler"] = b.get("attackSharePerUse")
+    for c, cd in classes.items():
+        for sk in cd["skills"]:
+            r = idx.get((cd["en"], sk["en"]))
+            if not r:
+                continue
+            sk["id"], sk["max"] = r["id"], r["learnMax"]
+            lv = {x["lv"]: x for x in r["levels"]}
+            top = lv.get(r["learnMax"]) or r["levels"][-1]
+            if top["cooldown"]:
+                sk["cd"] = top["cooldown"] / 1000
+            if (cd["en"], sk["en"]) in share:
+                sk["share"] = share[(cd["en"], sk["en"])]
+            rows = [d for d in r.get("damage") or [] if d["kind"] in ("damage", "dot", "heal")]
+            if rows:
+                kind = "heal" if all(d["kind"] == "heal" for d in rows) else "damage"
+                rows = [d for d in rows if (d["kind"] == "heal") == (kind == "heal")]
+                flat, pct = [], 0.0
+                for L in range(1, MAX_LV + 1):
+                    f = 0.0
+                    for d in rows:
+                        e = next((x for x in d["levels"] if x[0] == L), d["levels"][-1])
+                        f += d["hits"] * (e[1] + e[2]) / 2
+                        if L == r["learnMax"]:
+                            pct += d["hits"] * e[3]
+                    flat.append(round(f, 1))
+                pvp = [sum(d["hits"] * (d["pvp"][0] + d["pvp"][1]) / 2 for d in rows if d.get("pvp")),
+                       sum(d["hits"] * d["pvp"][2] for d in rows if d.get("pvp"))]
+                sk["dmg"] = {"kind": kind, "flat": flat, "pct": round(pct, 2), "pvp": [round(pvp[0], 1), round(pvp[1], 2)]}
+            html_text = page(r["url"])
+            # icon: the page's og:image names the game file; the app loads it from NCSOFT's CDN (ICON_URL)
+            m = re.search(r'og:image" content="[^"]*/([^/"]+)\.webp"', html_text)
+            if m:
+                sk["icon"] = m.group(1)
+            if not rows:
+                t = level_table(html_text)
+                if t and t[0] and t[1]:
+                    cols, body = t
+                    # missing levels: the nearest level below (above the table's end: its last row)
+                    at = lambda L: body[max([k for k in body if k <= L] or [min(body)])]  # noqa: E731
+                    sk["fx"] = {"cols": cols, "lv": [at(L) for L in range(1, MAX_LV + 1)]}
+                    sk["cond"] = bool(re.search(r"\bfor \d+(\.\d+)?s\b", r["text"]))
+        print(f"{cd['en']} skill values: {sum(1 for s in cd['skills'] if 'dmg' in s)} damage, {sum(1 for s in cd['skills'] if 'fx' in s)} effects")
 
 
 if __name__ == "__main__":

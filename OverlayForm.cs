@@ -23,6 +23,7 @@ sealed class OverlayForm : Form
     AlertForm? alert;
     EnemyFeedForm? feedForm;
     AnnounceForm? announce;
+    BoardOverlay? board;
     RadarForm? radar;
     PvpForm? pvp;
     // PvP overlay data (PlayerFrames via PetSource), sent to the UI as 'pvp' snapshots at most 4x per second.
@@ -860,6 +861,24 @@ sealed class OverlayForm : Form
                 PostRadar();
                 break;
             case "alertHide": alert?.HideDanger(); break;
+            case "daeOverlay":
+                // Daevanion marks in the game (BoardOverlay): on/off and the marks per board
+                if (board == null)
+                {
+                    board = new BoardOverlay(Post, () => Visible && WindowState != FormWindowState.Minimized ? Bounds : null, () => settings.ProcessName);
+                    board.OverlayLog = Log;
+                }
+                board.Update(m);
+                break;
+            case "daeOverlayDump":
+                Post(new { type = "daeOverlayDump", path = board?.Dump() });
+                break;
+            case "daeLog":
+                // Daevanion research: log every frame with node ids of the own boards (daevanion-packets.log)
+                if (source != null) source.DaeLog = (bool?)m["on"] == true;
+                Log("Daevanion-Mitschnitt " + ((bool?)m["on"] == true ? "an" : "aus"));
+                DaeOps($"{DateTime.Now:HH:mm:ss.fff} log {((bool?)m["on"] == true ? "on" : "off")}");
+                break;
             case "alert":
                 switch ((string?)m["sound"])
                 {
@@ -903,9 +922,11 @@ sealed class OverlayForm : Form
 
     // last own Daevanion boards from the game (sent again when the page reloads)
     Dictionary<int, uint[]>? daeBoards;
+    Dictionary<int, int>? daePoints;
     void PostDaevanion()
     {
         if (uiReady && daeBoards != null) Post(new { type = "daeGame", boards = daeBoards.ToDictionary(b => b.Key.ToString(), b => b.Value) });
+        if (uiReady && daePoints != null) Post(new { type = "daePoints", pools = daePoints.ToDictionary(p => p.Key.ToString(), p => p.Value) });
     }
 
     void PostUpdate()
@@ -1005,6 +1026,33 @@ sealed class OverlayForm : Form
             Log($"Händler (Tab {tab}): " + string.Join(", ", items.Select(i => $"Item {i.Item} {i.Price}/{i.Base}{(i.Sold ? " sold" : i.Count != 1 ? $" x{i.Count}" : "")}")));
             Post(new { type = "merchant", tab, at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 items = items.Select(i => new { item = i.Item, count = i.Count, tier = i.Tier, @base = i.Base, price = i.Price, sold = i.Sold }) });
+        });
+        source.DaeNodeFrame += (op, body, ids) => BeginInvoke(() =>
+        {
+            var line = $"{DateTime.Now:HH:mm:ss.fff} op 0x{op:x4} len {body.Length} ids {string.Join(",", ids)} | {Convert.ToHexString(body.AsSpan(0, Math.Min(body.Length, 600)))}";
+            try { File.AppendAllText(Path.Combine(Settings.DataDir, "daevanion-packets.log"), line + "\n"); } catch { }
+            Post(new { type = "daeLogHit", op = $"0x{op:x4}", ids, at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
+        });
+        // opcode timeline (no bodies) next to the board detection's found / gone, buffered, at most 30 MB
+        source.DaeOpFrame += (op, len) => DaeOps($"{DateTime.Now:HH:mm:ss.fff} op 0x{op:x4} len {len}");
+        source.DaevanionPoints += pts => BeginInvoke(() =>
+        {
+            daePoints = pts;
+            Post(new { type = "daePoints", pools = pts.ToDictionary(p => p.Key.ToString(), p => p.Value) });
+        });
+        source.DaevanionChanged += (bought, reset) => BeginInvoke(() =>
+        {
+            Log($"Daevanion: gekauft {string.Join(",", bought)} zurückgesetzt {string.Join(",", reset)}");
+            // keep the login boards current (sent again when the page reloads)
+            if (daeBoards != null)
+                foreach (var id in bought.Concat(reset))
+                {
+                    int b = (int)(id / 10000);
+                    var set = (daeBoards.TryGetValue(b, out var cur) ? cur : []).ToHashSet();
+                    if (bought.Contains(id)) set.Add(id); else set.Remove(id);
+                    daeBoards[b] = set.ToArray();
+                }
+            Post(new { type = "daeNodes", bought, reset });
         });
         source.DaevanionReceived += boards => BeginInvoke(() =>
         {
@@ -1129,6 +1177,27 @@ sealed class OverlayForm : Form
 
     static readonly object logLock = new();
     // Also called from the capture threads (Capture.cs: adapter, diagnosis).
+    static readonly object daeOpsLock = new();
+    static readonly System.Text.StringBuilder daeOps = new();
+    static DateTime daeOpsFlush = DateTime.UtcNow;
+    /// Daevanion research timeline (daevanion-ops.log): appended in batches, stops at 30 MB.
+    internal static void DaeOps(string line)
+    {
+        lock (daeOpsLock)
+        {
+            daeOps.Append(line).Append('\n');
+            if (daeOps.Length < 64_000 && DateTime.UtcNow - daeOpsFlush < TimeSpan.FromSeconds(2)) return;
+            daeOpsFlush = DateTime.UtcNow;
+            try
+            {
+                var f = Path.Combine(Settings.DataDir, "daevanion-ops.log");
+                if (!File.Exists(f) || new FileInfo(f).Length < 30_000_000) File.AppendAllText(f, daeOps.ToString());
+            }
+            catch { }
+            daeOps.Clear();
+        }
+    }
+
     internal static void Log(string line)
     {
         lock (logLock)

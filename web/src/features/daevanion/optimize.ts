@@ -3,12 +3,17 @@
 // graph with several start nodes, so the points go to whichever board pays most.
 //
 // Greedy: from the owned set, find the cheapest path to every node (Dijkstra, cost = node grade) and buy the path
-// with the best value per point; repeat while a path with value > 0 fits into the budget. Then local search: drop a
-// low-value leaf branch (or a few random ones), refill greedily, keep the result if it is worth more. On the real
-// boards this lands within ~1 % of a long random search in well under 100 ms.
+// with the best value per point; repeat while a path with value > 0 fits into the budget.
+// Then iterated local search: cut a few random owned nodes (with everything behind them), rebuild with a randomized
+// greedy (any offer within ALPHA of the best ratio) and the plain greedy, keep the best set. Seeded, so the same input
+// always gives the same plan. Checked against proven optima (HiGHS MIP, tools/ + daevanion.test.ts): on single real
+// boards the greedy alone was up to 6.5 % below the optimum (10 % on random values), this search 0.1 % on average and at most
+// about 1 % (1500 rounds, cuts of 1–8 nodes).
+// An exact MIP in the app was tried and dropped: on the shared four-board pool it neither proves nor finds the optimum
+// in useful time.
 //
-// Groups: nodes of one skill (one per board) are worth nothing alone but f(count) together (skill level breakpoints:
-// +2 may reach level 12, +1 does nothing). The greedy also offers "bundles": the k cheapest nodes of a group at once.
+// Groups: nodes of one skill (one per board) are worth f(count) together (skill levels: each level and the
+// specializations it reaches). The greedy also offers "bundles": the k cheapest nodes of a group at once.
 
 export type Node = { b: number; r: number; c: number; cost: number; v: number; grp: number }
 /** `gf[g](k)` = value of owning k nodes of group g (f(0) = 0, never decreasing). */
@@ -53,12 +58,6 @@ export function setValue(g: Graph, s: Iterable<number>) {
   return v
 }
 const sumV = setValue
-/** What node i adds to the set it is in (its own value + the group step it makes). */
-function contrib(g: Graph, c: Int32Array, i: number) {
-  const n = g.nodes[i]
-  return n.v + (n.grp >= 0 ? g.gf[n.grp](c[n.grp]) - g.gf[n.grp](c[n.grp] - 1) : 0)
-}
-
 /** Cheapest paths from the owned set to every other node (multi-source Dijkstra with a binary heap). */
 function paths(g: Graph, owned: Set<number>) {
   const n = g.nodes.length, dist = new Float64Array(n).fill(Infinity), val = new Float64Array(n), par = new Int32Array(n).fill(-1), done = new Uint8Array(n)
@@ -101,7 +100,7 @@ function paths(g: Graph, owned: Set<number>) {
 
 /** Buy the best value-per-point paths (or group bundles) until nothing of value fits. Mutates owned, returns the
  *  bought nodes in buy order. */
-export function fill(g: Graph, owned: Set<number>, budget: number): number[] {
+export function fill(g: Graph, owned: Set<number>, budget: number, rnd?: () => number, alpha = 0): number[] {
   const order: number[] = [], n = g.nodes.length
   const members: number[][] = g.gf.map(() => [])
   for (let i = 0; i < n; i++) if (g.nodes[i].grp >= 0) members[g.nodes[i].grp].push(i)
@@ -117,6 +116,7 @@ export function fill(g: Graph, owned: Set<number>, budget: number): number[] {
       return v
     }
     let best: Set<number> | null = null, bestR = 0, bestC = 0
+    const all: [Set<number>, number, number][] = []
     const offer = (P: Set<number>) => {
       let cc = 0
       for (const j of P) cc += g.nodes[j].cost
@@ -124,6 +124,7 @@ export function fill(g: Graph, owned: Set<number>, budget: number): number[] {
       const v = gain(P)
       if (v <= EPS) return
       const r = v / cc
+      if (rnd) all.push([P, r, cc])
       if (r > bestR + EPS || (Math.abs(r - bestR) <= EPS && best && cc < bestC)) { best = P; bestR = r; bestC = cc }
     }
     for (let i = 0; i < n; i++) if (!owned.has(i) && dist[i] <= budget + EPS) {
@@ -137,69 +138,74 @@ export function fill(g: Graph, owned: Set<number>, budget: number): number[] {
       for (let k = 0; k < open.length; k++) { pathOf(open[k], P); if (k) offer(new Set(P)) }
     })
     if (!best) return order
+    // randomized: any offer close to the best ratio
+    if (rnd && alpha > 0) { const ok = all.filter(x => x[1] >= bestR * (1 - alpha)), pick = ok[Math.floor(rnd() * ok.length)]; best = pick[0]; bestC = pick[2] }
     // buy in an order that keeps everything connected
     for (const i of connectOrder(g, owned, [...(best as Set<number>)])) { owned.add(i); order.push(i) }
     budget -= bestC
   }
 }
 
-/** Owned nodes whose removal keeps every board connected to its start (and are not locked). */
-function leaves(g: Graph, owned: Set<number>, locked: Set<number>) {
-  return [...owned].filter(i => !locked.has(i) && g.adj[i].filter(j => owned.has(j)).length === 1)
-}
-
-/** Drop leaf i and then every new leaf that adds nothing (pure path nodes, group nodes past a breakpoint). */
-function prune(g: Graph, owned: Set<number>, locked: Set<number>, i: number) {
-  owned.delete(i)
-  for (let changed = true; changed;) {
-    changed = false
-    const c = counts(g, owned)
-    for (const j of leaves(g, owned, locked)) if (contrib(g, c, j) <= EPS) { owned.delete(j); c[g.nodes[j].grp] -= g.nodes[j].grp >= 0 ? 1 : 0; changed = true }
-  }
-}
-
 const cost = (g: Graph, s: Iterable<number>) => { let c = 0; for (const i of s) c += g.nodes[i].cost; return c }
+/** Randomized rebuild: offers within this share of the best ratio. */
+const ALPHA = 0.4
+
+/** Remove `i` and every node that is cut off from the base by it. */
+function cut(g: Graph, owned: Set<number>, base: Set<number>, i: number) {
+  owned.delete(i)
+  const seen = new Set<number>(), q: number[] = []
+  for (const s of base) if (owned.has(s)) { seen.add(s); q.push(s) }
+  while (q.length) for (const w of g.adj[q.pop()!]) if (owned.has(w) && !seen.has(w)) { seen.add(w); q.push(w) }
+  for (const j of [...owned]) if (!seen.has(j)) owned.delete(j)
+}
 
 /** Best connected selection for `budget` points. `locked` nodes stay owned (starts, or the current board in
- *  "add" mode); `budget` counts the points on top of the locked nodes. */
-export function optimize(g: Graph, budget: number, locked: Set<number> = new Set(g.starts), rounds = 60, kicks = 150): Plan {
+ *  "add" mode); `budget` counts the points on top of the locked nodes. `iters` rounds of local search. */
+export function optimize(g: Graph, budget: number, locked: Set<number> = new Set(g.starts), iters = 1500, seed = 12345): Plan {
   const base = new Set([...locked, ...g.starts]), total = cost(g, base) + budget
-  let owned = new Set(base)
-  let order = fill(g, owned, budget)
-  let value = sumV(g, owned)
-  // local search: try the cheapest-value leaves first; accept the first improvement, stop when none helps
-  for (let round = 0; round < rounds; round++) {
-    const c = counts(g, owned), w = (i: number) => contrib(g, c, i) / g.nodes[i].cost
-    const cand = leaves(g, owned, base).sort((a, b) => w(a) - w(b)).slice(0, 12)
-    let improved = false
-    for (const i of cand) {
-      const next = new Set(owned)
-      prune(g, next, base, i)
-      fill(g, next, total - cost(g, next))
-      const v = sumV(g, next)
-      if (v > value + 1e-6) { owned = next; value = v; improved = true; break }
-    }
-    if (!improved) break
-  }
-  // perturbation: drop a few random leaf branches at once and refill (escapes what single drops cannot); seeded, so
-  // the same settings always give the same plan
-  let seed = 12345
-  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
-  for (let it = 0; it < kicks; it++) {
-    const next = new Set(owned), k = 2 + Math.floor(rnd() * 6)
+  let best = new Set(base)
+  const order = fill(g, best, budget)
+  let bestV = sumV(g, best), cur = best, curV = bestV
+  let s = seed
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647
+  for (let it = 0; it < iters; it++) {
+    const next = new Set(cur), k = 1 + Math.floor(rnd() * 8)
     for (let j = 0; j < k; j++) {
-      const lv = leaves(g, next, base)
-      if (!lv.length) break
-      prune(g, next, base, lv[Math.floor(rnd() * lv.length)])
+      const own = [...next].filter(i => !base.has(i))
+      if (!own.length) break
+      cut(g, next, base, own[Math.floor(rnd() * own.length)])
     }
+    fill(g, next, total - cost(g, next), rnd, ALPHA)
     fill(g, next, total - cost(g, next))
     const v = sumV(g, next)
-    if (v > value + 1e-6) { owned = next; value = v }
+    // accept better sets, now and then a worse one (leaves a local optimum)
+    if (v > curV + 1e-9 || rnd() < 0.02) { cur = next; curV = v }
+    if (v > bestV + 1e-9) { best = next; bestV = v }
   }
+  // the player's points exactly: what is left goes to the best nodes still in reach (also ones worth nothing)
+  topUp(g, best, total)
   // buy order of the final set: the greedy order where it still applies, the rest connected outward from the base
-  const keep = order.filter(i => owned.has(i)), seen = new Set([...base, ...keep])
-  order = connectOrder(g, base, [...keep, ...[...owned].filter(i => !seen.has(i))])
-  return { owned, order, spent: cost(g, owned) - cost(g, base), value }
+  const keep = order.filter(i => best.has(i)), seen = new Set([...base, ...keep])
+  return { owned: best, order: connectOrder(g, base, [...keep, ...[...best].filter(i => !seen.has(i))]), spent: cost(g, best) - cost(g, base), value: bestV }
+}
+
+/** Spend what is left of `total` points: repeatedly the reachable node with the best value per point that still fits
+ *  (ties: the cheaper one, so the rest can be filled exactly). Mutates `owned`. */
+export function topUp(g: Graph, owned: Set<number>, total: number) {
+  let left = total - cost(g, owned)
+  while (left > EPS) {
+    const c = counts(g, owned)
+    let pick = -1, pr = -Infinity
+    for (let i = 0; i < g.nodes.length; i++) {
+      const n = g.nodes[i]
+      if (owned.has(i) || n.cost <= 0 || n.cost > left + EPS || !g.adj[i].some(j => owned.has(j))) continue
+      const gain = n.v + (n.grp >= 0 ? g.gf[n.grp](c[n.grp] + 1) - g.gf[n.grp](c[n.grp]) : 0), r = gain / n.cost
+      if (r > pr + EPS || (Math.abs(r - pr) <= EPS && n.cost < g.nodes[pick].cost)) { pick = i; pr = r }
+    }
+    if (pick < 0) return
+    owned.add(pick)
+    left -= g.nodes[pick].cost
+  }
 }
 
 /** Sort nodes into an order in which each one touches an already owned one (keeps the given order where possible). */

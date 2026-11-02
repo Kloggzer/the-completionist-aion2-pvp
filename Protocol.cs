@@ -401,6 +401,40 @@ static class PetFrames
         catch { return null; }
     }
 
+    // Daevanion changes while playing (from a capture: buying and resetting nodes on a Chanter's Nezekan board):
+    //   0x03e5 nodes bought along a path: u16 0, u32 board id, u8 n, n x u32 node id
+    //   0x28e2 one node bought:            u16 0, u32 node id
+    //   0x2be2 one node reset:             u16 0, u32 node id
+    // Each comes after 0x2ee2 and the cost / refund frames.
+    //   0x2ee2 spent points per point pool: u8 n, n x {u8 pool, u16 spent} (pool 1 = Nezekan-Triniel; checked: 248
+    //          spent with 0 free; it rises by the node cost on every buy, falls on a reset)
+    public static uint[]? ParseDaeBought(byte[] b)
+    {
+        if (b.Length < 7 || BitConverter.ToUInt16(b, 0) != 0) return null;
+        int board = (int)BitConverter.ToUInt32(b, 2), n = b[6];
+        if (board is < 11 or > 109 || b.Length != 7 + n * 4) return null;
+        var ids = new uint[n];
+        for (int k = 0; k < n; k++)
+        {
+            ids[k] = BitConverter.ToUInt32(b, 7 + k * 4);
+            if (ids[k] / 10000 != board || ids[k] % 10000 is < 1 or > 225) return null;
+        }
+        return ids;
+    }
+    public static Dictionary<int, int>? ParseDaePoints(byte[] b)
+    {
+        if (b.Length < 1 || b.Length != 1 + b[0] * 3) return null;
+        var d = new Dictionary<int, int>();
+        for (int k = 0; k < b[0]; k++) d[b[1 + k * 3]] = BitConverter.ToUInt16(b, 2 + k * 3);
+        return d;
+    }
+    public static uint? ParseDaeNode(byte[] b)
+    {
+        if (b.Length != 6 || BitConverter.ToUInt16(b, 0) != 0) return null;
+        uint id = BitConverter.ToUInt32(b, 2);
+        return id / 10000 is >= 11 and <= 109 && id % 10000 is >= 1 and <= 225 ? id : null;
+    }
+
     // 0x26e2 (login): own Daevanion boards: u8 n, n x {u32 board id (class * 10 + slot), varint count, count x u32 open
     // node id (board * 10000 + (row - 1) * 15 + col, the Start node included)}. Same ids as the plaync website's nodeId.
     public static Dictionary<int, uint[]>? ParseDaevanion(byte[] b)
