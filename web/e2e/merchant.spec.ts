@@ -361,7 +361,7 @@ test('merchant / event pets with a game id: wish list with progress, purchase ma
   const state = fakeState()
   state.levels[1009] = 1; state.souls[1009] = 3 // Kernon: 97 souls missing
   state.levels[1146] = 3; state.souls[1146] = 0 // Gatekeeper Pinopi: Lv 3 done
-  state.levels[1299] = 1; state.souls[1299] = 0 // not in any table
+  state.levels[1999] = 1; state.souls[1999] = 0 // not in any table (1299 has a name in the German list now)
   state.levels[1001] = 1; state.souls[1001] = 0 // Black Dragon: owned, not in the item table
   const { send } = await openApp(page, { state, ui: { tab: 'merchant', merchFac: 'Asmodian', open: { ...ALL, 'merch.bought': true } } })
   await expect(page.getByText('Kartendaten werden noch geladen')).toHaveCount(0, { timeout: 20000 })
@@ -372,7 +372,7 @@ test('merchant / event pets with a game id: wish list with progress, purchase ma
   await expect(kernon).toContainText('Nur Händler/Event')
   await expect(kernon.locator('[data-souls]')).toHaveAttribute('data-souls', '8')
   await expect(kernon.locator('img[data-peticon]')).toHaveAttribute('src', /Keneir/)
-  await expect(none.locator('[data-wish="1299"]')).toContainText('Pet #1299')
+  await expect(none.locator('[data-wish="1999"]')).toContainText('Pet #1999')
   await expect(none.locator('[data-wish="1001"] img[data-peticon]')).toHaveAttribute('src', /BlackDragon_01\.webp/)
   await expect(page.locator('[data-wish="1146"]')).toHaveCount(0) // Lv 3
 
