@@ -26,6 +26,7 @@ import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode 
 import { Bell, BellOff, Check, ChevronRight, Minus, Plus, type LucideIcon } from 'lucide-react'
 import { host } from '@/core/host'
 import { U, bump, saveUi, useApp } from '@/core/state'
+import { t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
 import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -172,8 +173,17 @@ export function ToolbarStrip({ children }: { children: ReactNode }) {
 }
 
 /** Empty / loading state of a whole tab. */
-export function Empty({ children }: { children: ReactNode }) {
-  return <p className="px-4 py-6 text-center text-[13px] leading-relaxed whitespace-normal text-muted-foreground">{children}</p>
+export function Empty({ children, icon: I, title, action }: { children: ReactNode; icon?: LucideIcon; title?: ReactNode; action?: ReactNode }) {
+  if (!I && !title && !action) return <p className="px-4 py-6 text-center text-[13px] leading-relaxed whitespace-normal text-muted-foreground">{children}</p>
+  // with an icon / title / action: a centred block (page-level empty state)
+  return (
+    <div data-empty className="flex flex-col items-center gap-1.5 px-4 py-8 text-center">
+      {I && <I className="mb-1 size-7 text-dim" strokeWidth={1.5} />}
+      {title && <p className={TITLE}>{title}</p>}
+      <p className="max-w-[34rem] text-[13px] leading-relaxed whitespace-normal text-muted-foreground">{children}</p>
+      {action && <div className="mt-1.5">{action}</div>}
+    </div>
+  )
 }
 /** Empty state inside a section (one muted line). */
 export function Note({ children, className }: { children: ReactNode; className?: string }) {
@@ -433,11 +443,26 @@ export function TopN<T>({ id, items, n, render, more, moreClass }: {
     {items.length > n && (
       <button data-more={id} onClick={() => { U.open = { ...U.open, [id]: !all }; saveUi(['open']); bump() }}
         className={cn('flex w-full items-center gap-1 px-3 py-1.5 text-[12px] text-muted-foreground hover:text-gold [&_svg]:size-3.5', moreClass)}>
-        <ChevronRight className={cn('transition-transform', all && '-rotate-90')} />{all ? '−' : more(items.length - n)}
+        <ChevronRight className={cn('transition-transform', all && '-rotate-90')} />{all ? t('common.less') : more(items.length - n)}
       </button>
     )}
   </>
 }
+
+/** Columns of a CSS grid (0 before the first layout), for a TopN count that fills whole rows. */
+export function useGridCols() {
+  const ref = useRef<HTMLDivElement>(null), [cols, setCols] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setCols(getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, cols] as const
+}
+/** Tiles to show first in a grid of `cols` columns: about `n`, but whole rows (no orphan tile in the last row). */
+export const fillRows = (n: number, cols: number) => (cols > 0 ? cols * Math.max(1, Math.round(n / cols)) : n)
 
 /** Tabs for the detail areas of a view (line style, Base UI Tabs); the choice is remembered under `id`. */
 export function PanelTabs<T extends string>({ id, tabs, children }: {

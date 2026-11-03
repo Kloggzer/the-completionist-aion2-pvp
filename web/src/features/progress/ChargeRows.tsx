@@ -74,9 +74,10 @@ ${t('alert.' + a.level)}`} data-alert={a.level}
         flat ? cn(ROW, ROW_CLICK, a.level === 'red' && 'bg-red/[0.06]')
           : cn('flex min-h-9 min-w-0 items-center gap-2 rounded-lg border bg-card px-2.5 py-1 text-[12.5px] transition-colors hover:bg-foreground/5', ACCENT[a.level]))}>
       <TriangleAlert className={cn('size-3.5 flex-none', a.level === 'red' ? TONE.bad : TONE.warn)} />
-      <span className="min-w-0 flex-1 truncate">
-        {showChar && <b className="mr-1 font-semibold">{a.char ?? t('chk.server')}:</b>}
-        <span className="text-muted-foreground">{a.text}</span>
+      {/* the open items come first and may take two lines (360 px); the owner is the sub line */}
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 whitespace-normal [overflow-wrap:anywhere]">{a.text}</span>
+        {showChar && <span className="block truncate text-[11.5px] text-muted-foreground">{a.char ?? t('chk.server')}</span>}
       </span>
       <ChevronRight className="size-3.5 flex-none text-dim transition-colors group-hover:text-gold" />
     </button>

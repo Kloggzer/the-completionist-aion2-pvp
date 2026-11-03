@@ -51,13 +51,15 @@ function LoadBtn({ char, has, variant = 'outline' }: { char: string; has: boolea
 /** Gear + fight sources in one panel line: what is loaded, the load button, the fight picker. */
 function Sources() {
   const char = charKey(), p = profile(char), s = snap(char), m = measured(char), fights = fightsOf(char), b = bs()
+  // nothing to read yet: one line that says so, instead of a panel of empty sources
+  if (!p && !s && V.abyss === false) return <Hint tone="cyan"><span data-sources-none>{t('build.srcNone')}</span></Hint>
   return (
     <Panel title={t('build.sect.src')} right={p && <LoadBtn char={char} has={!!s} variant="ghost" />} data-sources>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 pb-2">
         <span className={cn(META, 'flex min-w-0 flex-[1_1_8rem] items-center gap-1.5 [&_svg]:size-3.5 [&_svg]:flex-none')}>
           <Shirt /><span className="truncate" data-tip={!p ? t('dae.liveNoneGame') : s ? undefined : t('build.noGear')}>{!p ? t('build.noChar') : s ? t('build.src.plaync') : t('build.noGearShort')}</span>
         </span>
-        {V.abyss === false ? <span className={cn(META, 'flex-[2_1_12rem]')}>{t('build.noAbyss')}</span> : fights.length ? (
+        {V.abyss === false ? <span className={cn(META, 'flex-[2_1_12rem]')} data-tip={t('build.noAbyssTip')}>{t('build.noAbyss')}</span> : fights.length ? (
           <AppSelect value={b.fight[char] || ''} tip={t('build.fightTip')} className="h-7 min-w-0 flex-[2_1_12rem] text-xs"
             options={fights.slice(0, 60).map(f => ({ value: f.id, icon: f.hasDummy ? Target : Swords, label: `${f.label} · ${when(f.startTime)} · ${Math.round(f.duration)} s` }))}
             onChange={id => pickFight(id, char)} />
@@ -80,7 +82,10 @@ const step = (k: Key) => (PCT_KEYS.includes(k) ? '+1 %' : '+10')
 function StatsPage() {
   const char = charKey(), md = model(char), s = md.state, b = bs(), a = assume(), m = measured(char), s0 = snap(char)
   const order = (Object.keys(md.marg) as Key[]).filter(k => k !== 'might' && k !== 'precision').sort((x, y) => md.marg[y] * unit(y) - md.marg[x] * unit(x))
-  const best = order[0], capped = s.critRate * 100 >= a.critCap * 0.93
+  // no character data (neither gear from the page nor a measured fight) or every stat worth the same: no "best stat" to crown
+  const flat = order.length > 1 && Math.abs(md.marg[order[0]] * unit(order[0]) - md.marg[order.at(-1)!] * unit(order.at(-1)!)) < 1e-9
+  const noData = (!s0 && !m) || flat, best = noData ? undefined : order[0], capped = s.critRate * 100 >= a.critCap * 0.93
+  const allMeas = RATE_ROWS.every(([, , , k]) => s.measured[k as 'crit']), noneMeas = RATE_ROWS.every(([, , , k]) => !s.measured[k as 'crit'])
   const setOver = (k: Key, v: number | null) => { const o = { ...b.over }; if (v == null) delete o[k]; else o[k] = v; setBuild({ over: o }) }
   const setA = (k: keyof Assume, v: number | null) => setBuild({ assume: v == null ? Object.fromEntries(Object.entries(b.assume).filter(([x]) => x !== k)) : { ...b.assume, [k]: v } })
   const bar = <BarInfo>{t('build.statsInfo')}</BarInfo>
@@ -94,29 +99,30 @@ function StatsPage() {
           sub={capped ? t('build.kpi.critCap', { cap: fmt(a.critCap) }) : t(s.measured.crit ? 'build.measured' : 'build.assumed')}
           tip={capped ? t('build.critCapped', { r: fmt(s.critRate * 100, 1) }).replace(/\*\*/g, '') : undefined} />
         <Kpi icon={TrendingUp} label={t('build.kpi.best')} value={best ? gainPct(md.marg[best] * unit(best)) : '–'} tone={best && md.marg[best] > 0.005 ? 'ok' : undefined} data-kpi="best"
-          sub={best ? `${t('build.k.' + best)} ${step(best)}` : undefined} tip={best ? t('build.k.' + best) : undefined} />
+          sub={best ? `${t('build.k.' + best)} ${step(best)}` : t('build.kpi.noChar')} tip={best ? t('build.k.' + best) : undefined} />
         <Kpi icon={Shirt} label={t('build.kpi.gear')} value={s0 ? ago(s0.at) : '–'} tone={s0 && Date.now() - s0.at > OLD ? 'warn' : undefined} data-kpi="gear"
           sub={s0 ? t(s0.items.length === 1 ? 'build.gearN1' : 'build.gearN', { n: s0.items.length }) : t('build.kpi.noGear')} />
       </KpiRow>
       <Sources />
       <Columns>
-        <Panel title={t('build.sect.rates')} sub={t('build.ratesSub')}>
-          <div className={ROWS} data-rates>
+        {/* measured / assumed: once in the panel sub when it is the same for every rate */}
+        <Panel title={t('build.sect.rates')} sub={allMeas || noneMeas ? `${t('build.ratesSub')} · ${t(allMeas ? 'build.measured' : 'build.assumed')}` : t('build.ratesSub')} data-rates>
+          <div className={ROWS}>
             {RATE_ROWS.map(([label, r, mu, key]) => {
               const meas = s.measured[key as 'crit']
-              return <ListRow key={r} title={t(label)} sub={<span className={meas ? TONE.ok : TONE.off}>{t(meas ? 'build.measured' : 'build.assumed')}</span>}
+              return <ListRow key={r} title={t(label)} sub={allMeas || noneMeas ? undefined : <span className={meas ? TONE.ok : TONE.off}>{t(meas ? 'build.measured' : 'build.assumed')}</span>}
                 meta={<span data-tip={t('build.multTip')}>×{fmt(s[mu], 2)}</span>} right={<span className="w-16 text-right">{fmtPct(s[r] * 100)}</span>} />
             })}
           </div>
           {capped && <Note className={TONE.warn}>{rich(t('build.critCapped', { r: fmt(s.critRate * 100, 1) }))}</Note>}
         </Panel>
         <Panel title={t('build.sect.marg')} sub={t('build.margSub')}>
-          <div className={ROWS} data-marg>
+          {noData ? <Note data-marg-none>{t('build.margNone')}</Note> : <div className={ROWS} data-marg>
             <TopN id="build.marg" items={order} n={5} more={more} render={k => (
               <ListRow key={k} title={t('build.k.' + k)} meta={step(k)}
                 right={<span className={cn('w-16 text-right', gainTone(md.marg[k]))}>{gainPct(md.marg[k] * unit(k))}</span>} />
             )} />
-          </div>
+          </div>}
         </Panel>
       </Columns>
       <Panel className="pb-1.5">
@@ -148,7 +154,7 @@ function StatsPage() {
           </div>
         </Disclosure>
       </Panel>
-      <How id="build.how" title="build.how" keys={['build.how.model', 'build.how.rates', 'build.how.totals', 'build.how.dae']} />
+      <How id="build.how" title="build.how" keys={['build.how.model', 'build.how.rates', 'build.how.meter', 'build.how.totals', 'build.how.dae']} />
       <Foot>{t('build.foot')}</Foot>
     </Page>
   )
@@ -175,8 +181,7 @@ function GearPage() {
   const bar = <><BarInfo>{t('build.gearInfo')}</BarInfo>{p && <BarRight><LoadBtn char={char} has={!!s0} /></BarRight>}</>
   if (!s0) return (
     <Page w="rows" bar={bar}>
-      {p ? <Hint><div className="flex flex-wrap items-center gap-x-3 gap-y-1.5"><span className="min-w-0 flex-[1_1_14rem]">{t('build.noGear')}</span><LoadBtn char={char} has={false} /></div></Hint>
-        : <Empty>{t('dae.liveNoneGame')}</Empty>}
+      <Empty icon={Shirt} title={t('build.noGearShort')} action={p && <LoadBtn char={char} has={false} />}>{t(p ? 'build.noGearSub' : 'build.noChar')}</Empty>
     </Page>
   )
   const ups = upgrades(md.state, s0, db), worth = ups.filter(u => u.gain > 0.005)

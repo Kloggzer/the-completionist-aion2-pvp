@@ -35,8 +35,9 @@ function ownerAlerts(per: Per, char: string | null): Alert[] {
       } else if (left < 4 * H && tier === 1) yellow.push(name)
     }
     const reset = t(kind === 'w' ? 'alert.weekly' : 'alert.daily', { d: resetIn(new Date(now + left)) })
-    if (red.length) out.push({ level: 'red', char, text: `${reset} · ${red.join(', ')}` })
-    if (yellow.length) out.push({ level: 'yellow', char, text: `${reset} · ${yellow.join(', ')}` })
+    // the items first: on the overlay the end of a long line is cut
+    if (red.length) out.push({ level: 'red', char, text: `${red.join(', ')} · ${reset}` })
+    if (yellow.length) out.push({ level: 'yellow', char, text: `${yellow.join(', ')} · ${reset}` })
   }
   return out
 }

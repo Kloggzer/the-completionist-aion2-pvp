@@ -7,7 +7,7 @@ import { t, fmt } from '@/core/i18n'
 import { cn } from '@/lib/utils'
 import { ACH_BANDS, achFaction, achRows, loc, setAch, type AchRow } from './achievements'
 import { AppSelect } from '@/components/AppSelect'
-import { Bar, BarInfo, BarRight, Chip, Disclosure, Empty, GameIcon, Hint, Kpi, KpiRow, Page, Panel, Seg, Stepper, TopN, rich, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE, TILE_CLICK, TILE_P, TILE_SEL, TileIcon, grid, type BoxTone } from '@/components/kit'
+import { Bar, BarInfo, BarRight, Chip, Disclosure, Empty, GameIcon, Hint, Kpi, KpiRow, Page, Panel, Seg, Stepper, TopN, rich, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE, TILE_CLICK, TILE_P, TILE_SEL, TileIcon, fillRows, grid, useGridCols, type BoxTone } from '@/components/kit'
 
 const more = (k: number) => t('common.moreN', { n: k })
 /** Share of the next tier from which an achievement counts as "close to done". */
@@ -124,16 +124,16 @@ function Tile({ r }: { r: AchRow }) {
 
 /** Tiles of one band: the first `n`, the rest behind "show all"; the selected tile always stays visible. */
 function Tiles({ id, rows, n }: { id: string; rows: AchRow[]; n: number }) {
-  const at = rows.findIndex(r => r.a.id === V.achSel)
+  const at = rows.findIndex(r => r.a.id === V.achSel), [ref, cols] = useGridCols()
   return (
-    <div className={cn(grid('pet'), 'pt-0.5')}>
-      <TopN id={id} items={rows} n={Math.max(n, at + 1)} more={more} moreClass="col-span-full px-1" render={r => <Tile key={r.a.id} r={r} />} />
+    <div ref={ref} className={cn(grid('pet'), 'pt-0.5')}>
+      <TopN id={id} items={rows} n={Math.max(fillRows(n, cols), at + 1)} more={more} moreClass="col-span-full px-1" render={r => <Tile key={r.a.id} r={r} />} />
     </div>
   )
 }
 
-const CATS = ['', ...Object.values(CAT).map(c => c.key)]
-const CAT_ICON: Record<string, LucideIcon> = { '': LayoutGrid, ...Object.fromEntries(Object.values(CAT).map(c => [c.key, c.icon])) }
+const CATS = ['all', ...Object.values(CAT).map(c => c.key)]
+const CAT_ICON: Record<string, LucideIcon> = { all: LayoutGrid, ...Object.fromEntries(Object.values(CAT).map(c => [c.key, c.icon])) }
 
 export function AchTab() {
   useApp()
@@ -153,16 +153,16 @@ export function AchTab() {
     bands.at(-1)!.rows.push(r)
   }
   const doneRows = rows.filter(r => r.done)
-  const cat = U.achCat || ''
+  const cat: string = U.achCat || 'all'
   const bar = <>
     <BarInfo>{t('progress.achSort')}</BarInfo>
     <BarRight>
       {manual() && <AppSelect value={U.faction || achFaction() || 'all'} tip={t('ach.faction')} className="h-6 text-xs"
         options={['all', 'Elyos', 'Asmodian'].map(f => ({ value: f, label: t('ach.faction.' + f) }))}
         onChange={v => { U.faction = v; saveUi(['faction']); bump() }} />}
-      <Seg size="sm" value={cat} labelClass="@max-[520px]/main:hidden" item={k => ({ 'data-cat': k || 'all' })}
-        options={CATS.map(k => ({ value: k, icon: CAT_ICON[k], label: t('progress.cat.' + (k || 'all')), tip: t('progress.cat.' + (k || 'all')) }))}
-        onChange={k => { U.achCat = k || null; saveUi(['achCat']); bump() }} />
+      <Seg size="sm" value={cat} labelClass="@max-[520px]/main:hidden" item={k => ({ 'data-cat': k })}
+        options={CATS.map(k => ({ value: k, icon: CAT_ICON[k], label: t('progress.cat.' + k), tip: t('progress.cat.' + k) }))}
+        onChange={k => { U.achCat = k === 'all' ? null : k; saveUi(['achCat']); bump() }} />
       <Chip on={!!U.achDone} onChange={on => { U.achDone = on; saveUi(['achDone']); bump() }} tip={t('progress.achShowDoneTip')} className="h-6 px-2 text-[11.5px]">
         <CheckCheck />{t('progress.achShowDone')}
       </Chip>
@@ -172,7 +172,7 @@ export function AchTab() {
     <Page bar={bar}>
       {!has && <LoginHint />}
       <KpiRow>
-        <Kpi icon={ListTodo} label={t('ach.kpi.open')} value={fmt(open.length)} sub={cat ? t('progress.cat.' + cat) : t('ach.kpi.openSub')} data-kpi="open" />
+        <Kpi icon={ListTodo} label={t('ach.kpi.open')} value={fmt(open.length)} sub={cat !== 'all' ? t('progress.cat.' + cat) : t('ach.kpi.openSub')} data-kpi="open" />
         <Kpi icon={Hourglass} label={t('ach.kpi.close')} value={fmt(close)} sub={t('ach.kpi.closeSub', { n: Math.round(CLOSE * 100) })} tone={close ? 'ok' : undefined} data-kpi="close" />
         <Kpi icon={Award} label={t('ach.kpi.titles')} value={fmt(titles)} sub={t('ach.kpi.titlesSub')} data-kpi="titles" />
         <Kpi icon={Trophy} label={t('ach.kpi.done')} value={`${fmt(done)} / ${fmt(rows.length)}`} sub={t('ach.kpi.doneSub', { n: rows.length ? Math.round(done / rows.length * 100) : 0 })} data-kpi="done" />

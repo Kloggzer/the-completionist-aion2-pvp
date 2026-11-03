@@ -27,7 +27,7 @@ export default {
     'data.loadingMap': 'Lade Karte …', 'data.loading': 'Lade Daten …',
     'zone.open': 'Offenes Gelände', 'zone.near': 'bei {zone}',
     'map.Chaotic Lower Reshanta': 'Untere Reshanta',
-    'common.close': 'Schließen', 'common.moreN': 'alle zeigen ({n} weitere)',
+    'common.close': 'Schließen', 'common.moreN': 'alle zeigen ({n} weitere)', 'common.less': 'weniger zeigen',
   },
   en: {
     'tab.targets': 'Targets', 'tab.spots': 'Spots', 'tab.ach': 'Achievements', 'tab.check': 'Checklist', 'tab.dae': 'Daevanion', 'tab.arc': 'Arcana', 'tab.boss': 'Bosses', 'tab.timer': 'Timers',
@@ -55,6 +55,6 @@ export default {
     'data.download': 'Download failed',
     'data.loadingMap': 'Loading map …', 'data.loading': 'Loading data …',
     'zone.open': 'Open terrain', 'zone.near': 'near {zone}',
-    'common.close': 'Close', 'common.moreN': 'show all ({n} more)',
+    'common.close': 'Close', 'common.moreN': 'show all ({n} more)', 'common.less': 'show less',
   },
 }

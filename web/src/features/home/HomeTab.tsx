@@ -14,7 +14,7 @@ import { soulPets } from '@/features/pets/logic'
 import { allBosses, fbStatus, occOn, occurrences, timerName, timerOn, timerWhere, toggleBossBell, toggleOnce } from '@/features/events/events'
 import { KIND_ICON } from '@/features/events/TimerTab'
 import { CHECK, CHECK_GAME, CHECK_ICON, CHECK_ICON_DEFAULT, TIER, TIER_TONE, charKey, checkCount, checkSet, nextReset, resetIn, type Kind, type Per } from '@/features/progress/checklist'
-import { alerts } from '@/features/progress/alerts'
+import { alertKey, alerts } from '@/features/progress/alerts'
 import { AlertRow } from '@/features/progress/ChargeRows'
 import { achRows, loc } from '@/features/progress/achievements'
 
@@ -25,7 +25,8 @@ const leftTxt = (ms: number, now: number) => {
 
 // ---------------------------------------------------------------- data
 
-type Next = { ms: number; key: string; Icon: LucideIcon; por?: number; name: string; where: string; due: boolean; go: () => void; bell: boolean; toggle: () => void; tip: string }
+/** `boss`: a world boss event or a field boss (the "next boss" tile takes the first of these). */
+type Next = { ms: number; key: string; Icon: LucideIcon; por?: number; name: string; where: string; due: boolean; go: () => void; bell: boolean; toggle: () => void; tip: string; boss: boolean; page: string }
 
 /** Enabled events and field bosses (current map + belled ones), by time. An event's bell here mutes / unmutes only
  *  that occurrence (toggleOnce), never the whole series; a muted occurrence of an enabled series stays listed. */
@@ -35,8 +36,8 @@ function upNext(now: number, n: number): Next[] {
   const bosses = nextBosses(n)
   return [
     ...evs.map(({ ms, ev }: Any) => ({ ms, key: ev.id + ms, Icon: KIND_ICON[ev.kind] || Clock, name: timerName(ev), where: timerWhere(ev), due: false,
-      go: () => goTab('timer'), bell: occOn(ev, ms), toggle: () => toggleOnce(ev, ms), tip: occOn(ev, ms) ? t('home.onceOff') : t('home.onceOn') })),
-    ...bosses.map(({ b, s }) => ({ ms: s.due!, key: b.key, Icon: Skull, por: bossPor(b), name: b.name, due: s.k === 'due',
+      boss: ev.kind === 'boss', page: 'timer', go: () => goTab('timer'), bell: occOn(ev, ms), toggle: () => toggleOnce(ev, ms), tip: occOn(ev, ms) ? t('home.onceOff') : t('home.onceOn') })),
+    ...bosses.map(({ b, s }) => ({ ms: s.due!, key: b.key, Icon: Skull, por: bossPor(b), name: b.name, due: s.k === 'due', boss: true, page: 'boss',
       where: b.map === U.map ? '' : mapName(G.maps.find((m: Any) => m.key === b.map)?.name || ''),
       go: () => { if (b.map !== U.map) selectMap(b.map); goTab('boss') }, bell: !!U.bossBells?.[b.key], toggle: () => toggleBossBell(b.key),
       tip: U.bossBells?.[b.key] ? t('timer.bellOn') : t('timer.bellOff') })),
@@ -71,7 +72,7 @@ function NextRows({ rows, now }: { rows: Next[]; now: number }) {
     <div key={r.key} className={cn(ROW, ROW_CLICK, 'pr-0')} onClick={r.go} data-tip={r.name + (r.where ? ' · ' + r.where : '')}>
       <b className="w-10 flex-none font-normal tabular-nums">{hm(r.ms)}</b>
       {r.por != null ? <Portrait por={r.por} size={22} className="-my-1" /> : <span className={cn(ROW_ICON, 'text-muted-foreground')}><r.Icon /></span>}
-      <span className="min-w-0 flex-1 truncate">{r.name}{r.where && <i className="ml-1 text-[11px] not-italic text-dim">{r.where}</i>}</span>
+      <span className="min-w-0 flex-1 truncate">{r.name}{r.where && <i className="ml-1 hidden text-[11.5px] text-dim not-italic @min-[520px]:inline">{r.where}</i>}</span>
       <span className={cn('flex-none text-[11px] whitespace-nowrap text-cyan tabular-nums', (r.due || r.ms - now < 10 * 60e3) && 'font-semibold text-gold')}>
         {r.due ? t('home.due') : leftTxt(r.ms, now)}
       </span>
@@ -95,7 +96,7 @@ function OpenToday({ all }: { all: ReturnType<typeof checkItems> }) {
               <span className={cn(ROW_ICON, TIER_TONE[tier] === 'gold' ? 'text-gold' : TIER_TONE[tier] === 'cyan' ? 'text-cyan' : 'text-dim')}><GameIcon name={CHECK_GAME[o.id]} fallback={I} className="size-[18px]" fallbackClass="size-4" /></span>
               <span className="min-w-0 flex-1 truncate">{t('progress.item.' + o.id)}</span>
               <span className={META}>{o.c}/{o.max}</span>
-              <button onClick={() => checkSet(o.id, o.per, o.kind, o.max, o.c + 1)} data-tip={t('home.plus')}
+              <button onClick={() => checkSet(o.id, o.per, o.kind, o.max, o.c + 1)} data-tip={t('home.plus')} aria-label={t('home.plus')}
                 className="-mr-1 grid size-6 flex-none place-items-center rounded-md border text-muted-foreground hover:border-gold/50 hover:text-gold"><Plus className="size-3.5" /></button>
             </div>
           )
@@ -117,21 +118,19 @@ function FarmHere() {
           </div>
         )}
         {n?.mob && (
-          <div className={cn(ROW, ROW_CLICK)} data-tip={`${n.mob.mob.n} → ${petName(n.mob.t.p)}`}
+          <div className={cn(ROW, ROW_CLICK)} data-tip={`${t('map.hudMob')}: ${n.mob.mob.n} → ${petName(n.mob.t.p)}`}
             onClick={() => { V.multi = new Set([n.mob.t.p.id]); V.spotsSel = false; V.spot = V.cube = null; goTab('targets', `[data-pet="${n.mob.t.p.id}"][data-sel]`) }}>
-            <span className="w-10 flex-none text-[11.5px] text-dim">{t('map.hudMob')}</span>
             <Portrait por={n.mob.mob.por} size={22} className="-my-1" />
             <span className="min-w-0 flex-1 truncate">{n.mob.mob.n} <i className="text-muted-foreground not-italic">{n.mob.t.souls}/{n.mob.t.need}</i></span>
             <b className="flex-none text-[11px] font-semibold text-cyan tabular-nums">{fmtDist(n.mob.dist)} {n.mob.dir}</b>
           </div>
         )}
         {spot && (
-          <div className={cn(ROW, ROW_CLICK)} data-tip={spot.pets.map((p: Any) => petName(p.t.p)).join(', ')}
+          <div className={cn(ROW, ROW_CLICK)} data-tip={`${t('map.hudSpot')}: ${spot.name}\n${spot.pets.map((p: Any) => petName(p.t.p)).join(', ')}`}
             onClick={() => { V.spot = spot.rank; V.cube = null; goTab('spots', `[data-spot="${spot.rank}"]`) }}>
-            <span className="w-10 flex-none text-[11.5px] text-dim">{t('map.hudSpot')}</span>
             <Portrait por={spot.pets[0]?.t.mobs[0]?.por} size={22} className="-my-1" />
             <span className="min-w-0 flex-1 truncate">{spot.name}</span>
-            <span className={META}>{t('pets.spot.pets.other', { n: spot.pets.length })}</span>
+            <span className={META}>{t(spot.pets.length === 1 ? 'pets.spot.pets.one' : 'pets.spot.pets.other', { n: spot.pets.length })}</span>
           </div>
         )}
         {hasState() && !n?.mob && !spot && <Note>{t('home.farm.none')}</Note>}
@@ -167,7 +166,7 @@ export function HomeTab() {
   const sp = soulPets(), have = sp.filter((p: Any) => (S.state.levels[p.id] || 0) > 0).length
   const missing = V.targets.filter((x: Any) => !x.done).length
   const items = checkItems(), done = items.filter(o => o.c >= o.max).length, left = items.length - done
-  const boss = nextBosses(1)[0]
+  const up = upNext(now, 12), boss = up.find(r => r.boss)
   const rows = G.ach ? achRows() : []
   const close = rows.filter(r => !r.done && r.val > 0 && r.frac < 1).sort((a, b) => b.frac - a.frac)
   const warn = alerts()
@@ -180,24 +179,25 @@ export function HomeTab() {
           onClick={() => goTab('check')} tip={tip('check')} data-kpi="reset" />
         <Kpi icon={PawPrint} label={t('home.kpi.pets')} value={hasState() ? t('home.missing', { n: missing }) : '–'} tone={hasState() && !missing ? 'ok' : undefined}
           sub={hasState() ? t('home.pets.have', { have, total: sp.length }) : t('home.kpi.noData')} onClick={() => goTab('targets')} tip={tip('targets')} data-kpi="pets" />
-        <Kpi icon={Skull} label={t('home.kpi.boss')} value={boss ? (boss.s.k === 'due' ? t('home.due') : hm(boss.s.due!)) : '–'}
-          tone={boss ? (boss.s.k === 'due' ? 'warn' : 'info') : undefined} sub={boss ? `${boss.s.k === 'due' ? hm(boss.s.due!) : leftTxt(boss.s.due!, now)} · ${boss.b.name}` : t('home.kpi.noBoss')}
-          onClick={() => goTab('boss')} tip={tip('boss')} data-kpi="boss" />
+        {/* the same source as "up next": world boss events and the field bosses of this map (+ belled ones) */}
+        <Kpi icon={Skull} label={t('home.kpi.boss')} value={boss ? (boss.due ? t('home.due') : hm(boss.ms)) : '–'}
+          tone={boss ? (boss.due ? 'warn' : 'info') : undefined} sub={boss ? `${boss.due ? hm(boss.ms) : leftTxt(boss.ms, now)} · ${boss.name}` : t('home.kpi.noBoss')}
+          onClick={boss ? boss.go : () => goTab('boss')} tip={boss ? `${boss.name}${boss.where ? ' · ' + boss.where : ''}\n${tip(boss.page)}` : tip('boss')} data-kpi="boss" />
         <Kpi icon={ListChecks} label={t('home.kpi.today')} value={left ? t('chk.openN', { n: left }) : <DoneMark />} tone={left ? undefined : 'ok'}
           sub={t('home.doneOf', { n: done, total: items.length })} onClick={() => goTab('check')} tip={tip('check')} data-kpi="check" />
       </KpiRow>
       {warn.length > 0 && (
         <Panel title={t('alert.title')} sub={t('alert.sub')} right={<More onClick={() => { V.chkPage = null; goTab('check') }}>{t('tab.check')}</More>} data-home-alerts>
-          <div className={ROWS}><TopN id="home.alerts" items={warn} n={3} more={more} render={(a, i) => <AlertRow key={i} a={a} flat onOpen={() => goTab('check')} />} /></div>
+          <div className={ROWS}><TopN id="home.alerts" items={warn} n={3} more={more} render={a => <AlertRow key={alertKey(a)} a={a} flat onOpen={() => goTab('check')} />} /></div>
         </Panel>
       )}
       <div className={PANELS}>
         <Panel title={t('home.next')} right={<More onClick={() => goTab('timer')}>{t('home.allTimers')}</More>} data-home-next>
-          <NextRows rows={upNext(now, 12)} now={now} />
+          <NextRows rows={up} now={now} />
         </Panel>
         <OpenToday all={items} />
         <FarmHere />
-        <AlmostDone rows={close} />
+        {close.length > 0 && <AlmostDone rows={close} />}
       </div>
     </Page>
   )
