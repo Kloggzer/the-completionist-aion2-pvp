@@ -1,8 +1,14 @@
 // Colour themes (light "Aion Ember", dark "Night Indigo", system) and the sidebar in both: screenshots for a visual check.
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { goPage, hasCache, openApp } from './host'
 
-test.skip(!hasCache(), 'needs the app data cache in %LOCALAPPDATA%\TheCompletionist\cache (start the app once)')
+test.skip(!hasCache(), 'needs the app data cache in %LOCALAPPDATA%\\TheCompletionist\\cache (start the app once)')
+
+/** After a page switch: colour transitions done and the game icons loaded (or failed). */
+async function settle(page: Page) {
+  await page.waitForTimeout(250)
+  await page.waitForFunction(() => [...document.images].every(i => i.complete), undefined, { timeout: 5000 }).catch(() => {})
+}
 
 for (const theme of ['light', 'dark'] as const) test('theme ' + theme, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -10,6 +16,7 @@ for (const theme of ['light', 'dark'] as const) test('theme ' + theme, async ({ 
   await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^(?!.*dark)/)
   for (const p of ['Übersicht', 'Ziele', 'Daevanion', 'Farmen', 'Werte', 'Ausrüstung', 'Erfolge']) {
     await goPage(page, p)
+    await settle(page)
     await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-${p}.png` })
   }
   await page.locator('[data-tip="Einstellungen"]').click()
@@ -19,6 +26,7 @@ for (const theme of ['light', 'dark'] as const) test('theme ' + theme, async ({ 
   await page.locator('[data-tip="Einstellungen"]').click()
   await page.setViewportSize({ width: 360, height: 700 })
   await goPage(page, 'Übersicht')
+  await settle(page)
   await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-narrow.png` })
 })
 

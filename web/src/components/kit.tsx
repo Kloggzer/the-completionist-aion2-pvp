@@ -1,7 +1,7 @@
 // Shared building blocks of every view: one page frame, one top bar, one section header, one tile, one flat row, one
 // chip, one bar, and the primitives below (Seg, Chip, Stepper, Panel, Disclosure, TopN, PanelTabs on Base UI).
 // Spacing scale: 6 px gaps (gap-1.5), 10 px outer padding (px-2.5), 12 px text inset (px-3). Type scale (Manrope):
-// section 12 px semibold (no capitals anywhere), title 13 px semibold, text 13 px, sub 12 px muted, meta 11.5 px; page titles 19 px bold.
+// section 12 px semibold (no capitals anywhere), title 13 px semibold, text 13 px, sub 12 px muted, meta 11.5 px, badges 11 px.
 // Radius: rounded-lg for controls and tiles, rounded-xl for panels. Colours only via tokens (index.css: light "Aion
 // Ember", dark "Night Indigo"; `gold` = the accent). Controls never wrap (index.css): long labels truncate.
 // Icons: 14 px (size-3.5) in rows and bars, 28 px / stroke 1.5 in tile icon columns, 18 px in bell / step columns.
@@ -38,9 +38,6 @@ import { Progress as ProgressPrimitive } from '@base-ui/react/progress'
 export const TITLE = 'text-[13px] leading-tight font-semibold [overflow-wrap:anywhere]'
 export const SUB = 'text-[12px] leading-tight whitespace-normal text-muted-foreground [overflow-wrap:anywhere]'
 export const META = 'text-[11.5px] text-muted-foreground tabular-nums'
-export const CLAMP2 = 'line-clamp-2 whitespace-normal'
-/** Gap above a tile grid / row list that starts right below the bar (no section header in between). */
-export const LEAD = 'pt-2.5'
 
 /** Status text colours, the same meaning in every tab. */
 export const TONE = { ok: 'text-green', warn: 'text-gold', bad: 'text-red', info: 'text-cyan', off: 'text-dim' } as const
@@ -93,7 +90,8 @@ export const T_SUB = cn(SUB, 'mt-0.5 line-clamp-2 min-h-[2lh]')
 export const T_FOOT = 'mt-auto'
 /** Footer line of a tile: value left, extras right. */
 export const T_META = 'flex min-w-0 items-center justify-between gap-1.5 text-[11.5px] text-muted-foreground tabular-nums'
-/** Portrait tile: square portrait column at the left edge (60 px, 64 px on wide pages), text column right of it. */
+/** Portrait tile: square portrait / icon column at the left edge (T_PORTRAIT: 44 px from 700 px, 52 px from 1300 px;
+ *  TileIcon), text column right of it. */
 export const TILE_P = 'flex-row items-stretch gap-2.5 p-1.5 pr-2'
 // Hidden in narrow windows (the overlay next to the game): text first; from 700 px a compact square.
 export const T_PORTRAIT = 'hidden @min-[700px]:inline-grid size-[44px] @min-[1300px]:size-[52px]'
@@ -264,7 +262,8 @@ export function rich(s: string, slots: Record<string, ReactNode> = {}) {
   })
 }
 
-/** Npcap download page (the host opens it in the browser; it only allows aion2maps.com and npcap.com). */
+/** Npcap download page (the host opens it in the browser; OverlayForm.OpenExternal only allows aion2maps.com,
+ *  npcap.com and the app's GitHub repository). */
 export const NPCAP_URL = 'https://npcap.com/#download'
 export const NpcapLink = () => <a href={NPCAP_URL} target="_blank" rel="noreferrer" className="text-gold hover:underline">npcap.com</a>
 
@@ -373,11 +372,11 @@ export function Stepper({ value, onChange, min = 0, max = 999, big, className, .
   const b = STEP_BTN
   return (
     <span className={cn(STEP_BOX, className)} {...rest}>
-      {big && <button className={cn(b, 'hidden @min-[420px]:grid')} disabled={value <= min} onClick={() => set(value - big)}>−{big}</button>}
+      {big && <button className={cn(b, 'hidden @min-[420px]:grid')} aria-label={`−${big}`} disabled={value <= min} onClick={() => set(value - big)}>−{big}</button>}
       <button className={b} aria-label="−1" disabled={value <= min} onClick={() => set(value - 1)}><Minus /></button>
       <output className="min-w-9 text-center text-[12.5px] font-semibold text-foreground tabular-nums">{value}</output>
       <button className={b} aria-label="+1" disabled={value >= max} onClick={() => set(value + 1)}><Plus /></button>
-      {big && <button className={cn(b, 'hidden @min-[420px]:grid')} disabled={value >= max} onClick={() => set(value + big)}>+{big}</button>}
+      {big && <button className={cn(b, 'hidden @min-[420px]:grid')} aria-label={`+${big}`} disabled={value >= max} onClick={() => set(value + big)}>+{big}</button>}
     </span>
   )
 }
@@ -491,19 +490,6 @@ export function MiniStepper({ label, value, onStep, minus = true, plus = true, t
       <button className={b} disabled={!minus} data-tip={tips?.[0]} aria-label={tips?.[0] ?? '−1'} onClick={e => { e.stopPropagation(); onStep(-1) }}><Minus /></button>
       <output className="min-w-10 text-center font-semibold text-foreground tabular-nums">{value}</output>
       <button className={b} disabled={!plus} data-tip={tips?.[1]} aria-label={tips?.[1] ?? '+1'} onClick={e => { e.stopPropagation(); onStep(1) }}><Plus /></button>
-    </div>
-  )
-}
-
-/** Page head: bold title, muted sub line, actions at the right (filters, switches). */
-export function PageHead({ title, sub, right, icon: I }: { title: ReactNode; sub?: ReactNode; right?: ReactNode; icon?: LucideIcon }) {
-  return (
-    <div data-drag className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1.5 px-3 pt-3">
-      <h1 className="m-0 flex min-w-0 items-center gap-2 font-display text-[19px] leading-none font-bold text-foreground">
-        {I && <I className="size-4.5 flex-none text-gold" />}<span className="truncate">{title}</span>
-      </h1>
-      {sub && <span className="min-w-0 flex-[1_1_8rem] truncate text-[12.5px] text-muted-foreground">{sub}</span>}
-      {right && <span className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-1.5">{right}</span>}
     </div>
   )
 }

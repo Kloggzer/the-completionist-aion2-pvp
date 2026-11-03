@@ -67,7 +67,6 @@ Root font size is 14 px (`html`), so 1 rem = 14 px. Use the kit constants, not n
 | Panel spacing | `mt-2.5` | between panels and hints |
 | Row height | `min-h-9` (ROW), `min-h-8` (Disclosure head) | lists |
 | Controls | `h-7` (Chip, Seg md, Button sm), `h-6` (Seg sm, AppSelect in bars) | bars, rows |
-| Page title | 19 px bold (`PageHead`) | one per page, optional |
 | Kpi value | 21 px bold, tabular | KpiRow |
 | Title | 13 px semibold (`TITLE`) | tiles, row titles |
 | Text | 13 px | rows |

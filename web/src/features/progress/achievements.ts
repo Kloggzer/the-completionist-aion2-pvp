@@ -53,9 +53,6 @@ export function setAch(a: Any, val: number) {
   host({ type: 'setAch', id: a.id, val, tier: a.tiers.filter((x: Any) => val >= x.goal).length })
 }
 
-/** Open achievements for the tab badge (0 while the definitions are not loaded). */
-export const achOpenCount = () => (G.ach ? achRows().filter(r => !r.done).length : 0)
-
 export function onAchUpd(items: Any[]) {
   refreshBaselines() // capture the pre-update values as baselines if a reset happened since the last check
   const st = S.state.ach || (S.state.ach = {})

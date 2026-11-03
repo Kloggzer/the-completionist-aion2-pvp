@@ -20,13 +20,6 @@ export { Sect } from '@/components/kit'
 /** Progress bar: cyan while unlocking, gold while levelling. */
 export const Pbar = ({ lv, frac, className }: { lv: number; frac: number; className?: string }) => <Bar frac={frac} tone={lv === 0 ? 'cyan' : 'gold'} className={className} />
 
-/** Three level dots. */
-export const LvDots = ({ lv }: { lv: number }) => (
-  <span className="flex flex-none gap-0.5" data-tip={t('pets.lvTip', { lv })}>
-    {[1, 2, 3].map(l => <i key={l} className={cn('size-[7px] rounded-full border border-dim', l <= lv && 'border-gold bg-gold')} />)}
-  </span>
-)
-
 /** Category/colour marker (rotated square). */
 export const Dot = ({ col, className }: { col?: string; className?: string }) => (
   <span className={cn('mt-[5px] size-2 flex-none rotate-45 rounded-[2px]', className)} style={col ? { background: col } : undefined} />

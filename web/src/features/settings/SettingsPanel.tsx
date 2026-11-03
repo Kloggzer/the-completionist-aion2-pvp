@@ -1,6 +1,6 @@
 // Settings overlay below the header: category nav left (the Sidebar look; icons only on narrow windows), content
 // right in a form-width Page; centred with a max width on big windows.
-import { Bell, Database, Keyboard, Map as MapIcon, Radio, Settings, SlidersHorizontal, Target, X } from 'lucide-react'
+import { ArrowLeft, Bell, Database, Keyboard, Map as MapIcon, Radio, Settings, SlidersHorizontal, Target } from 'lucide-react'
 import { S, U, V, saveUi, bump, useApp } from '@/core/state'
 import { t } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
@@ -28,11 +28,12 @@ export function SettingsPanel() {
   const Body = cat[2]
   return (
     <div className="@container absolute inset-x-0 top-10 bottom-0 z-30 flex flex-col bg-background">
-      <div className={cn(BAR, 'flex-nowrap pr-1 pl-3')}>
+      {/* back to the app on the left (the header's own X closes the overlay window, not the settings) */}
+      <div className={cn(BAR, 'flex-nowrap pr-3 pl-1.5')}>
+        <Button variant="ghost" size="xs" data-settings-close className="h-6 text-[12px] text-muted-foreground" onClick={() => { V.settingsOpen = false; bump() }}><ArrowLeft />{t('common.back')}</Button>
         <span data-drag className="flex h-6 min-w-0 flex-1 cursor-grab items-center gap-1.5 text-[13px] font-semibold text-foreground [&_svg]:size-3.5 [&_svg]:flex-none [&_svg]:text-gold">
           <Settings /><span className="truncate">{t('set.title')}</span>
         </span>
-        <Button variant="ghost" size="icon-xs" data-tip={t('common.close')} aria-label={t('common.close')} onClick={() => { V.settingsOpen = false; bump() }}><X className="size-4" /></Button>
       </div>
       {/* Big windows: nav + content as one centred column (max 1000 px), the content a form-width Page. */}
       <div className="mx-auto flex min-h-0 w-full max-w-[1000px] flex-1 @min-[1000px]:border-x">

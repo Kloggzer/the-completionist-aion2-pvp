@@ -2,7 +2,7 @@
 export default {
   de: {
     'timer.loading': 'Lade Zeitplan …',
-    'timer.leadInfo': 'Ansage {n} min vorher', 'timer.leadTip': 'Termine mit Glocke werden vorher angesagt (Vorlauf in den Einstellungen)',
+    'timer.leadTip': 'Termine mit Glocke werden vorher angesagt (Vorlauf in den Einstellungen)',
     'timer.all': 'Alle zeigen', 'timer.allTip': 'Auch Termine ohne Glocke im Kalender zeigen (gestrichelt)',
     'timer.kind.boss': 'Bosse', 'timer.kind.rift': 'Risse', 'timer.kind.abyss': 'Abyss', 'timer.kind.field': 'Feld-Events',
     'timer.kindOn': 'Ansage für alle {kind} an', 'timer.kindOff': 'Ansage für alle {kind} aus',
@@ -16,7 +16,7 @@ export default {
     'timer.kpi.next': 'Nächster Termin', 'timer.kpi.none': 'kein Termin mit Glocke', 'timer.kpi.today': 'Heute noch', 'timer.kpi.todaySub': 'Termine mit Glocke',
     'timer.kpi.bells': 'Glocken an', 'timer.kpi.bellsSub': 'Events mit Ansage', 'timer.kpi.lead': 'Vorlauf', 'timer.kpi.leadV': '{n} min', 'timer.kpi.leadSub': 'in den Einstellungen',
     'timer.calendar': 'Kalender', 'timer.prev': 'Einen Tag zurück', 'timer.next': 'Einen Tag weiter',
-    'timer.today': 'Heute', 'timer.tomorrow': 'Morgen',
+    'timer.today': 'Heute',
     'timer.running': 'läuft', 'timer.inMin': 'in {m} min', 'timer.inHMin': 'in {h} h {m} min',
     'timer.bellOn': 'Ansage aus', 'timer.bellOff': 'Ansage an',
     'timer.say': '{name} in {n} Minuten', 'timer.say1': '{name} in 1 Minute', 'timer.sayStart': '{name} startet jetzt', 'boss.sayStart': '{boss} spawnt jetzt',
@@ -46,7 +46,7 @@ export default {
   },
   en: {
     'timer.loading': 'Loading schedule …',
-    'timer.leadInfo': 'Announced {n} min ahead', 'timer.leadTip': 'Events with a bell are announced ahead (lead time in the settings)',
+    'timer.leadTip': 'Events with a bell are announced ahead (lead time in the settings)',
     'timer.all': 'Show all', 'timer.allTip': 'Also show events without a bell in the calendar (dashed)',
     'timer.kind.boss': 'Bosses', 'timer.kind.rift': 'Rifts', 'timer.kind.abyss': 'Abyss', 'timer.kind.field': 'Field events',
     'timer.kindOn': 'Announce all {kind}', 'timer.kindOff': 'Stop announcing all {kind}',
@@ -60,7 +60,7 @@ export default {
     'timer.kpi.next': 'Next event', 'timer.kpi.none': 'no event with a bell', 'timer.kpi.today': 'Left today', 'timer.kpi.todaySub': 'events with a bell',
     'timer.kpi.bells': 'Bells on', 'timer.kpi.bellsSub': 'events announced', 'timer.kpi.lead': 'Lead time', 'timer.kpi.leadV': '{n} min', 'timer.kpi.leadSub': 'in the settings',
     'timer.calendar': 'Calendar', 'timer.prev': 'One day back', 'timer.next': 'One day ahead',
-    'timer.today': 'Today', 'timer.tomorrow': 'Tomorrow',
+    'timer.today': 'Today',
     'timer.running': 'running', 'timer.inMin': 'in {m} min', 'timer.inHMin': 'in {h} h {m} min',
     'timer.bellOn': 'Announcement off', 'timer.bellOff': 'Announcement on',
     'timer.say': '{name} in {n} minutes', 'timer.say1': '{name} in 1 minute', 'timer.sayStart': '{name} starts now', 'boss.sayStart': '{boss} spawns now',

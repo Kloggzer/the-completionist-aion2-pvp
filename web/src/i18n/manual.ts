@@ -11,7 +11,7 @@ export default {
     'welcome.auto.missing': 'Npcap ist nicht installiert – kostenlos auf {link} herunterladen und die App neu starten.',
     'welcome.manual': 'Manuell (ohne Npcap)',
     'welcome.manual.text': 'Du trägst Pet-Seelen, Erfolge und deinen Charakter selbst ein. Karte, Spawns, Farmspots, Checkliste, Vorräte, Timer und Boss-Respawns (ab deinem Kill) funktionieren genauso – nur Radar, Position und Live-Cubes brauchen den automatischen Modus.',
-    'welcome.pick': 'Auswählen', 'welcome.picked': 'Ausgewählt',
+    'welcome.pick': 'Auswählen',
     'welcome.later': 'Jederzeit änderbar unter Einstellungen → Live-Tracking.',
 
     'npcap.notice': 'Npcap ist nicht installiert – die App läuft deshalb im **manuellen Modus**: Du trägst deinen Fortschritt selbst ein. Für automatisches Tracking Npcap von {link} installieren und die App neu starten.',
@@ -59,7 +59,7 @@ export default {
     'welcome.auto.missing': 'Npcap is not installed – download it for free from {link} and restart the app.',
     'welcome.manual': 'Manual (without Npcap)',
     'welcome.manual.text': 'You enter pet souls, achievements and your character yourself. Map, spawns, farm spots, checklist, supplies, timers and boss respawns (from your kill) work the same – only radar, position and live cubes need the automatic mode.',
-    'welcome.pick': 'Choose', 'welcome.picked': 'Selected',
+    'welcome.pick': 'Choose',
     'welcome.later': 'You can change this any time under Settings → Live tracking.',
 
     'npcap.notice': 'Npcap is not installed, so the app runs in **manual mode**: you enter your progress yourself. For automatic tracking install Npcap from {link} and restart the app.',

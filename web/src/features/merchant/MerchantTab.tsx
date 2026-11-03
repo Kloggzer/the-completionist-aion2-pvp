@@ -4,7 +4,7 @@
 // easy to farm, the easy one closed), ranked by farm difficulty × missing souls. Clicking a pet shows its spawns in the
 // Targets tab. Offers are portrait tiles (kit anatomy), the missing pets list rows; the offer column sits left of the
 // list from 900 px.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Brain, CircleHelp, Clock, Gamepad2, Leaf, MapPin, Mountain, PawPrint, Plus, Search, ShoppingCart, Sparkles, Store, Undo2, X, type LucideIcon } from 'lucide-react'
 import { U, V, bump, hasState, saveUi, useApp, type Any } from '@/core/state'
 import { emit } from '@/core/bus'
@@ -129,12 +129,11 @@ const VERDICT_PILL: Record<OfferVerdict, string> = {
 function Picker() {
   const [q, setQ] = useState(''), [hi, setHi] = useState(0)
   const taken = new Set(offers().items.map(o => o.id))
-  const list = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return []
-    return [...new Map([...merchantPets(), ...eventPets()].map(p => [p.id, p])).values()].filter(p => !taken.has(p.id) && hit(p, s))
-      .sort((a, b) => +!petName(a).toLowerCase().startsWith(s) - +!petName(b).toLowerCase().startsWith(s) || petName(a).localeCompare(petName(b))).slice(0, 8)
-  }, [q, taken.size]) // eslint-disable-line react-hooks/exhaustive-deps
+  // computed on every render (a few hundred names): a memo keyed on the query went stale when the offer or the pet
+  // data changed
+  const s = q.trim().toLowerCase()
+  const list = !s ? [] : [...new Map([...merchantPets(), ...eventPets()].map(p => [p.id, p])).values()].filter(p => !taken.has(p.id) && hit(p, s))
+    .sort((a, b) => +!petName(a).toLowerCase().startsWith(s) - +!petName(b).toLowerCase().startsWith(s) || petName(a).localeCompare(petName(b))).slice(0, 8)
   const add = (p: Any) => { setOffers([...offers().items, { id: p.id }]); setQ(''); setHi(0) }
   const key = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') { setHi(h => Math.min(h + 1, list.length - 1)); e.preventDefault() }

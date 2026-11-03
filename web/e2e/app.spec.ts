@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { CACHE, fakeState, goPage, hasCache, navBtn, openApp } from './host'
 
-test.skip(!hasCache(), 'needs the app data cache in %LOCALAPPDATA%\TheCompletionist\cache (start the app once)')
+test.skip(!hasCache(), 'needs the app data cache in %LOCALAPPDATA%\\TheCompletionist\\cache (start the app once)')
 
 const TABS = ['Übersicht', 'Ziele', 'Spots', 'Händler', 'Farmen', 'Erfolge', 'Checkliste', 'Daevanion', 'Arkana', 'Bosse', 'Timer']
 const tab = (page: Page, name: string) => navBtn(page, name)
@@ -129,7 +129,7 @@ test('settings: every category opens, closes again', async ({ page }) => {
     await expect(page.locator(`nav [data-tip="${c}"]`)).toHaveAttribute('data-on', 'on')
   }
   await shot(page, 'settings')
-  await page.locator('[data-tip="Schließen"]').click()
+  await page.locator('[data-settings-close]').click()
   await expect(page.getByText('Einstellungen', { exact: true })).toHaveCount(0)
 })
 
@@ -302,7 +302,7 @@ for (const [w, h] of [[640, 800], [2000, 1100]]) {
     await page.locator('div.flex-wrap', { hasText: 'Kartenstil' }).last().getByRole('combobox').click()
     await page.getByRole('option', { name: 'Relief' }).click()
     expect((await app.posted('ui')).at(-1)).toMatchObject({ patch: { mapStyle: 'relief' } })
-    await page.locator('[data-tip="Schließen"]').click()
+    await page.locator('[data-settings-close]').click()
     await expect.poll(bg).toBe('maps/World_D_A/relief.png')
     await page.waitForTimeout(300)
     await shot(page, `map-style-relief-${w}`)

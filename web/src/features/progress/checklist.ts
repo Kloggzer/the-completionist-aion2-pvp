@@ -47,7 +47,7 @@ export const CHECK_ICON_DEFAULT = Castle
 /** Game icon per entry (public/icons, tools/fetch_icons.py); entries without one keep the lucide icon. */
 export const CHECK_GAME: Record<string, string> = {
   dutyMissions: 'duty', dutyCommands: 'duty-commands', ludra: 'ludra', dailyDungeons: 'dungeon', odyleCraft: 'odyle-craft', odyleCraftServer: 'odyle-craft',
-  ascensionTrial: 'ascension', arena: 'arena', coopArena: 'coop-arena', windBreezeShop: 'odyle', abyssShop: 'abyss',
+  ascensionTrial: 'ascension', arena: 'arena', coopArena: 'coop-arena', abyssShop: 'abyss', // windBreezeShop: the lucide Store (the Odyle icon is another thing)
 }
 /** Colour per priority tier: must = gold, should = cyan, optional = dim. */
 export const TIER_TONE = { 1: 'gold', 2: 'cyan', 3: 'dim' } as const

@@ -41,7 +41,7 @@ export function Welcome() {
     <div data-welcome className="@container absolute inset-x-0 top-10 bottom-0 z-40 overflow-y-auto bg-background/95 p-3 backdrop-blur-sm">
       <div className="mx-auto flex max-w-[640px] flex-col gap-2.5">
         <div>
-          <h1 className="text-[15px] font-semibold tracking-wide text-gold">{t('welcome.title')}</h1>
+          <h1 className="text-[15px] font-semibold text-gold">{t('welcome.title')}</h1>
           <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">{t('welcome.intro')}</p>
         </div>
         <div className="grid gap-2 @min-[520px]:grid-cols-2">

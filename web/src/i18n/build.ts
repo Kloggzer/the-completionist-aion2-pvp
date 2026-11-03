@@ -1,7 +1,6 @@
 // Build tab (private build): stats & DPS, gear.
 export default {
   de: {
-    'build.page.dae': 'Daevanion', 'build.page.stats': 'Werte & DPS', 'build.page.gear': 'Ausrüstung',
     'build.statsInfo': 'Was jeder Stat dir an DPS bringt', 'build.gearInfo': 'Was deine Ausrüstung bringt und was als Nächstes lohnt',
     'build.loadGear': 'Ausrüstung laden', 'build.reload': 'Neu laden', 'build.loading': 'Lade …', 'build.loadTip': 'Ausrüstung von der öffentlichen plaync-Charakterseite lesen',
     'build.sect.src': 'Quellen', 'build.src.plaync': 'Ausrüstung von plaync', 'build.noGearShort': 'Keine Ausrüstung geladen', 'build.noChar': 'Nicht eingeloggt – Ausrüstung nach dem Login', 'build.gearN': '{n} Teile', 'build.gearN1': '1 Teil',
@@ -54,7 +53,6 @@ export default {
     'build.how.stone': '**Manasteine ohne Wirkung:** gegen einen Angriffs-Stein tauschen.',
   },
   en: {
-    'build.page.dae': 'Daevanion', 'build.page.stats': 'Stats & DPS', 'build.page.gear': 'Gear',
     'build.statsInfo': 'What each stat adds to your DPS', 'build.gearInfo': 'What your gear gives and what to do next',
     'build.loadGear': 'Load gear', 'build.reload': 'Reload', 'build.loading': 'Loading …', 'build.loadTip': 'Read the gear from the public plaync character page',
     'build.sect.src': 'Sources', 'build.src.plaync': 'Gear from plaync', 'build.noGearShort': 'No gear loaded', 'build.noChar': 'Not logged in – gear after login', 'build.gearN': '{n} pieces', 'build.gearN1': '1 piece',

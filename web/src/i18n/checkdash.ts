@@ -1,7 +1,7 @@
 // Checklist dashboard (server progress, characters).
 export default {
   de: {
-    'chk.title': 'Alle Charaktere und Server', 'chk.titleChar': 'Charakter', 'chk.back': 'Alle Charaktere', 'chk.openN': '{n} offen',
+    'chk.title': 'Alle Charaktere und Server', 'chk.back': 'Alle Charaktere', 'chk.openN': '{n} offen',
     'chk.server': 'Server', 'chk.serverSub': 'gilt für alle Charaktere',
     'chk.chars': 'Charaktere', 'chk.noChars': 'Charaktere erscheinen hier nach dem ersten Login mit laufender App.',
     'chk.live': 'Gerade eingeloggt', 'chk.unknownChar': 'Unbekannt',
@@ -12,12 +12,12 @@ export default {
     'chk.tier.1': 'Pflicht', 'chk.tier.2': 'Empfohlen', 'chk.tier.3': 'Optional',
     'chk.remove': 'Charakter aus der Liste entfernen', 'chk.removeAsk': 'Wirklich entfernen?',
     'chk.kpi.daily': 'Täglich offen', 'chk.kpi.weekly': 'Wöchentlich offen', 'chk.kpi.openAll': 'inkl. Server',
-    'chk.kpi.done': 'Komplett', 'chk.kpi.charsDone': 'Charaktere fertig', 'chk.kpi.reset': 'Daily-Reset', 'chk.wins': '{n}/30 Siege', 'chk.winsTip': 'Siege diese Woche (30 Sieg-Belohnungen) – aus der PvP-Historie, sie zeigt nur die letzten Matches', 'chk.kpi.ofN': 'von {n} offen', 'chk.kpi.allDone': 'alle {n} erledigt', 'chk.kpi.charges': 'Vorräte', 'chk.kpi.chargesSub': 'laufen über?', 'chk.kpi.full': '{n} läuft über', 'chk.kpi.soon': '{n} bald voll', 'chk.kpi.progress': 'Fortschritt', 'chk.kpi.progressSub': 'Schnitt aller Einträge',
+    'chk.kpi.done': 'Komplett', 'chk.kpi.charsDone': 'Charaktere fertig', 'chk.kpi.reset': 'Daily-Reset', 'chk.wins': '{n}/30 Siege', 'chk.winsTip': 'Siege diese Woche (30 Sieg-Belohnungen) – aus der PvP-Historie, sie zeigt nur die letzten Matches', 'chk.kpi.ofN': 'von {n} offen', 'chk.kpi.allDone': 'alle {n} erledigt', 'chk.kpi.charges': 'Vorräte', 'chk.kpi.chargesSub': 'laufen über?', 'chk.kpi.full': '{n} läuft über', 'chk.kpi.soon': '{n} bald voll',
     'chk.how': 'So funktioniert die Checkliste',
     'chk.hint': 'Reset: täglich {hh} Uhr, wöchentlich mittwochs {hh} Uhr. „A" = zählt automatisch mit (nur beim eingeloggten Charakter). Prozent = Durchschnitt aller Einträge.',
   },
   en: {
-    'chk.title': 'All characters and server', 'chk.titleChar': 'Character', 'chk.back': 'All characters', 'chk.openN': '{n} open',
+    'chk.title': 'All characters and server', 'chk.back': 'All characters', 'chk.openN': '{n} open',
     'chk.server': 'Server', 'chk.serverSub': 'shared by all characters',
     'chk.chars': 'Characters', 'chk.noChars': 'Characters appear here after logging in once with the app running.',
     'chk.live': 'Logged in now', 'chk.unknownChar': 'Unknown',
@@ -28,7 +28,7 @@ export default {
     'chk.tier.1': 'Must', 'chk.tier.2': 'Recommended', 'chk.tier.3': 'Optional',
     'chk.remove': 'Remove character from the list', 'chk.removeAsk': 'Really remove?',
     'chk.kpi.daily': 'Daily open', 'chk.kpi.weekly': 'Weekly open', 'chk.kpi.openAll': 'incl. server',
-    'chk.kpi.done': 'Complete', 'chk.kpi.charsDone': 'characters done', 'chk.kpi.reset': 'Daily reset', 'chk.wins': '{n}/30 wins', 'chk.winsTip': 'Wins this week (30 win rewards) – from the PvP history, which holds only the newest matches', 'chk.kpi.ofN': 'of {n} open', 'chk.kpi.allDone': 'all {n} done', 'chk.kpi.charges': 'Charges', 'chk.kpi.chargesSub': 'overflowing?', 'chk.kpi.full': '{n} overflowing', 'chk.kpi.soon': '{n} nearly full', 'chk.kpi.progress': 'Progress', 'chk.kpi.progressSub': 'average of all entries',
+    'chk.kpi.done': 'Complete', 'chk.kpi.charsDone': 'characters done', 'chk.kpi.reset': 'Daily reset', 'chk.wins': '{n}/30 wins', 'chk.winsTip': 'Wins this week (30 win rewards) – from the PvP history, which holds only the newest matches', 'chk.kpi.ofN': 'of {n} open', 'chk.kpi.allDone': 'all {n} done', 'chk.kpi.charges': 'Charges', 'chk.kpi.chargesSub': 'overflowing?', 'chk.kpi.full': '{n} overflowing', 'chk.kpi.soon': '{n} nearly full',
     'chk.how': 'How the checklist works',
     'chk.hint': 'Reset: daily at {hh}, weekly on Wednesday at {hh}. "A" = counted automatically (logged-in character only). Percent = average of all entries.',
   },

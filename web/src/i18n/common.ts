@@ -7,7 +7,6 @@ export default {
     'tab.home.tip': 'Übersicht: als Nächstes, Pets, Checkliste, Erfolge', 'tab.targets.tip': 'Seelen-Pets, die dir auf dieser Karte fehlen',
     'tab.spots.tip': 'Farmspots für deine fehlenden Pets', 'tab.ach.tip': 'Erfolge von leicht nach schwer', 'tab.check.tip': 'Tägliche und wöchentliche Checkliste', 'tab.dae.tip': 'Daevanion-Bretter, Werte & DPS, Ausrüstung',
     'tab.arc.tip': 'Arkana-Karten: welcher Skill auf welcher Karte rollt', 'tab.boss.tip': 'Feldbosse und Respawn-Zeiten', 'tab.timer.tip': 'Event-Timer und Ansagen',
-    'hdr.brand': 'Seelen-Pets freigeschaltet / gesamt',
     'hdr.brandState': 'Seelen-Pets freigeschaltet: {have} von {total}\nAuf Lv 3 (komplett): {max}',
     'hdr.brandNone': 'Noch keine Pet-Daten – nach dem Start der App einloggen.',
     'hdr.map': 'Karte wählen – in Klammern: Pets, die dir dort noch fehlen',
@@ -27,7 +26,7 @@ export default {
     'data.loadingMap': 'Lade Karte …', 'data.loading': 'Lade Daten …',
     'zone.open': 'Offenes Gelände', 'zone.near': 'bei {zone}',
     'map.Chaotic Lower Reshanta': 'Untere Reshanta',
-    'common.close': 'Schließen', 'common.moreN': 'alle zeigen ({n} weitere)', 'common.less': 'weniger zeigen',
+    'common.close': 'Schließen', 'common.back': 'Zurück', 'common.moreN': 'alle zeigen ({n} weitere)', 'common.less': 'weniger zeigen',
   },
   en: {
     'tab.targets': 'Targets', 'tab.spots': 'Spots', 'tab.ach': 'Achievements', 'tab.check': 'Checklist', 'tab.dae': 'Daevanion', 'tab.arc': 'Arcana', 'tab.boss': 'Bosses', 'tab.timer': 'Timers',
@@ -36,7 +35,6 @@ export default {
     'tab.home.tip': 'Overview: up next, pets, checklist, achievements', 'tab.targets.tip': 'Soul pets you still need on this map',
     'tab.spots.tip': 'Farm spots for your missing pets', 'tab.ach.tip': 'Achievements from easy to hard', 'tab.check.tip': 'Daily and weekly checklist', 'tab.dae.tip': 'Daevanion boards, stats & DPS, gear',
     'tab.arc.tip': 'Arcana cards: which skill rolls on which card', 'tab.boss.tip': 'Field bosses and respawn times', 'tab.timer.tip': 'Event timers and announcements',
-    'hdr.brand': 'Soul pets unlocked / total',
     'hdr.brandState': 'Soul pets unlocked: {have} of {total}\nAt Lv 3 (complete): {max}',
     'hdr.brandNone': 'No pet data yet – log in after starting the app.',
     'hdr.map': 'Choose map – in brackets: pets you still need there',
@@ -55,6 +53,6 @@ export default {
     'data.download': 'Download failed',
     'data.loadingMap': 'Loading map …', 'data.loading': 'Loading data …',
     'zone.open': 'Open terrain', 'zone.near': 'near {zone}',
-    'common.close': 'Close', 'common.moreN': 'show all ({n} more)', 'common.less': 'show less',
+    'common.close': 'Close', 'common.back': 'Back', 'common.moreN': 'show all ({n} more)', 'common.less': 'show less',
   },
 }
