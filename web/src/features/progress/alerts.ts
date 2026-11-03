@@ -7,6 +7,8 @@ import { CHARGES, chargeFullIn, chargeLight, chargeNow } from './charges'
 export type Level = 'red' | 'yellow'
 /** `charge`: the warning is about a charge (its tile shows the same, the character page leaves it out). */
 export type Alert = { level: Level; char: string | null; text: string; charge?: string }
+/** Stable list key: one alert per owner and charge, or per owner and level (reset warnings). */
+export const alertKey = (a: Alert) => (a.char ?? '') + '|' + (a.charge ?? a.level)
 
 const H = 3600e3
 const fullText = (ms: number) => (ms <= 0 ? t('alert.full') : t('alert.fullIn', { d: resetIn(new Date(Date.now() + ms)) }))

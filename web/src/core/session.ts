@@ -54,7 +54,12 @@ function leaveLive() {
 }
 onHost('state', m => { S.state = norm(m.state); emit('state'); emit('recompute'); bump() })
 onHost('dock', m => { S.dock = { dock: m.dock, window: m.window }; bump() })
-onHost('char', m => { S.state.charName = m.name; bump() })
+// Another character: the counters in S.state are the previous one's until the host sends the new state (right after
+// this message), so nothing may count them for the new name in between.
+onHost('char', m => {
+  if (m.name !== S.state.charName && S.state.charName) { S.state.ach = {}; delete S.state.usage; delete S.state.usageAt }
+  S.state.charName = m.name; bump()
+})
 onHost('status', m => { S.status = m; bump() })
 onHost('clickThrough', m => { S.ct = m.on; document.body.classList.toggle('ct', m.on); bump() })
 onHost('zoom', m => { if (S.settings && Math.abs(S.settings.zoom - m.v) > 0.001) { S.settings.zoom = m.v; bump() } })

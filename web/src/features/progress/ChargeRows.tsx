@@ -6,8 +6,8 @@ import { Slider } from '@/components/ui/slider'
 import { ACCENT, AutoBadge, Bar, Chip, ROW, ROW_CLICK, Sect, StepCol, T_BODY, T_FOOT, T_META, T_SUB, T_TITLE, TILE, TILE_P, TONE, TileIcon, grid, type BoxTone } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { resetIn, type Per } from './checklist'
-import { chargeAuto, chargeBonus, chargeFullIn, chargeLight, chargeMax, chargeNow, chargeReadAt, chargesOf, setCharge, stepCharge, type ChargeDef, type Light } from './charges'
-import type { Alert } from './alerts'
+import { chargeAuto, chargeBonus, chargeFullIn, chargeLight, chargeNow, chargeReadAt, chargesOf, setChargeByHand, stepCharge, type ChargeDef, type Light } from './charges'
+import { alertKey, type Alert } from './alerts'
 
 export const LIGHT_DOT: Record<Light | 'red' | 'yellow', string> = {
   red: 'bg-red shadow-[0_0_6px_var(--red)]', yellow: 'bg-gold', green: 'bg-green', none: 'bg-dim',
@@ -39,7 +39,7 @@ function ChargeTile({ d, char }: { d: ChargeDef; char?: string }) {
         <div className={T_FOOT}>
           {/* Odyle has large values: a slider sets it in one move (keyboard input needs focus, the overlay never takes it). */}
           {d.step > 1
-            ? <Slider className="my-[3px]" min={0} max={cap} step={5} value={[v ?? 0]} onValueChange={x => setCharge(d, Array.isArray(x) ? x[0] : x, char)} />
+            ? <Slider className="my-[3px]" min={0} max={cap} step={5} value={[v ?? 0]} onValueChange={x => setChargeByHand(d, Array.isArray(x) ? x[0] : x, char)} />
             : <Bar frac={(v ?? 0) / cap} tone={light === 'red' ? 'red' : light === 'yellow' ? 'gold' : 'cyan'} />}
           <div className={T_META}>
             <span className="font-semibold text-foreground">{v ?? '–'}/{cap}</span>
@@ -47,7 +47,7 @@ function ChargeTile({ d, char }: { d: ChargeDef; char?: string }) {
           </div>
         </div>
       </div>
-      <StepCol onStep={dir => stepCharge(d, dir, char)} minus={(v ?? 0) > 0} plus={v == null || v < chargeMax(d)} tips={[`−${d.step}`, `+${d.step}`]} />
+      <StepCol onStep={dir => stepCharge(d, dir, char)} minus={(v ?? 0) > 0} plus={v == null || v < cap} tips={[`−${d.step}`, `+${d.step}`]} />
     </div>
   )
 }
@@ -86,5 +86,5 @@ ${t('alert.' + a.level)}`} data-alert={a.level}
 /** Warning cards (checklist pages). */
 export function AlertList({ alerts, showChar = true, onOpen }: { alerts: Alert[]; showChar?: boolean; onOpen?: (char: string | null) => void }) {
   if (!alerts.length) return null
-  return <div className="flex flex-col gap-1.5 px-2.5">{alerts.map((a, i) => <AlertRow key={i} a={a} showChar={showChar} onOpen={onOpen} />)}</div>
+  return <div className="flex flex-col gap-1.5 px-2.5">{alerts.map(a => <AlertRow key={alertKey(a)} a={a} showChar={showChar} onOpen={onOpen} />)}</div>
 }

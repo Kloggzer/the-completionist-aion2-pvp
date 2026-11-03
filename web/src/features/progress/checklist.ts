@@ -81,11 +81,14 @@ const AUTO: Record<string, number[]> = {
 }
 const autoKind = (id: string) => CHECK.find(([, items]) => items.some(i => i[0] === id))?.[0]
 const itemOf = (id: string) => CHECK.flatMap(([, items]) => items).find(i => i[0] === id)
+/** Maximum of an entry per period (CHECK). */
+export const maxOf = (id: string) => itemOf(id)?.[1] ?? 0
 // Baselines must be taken in the background: right after a reset and before every live update, whether or not
 // the checklist tab is open. Otherwise the first update after a reset finds no baseline and nothing is counted.
 // The counted progress is stored in the owner's list too: the counters only ever describe the logged-in character,
 // so without that a character's progress was gone as soon as another one logged in.
 export function refreshBaselines() {
+  if (!manual() && S.state.charName) writeBaselines()
   let dirty = false
   for (const id of new Set([...Object.keys(AUTO), ...Object.keys(USAGE)])) {
     const k = autoKind(id), item = itemOf(id)
@@ -96,24 +99,37 @@ export function refreshBaselines() {
   if (dirty) { saveUi(['checklist']); bump() }
 }
 
+// Baselines per character: the counters are the logged-in character's, another character has other values.
+// A counter unchanged since the reset is the baseline of the period. Written only here (refreshBaselines), never
+// while rendering.
+function writeBaselines() {
+  const st: Any = S.state.ach || {}
+  U.checkBaselines ||= {}
+  const base = (U.checkBaselines['@' + charKey()] ||= {})
+  let dirty = false
+  for (const [item, ids] of Object.entries(AUTO)) {
+    const reset = lastReset(autoKind(item)!).getTime()
+    for (const id of ids) {
+      const r = st[id], b = base[id]
+      if (r && (!r[2] || r[2] < reset) && (!b || b.v !== r[0] || b.r !== reset)) { base[id] = { v: r[0], r: reset }; dirty = true }
+    }
+  }
+  if (dirty) saveUi(['checkBaselines'])
+}
+
+/** Progress since the reset from the achievement counters. Pure: reads the baselines refreshBaselines wrote. */
 export function autoCount(item: string, kind: Kind): number | null {
   const ids = AUTO[item], st: Any = S.state.ach || {}
   if (!ids) return null
-  const reset = lastReset(kind).getTime()
-  let sum = 0, known = false, dirty = false
-  // baselines per character: the counters are the logged-in character's, another character has other values
-  U.checkBaselines ||= {}
-  const base = (U.checkBaselines['@' + charKey()] ||= {})
+  const reset = lastReset(kind).getTime(), base = U.checkBaselines?.['@' + charKey()] || {}
+  let sum = 0, known = false
   for (const id of ids) {
     const r = st[id]
     if (!r) continue
     const [val, , ts] = r, b = base[id]
-    if (!ts || ts < reset) { // nothing since the reset: this value is the baseline
-      if (!b || b.v !== val || b.r !== reset) { base[id] = { v: val, r: reset }; dirty = true }
-      known = true
-    } else if (b && b.r === reset) { sum += val - b.v; known = true }
+    if (!ts || ts < reset) known = true // nothing since the reset: this value is the baseline
+    else if (b && b.r === reset) { sum += val - b.v; known = true }
   }
-  if (dirty) saveUi(['checkBaselines'])
   return known ? sum : null // null: changed since the reset but no baseline seen -> manual
 }
 
@@ -166,17 +182,31 @@ export function setAll(per: Per, kind: Kind, done: boolean, char?: string) {
   saveUi(['checklist']); bump()
 }
 
-/** Known characters: everyone with a list, plus the logged-in one; logged-in first, then by name. */
+/** Known characters: everyone with a list, plus the logged-in one; logged-in first, then by name. Pure (called while
+ *  rendering): the logged-in character's list is created by its first entry (checkSlot). */
 export function characters(): string[] {
-  U.checklist ||= { srv: {}, chars: {} }
-  const cur = S.state.charName
-  if (cur && !U.checklist.chars[cur]) { U.checklist.chars[cur] = {}; saveUi(['checklist']) }
-  return Object.keys(U.checklist.chars).filter(c => c !== 'Standard' || Object.keys(U.checklist.chars[c]).length)
-    .sort((a, b) => (b === cur ? 1 : 0) - (a === cur ? 1 : 0) || a.localeCompare(b))
+  const chars = U.checklist?.chars || {}, cur = S.state.charName
+  const names = new Set(Object.keys(chars).filter(c => c !== 'Standard' || Object.keys(chars[c]).length))
+  if (cur) names.add(cur)
+  return [...names].sort((a, b) => (b === cur ? 1 : 0) - (a === cur ? 1 : 0) || a.localeCompare(b))
 }
 
-/** Forget a character's list (e.g. a deleted character). */
-export function removeChar(char: string) { delete U.checklist?.chars?.[char]; saveUi(['checklist']); bump() }
+/** Stores keyed '<id>|<character>' (besides the list and the baselines '@<character>'). */
+const PER_CHAR = ['charges', 'entryBonus', 'pvpWins'] as const
+/** Move a character's entries to another name, or delete them (no `to`). */
+function moveCharData(from: string, to?: string) {
+  const chars = U.checklist?.chars, base = U.checkBaselines
+  if (chars) { if (to != null) chars[to] = chars[from] || {}; delete chars[from] }
+  if (base?.['@' + from]) { if (to != null) base['@' + to] = base['@' + from]; delete base['@' + from] }
+  for (const store of PER_CHAR) {
+    const m = U[store]
+    if (m) for (const k of Object.keys(m)) if (k.endsWith('|' + from)) { if (to != null) m[k.slice(0, -from.length) + to] = m[k]; delete m[k] }
+  }
+  saveUi(['checklist', 'checkBaselines', ...PER_CHAR])
+}
+
+/** Forget a character: its list, baselines, charge readings, bonus entries and PvP wins (e.g. a deleted character). */
+export function removeChar(char: string) { moveCharData(char); bump() }
 
 // ---------------------------------------------------------------- manual mode: characters by hand
 
@@ -199,17 +229,14 @@ export function addChar(name: string): boolean {
   return true
 }
 
-/** Rename a character: its list and charge readings move along; the active one stays active. */
+/** Rename a character: its list, baselines, charge readings, bonus entries and PvP wins move along; the active one
+ *  stays active. */
 export function renameChar(from: string, to: string): boolean {
   to = to.trim()
   U.checklist ||= { srv: {}, chars: {} }
   if (!to || to === 'Standard' || (U.checklist.chars[to] && to !== from)) return false
   if (to === from) return true
-  U.checklist.chars[to] = U.checklist.chars[from] || {}
-  delete U.checklist.chars[from]
-  const ch = U.charges || {}
-  for (const k of Object.keys(ch)) if (k.endsWith('|' + from)) { ch[k.slice(0, -from.length) + to] = ch[k]; delete ch[k] }
-  saveUi(['checklist', 'charges'])
+  moveCharData(from, to)
   if (S.state.charName === from || (from === 'Standard' && !S.state.charName)) selectChar(to)
   else bump()
   return true
@@ -217,19 +244,22 @@ export function renameChar(from: string, to: string): boolean {
 
 // PvP match history (sent when its window opens, the newest matches per mode): battlefield wins since the weekly reset
 // count for the logged-in character. Contents ids: 22 arena, 44 coop arena, 55 battlefield.
-export type PvpMatch = { start: number; cid: number; win: number; members: { name: string; team: number }[] }
-export function applyPvpHistory(matches: PvpMatch[]) {
+// Members match by name and server (`ownSrv` from the host, 0 = unknown: by name only), so a namesake on another
+// server does not count.
+export type PvpMatch = { start: number; cid: number; win: number; members: { name: string; srv?: number; team: number }[] }
+export function applyPvpHistory(matches: PvpMatch[], ownSrv = 0) {
   const me = S.state.charName, reset = lastReset('w').getTime()
   if (!me || manual()) return
-  const mine = (cid: number) => matches.filter(m => m.cid === cid && m.start >= reset && m.members.some(x => x.name === me))
-  const won = (m: PvpMatch) => m.members.find(x => x.name === me)?.team === m.win
+  const isMe = (x: PvpMatch['members'][number]) => x.name === me && (!ownSrv || !x.srv || x.srv === ownSrv)
+  const mine = (cid: number) => matches.filter(m => m.cid === cid && m.start >= reset && m.members.some(isMe))
+  const won = (m: PvpMatch) => m.members.find(isMe)?.team === m.win
   const wins = mine(55).filter(won).length
-  if (wins > manualCount('battlefieldWins', 'char', 'w')) checkSet('battlefieldWins', 'char', 'w', 3, wins)
+  if (wins > manualCount('battlefieldWins', 'char', 'w')) checkSet('battlefieldWins', 'char', 'w', maxOf('battlefieldWins'), wins)
   // arena (22) and coop arena (44): the entry counts matches (10 rewards), the wins (30 rewards) are kept beside it.
   // The history holds only the newest matches of a mode, so a count never goes down.
   for (const [cid, id] of [[22, 'arena'], [44, 'coopArena']] as const) {
     const ms = mine(cid), k = id + '|' + me, prev = U.pvpWins?.[k]
-    if (ms.length > manualCount(id, 'char', 'w')) checkSet(id, 'char', 'w', 10, ms.length)
+    if (ms.length > manualCount(id, 'char', 'w')) checkSet(id, 'char', 'w', maxOf(id), ms.length)
     const w = Math.max(ms.filter(won).length, prev && prev.r === reset ? prev.n : 0)
     U.pvpWins = { ...U.pvpWins, [k]: { n: w, r: reset } }; saveUi(['pvpWins'])
   }

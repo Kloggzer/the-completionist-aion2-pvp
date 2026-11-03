@@ -128,6 +128,7 @@ sealed class OverlayForm : Form
             if (pvpDirty) PostPvp();
         };
         saveTimer.Tick += (_, _) => { saveTimer.Stop(); SaveSettings(); };
+        loginTimer.Tick += (_, _) => ReleaseLogin();
         ctTimer.Tick += (_, _) =>
         {
             var p = PointToClient(Cursor.Position);
@@ -957,10 +958,64 @@ sealed class OverlayForm : Form
 
     // ---------------------------------------------------------------- pet tracking
 
+    void ApplyAchievements(List<(uint id, uint val, byte tier, long ts)> items, bool full)
+    {
+        if (full) state.Ach.Clear();
+        foreach (var (id, val, tier, ts) in items) state.Ach[id] = [val, tier, ts];
+        if (full) { Log($"Erfolge: {items.Count} Einträge"); state.Save(statePath); PostState(); }
+        else
+        {
+            if (DateTime.UtcNow - lastPosSave > TimeSpan.FromSeconds(30)) { lastPosSave = DateTime.UtcNow; state.Save(statePath); }
+            Post(new { type = "achUpd", items = items.Select(i => new long[] { i.id, i.val, i.tier, i.ts }) });
+        }
+    }
+
+    // Every map load (login, teleport, instance) sends the full achievement list (0x8356), the entry limits (0x0b61)
+    // and the counters ~8 s before the own character (0x3336). They are held until then: after a character switch
+    // they belong to the new character, and the page would credit them to the old one. Without 0x3336 within 30 s
+    // they are applied anyway.
+    List<Action>? loginHeld;
+    readonly System.Windows.Forms.Timer loginTimer = new() { Interval = 30_000 };
+    string lastEntryLog = "";
+
+    void StartLogin()
+    {
+        loginHeld ??= [];
+        loginTimer.Stop();
+        loginTimer.Start();
+    }
+
+    void HoldLogin(Action a)
+    {
+        if (loginHeld != null) loginHeld.Add(a); else a();
+    }
+
+    void ReleaseLogin()
+    {
+        loginTimer.Stop();
+        var held = loginHeld;
+        loginHeld = null;
+        if (held != null) foreach (var a in held) a();
+    }
+
+    /// One 0x2ce3 match for the page; fields of an unexpected kind read as 0 / "".
+    static object PvpMatch(JsonElement m)
+    {
+        static long Num(JsonElement o, string k) => o.ValueKind == JsonValueKind.Object && o.TryGetProperty(k, out var v)
+            && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var n) ? n : 0;
+        static string Str(JsonElement o, string k) => o.ValueKind == JsonValueKind.Object && o.TryGetProperty(k, out var v)
+            && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+        object[] members = m.ValueKind == JsonValueKind.Object && m.TryGetProperty("member", out var ms) && ms.ValueKind == JsonValueKind.Array
+            ? ms.EnumerateArray().Select(x => (object)new { name = Str(x, "name"), srv = (int)Num(x, "server_id"), team = (int)Num(x, "team") }).ToArray()
+            : [];
+        return new { start = Num(m, "start_time"), cid = (int)Num(m, "contents_id"), win = (int)Num(m, "winning_team"), members };
+    }
+
     void StartSource()
     {
         source?.Dispose();
         source = null;
+        ReleaseLogin();
         if (replayDir != null) source = new ReplayCapture(replayDir, replaySpeed);
         else if (Manual)
         {
@@ -973,11 +1028,16 @@ sealed class OverlayForm : Form
         if (state.CharId != 0) source.OwnId = PetFrames.VarintBytes(state.CharId);
         source.CharNameReceived += name => BeginInvoke(() =>
         {
-            if (state.CharName == name) return;
-            state.CharName = name;
-            Log($"Charakter: {name}");
-            state.Save(statePath);
-            Post(new { type = "char", name });
+            if (name != null && state.CharName != name)
+            {
+                state.CharName = name;
+                Log($"Charakter: {name}");
+                state.Save(statePath);
+                Post(new { type = "char", name });
+                ReleaseLogin(); // the own character is known now: the lists held since the map load belong to it
+                PostState();    // the page dropped the previous character's counters with "char"
+            }
+            else ReleaseLogin();
         });
         source.CharIdReceived += id => BeginInvoke(() =>
         {
@@ -1018,25 +1078,29 @@ sealed class OverlayForm : Form
         });
         source.PvpHistoryReceived += matches => BeginInvoke(() =>
         {
-            // only what the checklist needs: start, contents id, winning team, the members' names and teams
-            Post(new { type = "pvpHistory", matches = matches.Select(m => new {
-                start = m.TryGetProperty("start_time", out var s) ? s.GetInt64() : 0,
-                cid = m.TryGetProperty("contents_id", out var c) ? c.GetInt32() : 0,
-                win = m.TryGetProperty("winning_team", out var w) ? w.GetInt32() : 0,
-                members = m.TryGetProperty("member", out var ms) && ms.ValueKind == JsonValueKind.Array
-                    ? ms.EnumerateArray().Select(x => new { name = x.TryGetProperty("name", out var n) ? n.GetString() : "", team = x.TryGetProperty("team", out var tm) ? tm.GetInt32() : 0 }).ToArray()
-                    : [],
-            }) });
+            // only what the checklist needs: start, contents id, winning team, the members' names, servers and teams.
+            // Projected here (not lazily inside Post) so a field of an unexpected kind cannot throw on the UI thread.
+            object[] list;
+            try { list = matches.Select(PvpMatch).ToArray(); }
+            catch (Exception ex) { Log("PvP-Verlauf nicht lesbar: " + ex.Message); return; }
+            HoldLogin(() =>
+            {
+                // own server (a real server id, not the faction guess): a namesake on another server does not count
+                int ownSrv = pvpOwn is { } o && o.Name == state.CharName && o.Server % 1000 != 0 ? o.Server : 0;
+                Post(new { type = "pvpHistory", ownSrv, matches = list });
+            });
         });
         source.EntryChargesReceived += list => BeginInvoke(() =>
         {
-            Log("Eintritte (Login): " + string.Join(", ", list.Where(x => x.left > 0 || x.bonus > 0).Select(x => $"{x.id}={x.left}+{x.bonus}")));
-            Post(new { type = "entryCharges", list = list.Select(x => new[] { (long)x.id, x.left, x.bonus }) });
+            // sent with every map load: log only a changed list
+            var line = string.Join(", ", list.Where(x => x.left > 0 || x.bonus > 0).Select(x => $"{x.id}={x.left}+{x.bonus}"));
+            if (line != lastEntryLog) { lastEntryLog = line; Log("Eintrittslimits: " + line); }
+            HoldLogin(() => Post(new { type = "entryCharges", list = list.Select(x => new[] { (long)x.id, x.left, x.bonus }).ToArray() }));
         });
         source.ChargeReceived += (id, left) => BeginInvoke(() =>
         {
             Log($"Ladungen: Inhalt {id} = {left}");
-            Post(new { type = "charge", id, left });
+            HoldLogin(() => Post(new { type = "charge", id, left }));
         });
         source.MerchantReceived += (tab, items) => BeginInvoke(() =>
         {
@@ -1050,8 +1114,9 @@ sealed class OverlayForm : Form
             try { File.AppendAllText(Path.Combine(Settings.DataDir, "daevanion-packets.log"), line + "\n"); } catch { }
             Post(new { type = "daeLogHit", op = $"0x{op:x4}", ids, at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
         });
-        // research capture (all frames but movement, with bodies): on while research.on exists in the data folder
-        source.Research = File.Exists(Path.Combine(Settings.DataDir, "research.on"));
+        // research capture (all frames but the high-rate ones, with bodies): on while research.on exists in the data
+        // folder, live capture only (a replay would write its old frames into the log again)
+        source.Research = source is LiveCapture && File.Exists(Path.Combine(Settings.DataDir, "research.on"));
         source.ResearchFrame += (op, body, ts) => Research($"{ts.ToLocalTime():HH:mm:ss.fff} op 0x{op:x4} len {body.Length} | {Convert.ToHexString(body.AsSpan(0, Math.Min(body.Length, 4000)))}");
         // opcode timeline (no bodies) next to the board detection's found / gone, buffered, at most 30 MB
         source.DaeOpFrame += (op, len) => DaeOps($"{DateTime.Now:HH:mm:ss.fff} op 0x{op:x4} len {len}");
@@ -1089,24 +1154,18 @@ sealed class OverlayForm : Form
         source.OdyleReceived += (energy, bonus) => BeginInvoke(() =>
         {
             Log($"Odyle-Energie: {energy} + {bonus} Bonus");
-            Post(new { type = "odyle", energy, bonus });
+            HoldLogin(() => Post(new { type = "odyle", energy, bonus }));
         });
-        source.UsageReceived += (usage, at) => BeginInvoke(() =>
+        source.UsageReceived += (usage, at) => BeginInvoke(() => HoldLogin(() =>
         {
             state.Usage = usage; state.UsageAt = at;
             Log("Wochen-Verbrauch: " + string.Join(", ", usage.Select(u => $"{u.Key}={u.Value}")));
             state.Save(statePath); PostState();
-        });
+        }));
         source.AchievementsReceived += (items, full) => BeginInvoke(() =>
         {
-            if (full) state.Ach.Clear();
-            foreach (var (id, val, tier, ts) in items) state.Ach[id] = [val, tier, ts];
-            if (full) { Log($"Erfolge: {items.Count} Einträge"); state.Save(statePath); PostState(); }
-            else
-            {
-                if (DateTime.UtcNow - lastPosSave > TimeSpan.FromSeconds(30)) { lastPosSave = DateTime.UtcNow; state.Save(statePath); }
-                Post(new { type = "achUpd", items = items.Select(i => new long[] { i.id, i.val, i.tier, i.ts }) });
-            }
+            if (full) StartLogin();
+            HoldLogin(() => ApplyAchievements(items, full));
         });
         source.PositionEstimated += (x, z, y, sigma, ts) => BeginInvoke(() =>
         {
@@ -1210,12 +1269,12 @@ sealed class OverlayForm : Form
     static readonly System.Text.StringBuilder research = new();
     static DateTime researchFlush = DateTime.UtcNow;
     /// Research capture (research-packets.log): appended in batches, stops at 200 MB.
-    internal static void Research(string line)
+    internal static void Research(string? line)
     {
         lock (researchLock)
         {
-            research.Append(line).AppendLine();
-            if (research.Length < 64_000 && DateTime.UtcNow - researchFlush < TimeSpan.FromSeconds(1)) return;
+            if (line != null) research.Append(line).AppendLine(); // null: flush now (exit)
+            if (research.Length == 0 || line != null && research.Length < 64_000 && DateTime.UtcNow - researchFlush < TimeSpan.FromSeconds(1)) return;
             researchFlush = DateTime.UtcNow;
             try
             {
@@ -1572,6 +1631,7 @@ sealed class OverlayForm : Form
         saveTimer.Stop();
         SaveSettings();
         source?.Dispose();
+        Research(null);
         if (state.Pos != null) state.Save(statePath);
         for (int i = 0; i < hotkeyIds.Length; i++) Native.UnregisterHotKey(Handle, i + 1);
         tray.Visible = false;

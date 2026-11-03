@@ -6,7 +6,7 @@ import { applyPvpHistory, refreshBaselines } from './checklist'
 import { onAchUpd } from './achievements'
 
 onHost('achUpd', m => onAchUpd(m.items))
-onHost('pvpHistory', m => applyPvpHistory(m.matches || []))
+onHost('pvpHistory', m => applyPvpHistory(m.matches || [], m.ownSrv || 0))
 on('state', refreshBaselines)
 on('init', refreshBaselines)
 setInterval(refreshBaselines, 60000)

@@ -1,7 +1,7 @@
 // Limited charges that refill over time and stop at a cap: whatever refills above the cap is lost, so the
-// warning is about the time until an owner is full. The game values are not read from the traffic (yet): the
-// player enters a value once (or corrects it), the app projects it from that reading.
-import { U, saveUi, bump, manual } from '@/core/state'
+// warning is about the time until an owner is full. A reading comes from the game (0x0b61 entry limits, 0x0c61
+// charges and Odyle energy) or by hand; the app projects it forward from that reading.
+import { S, U, saveUi, bump, manual } from '@/core/state'
 import { onHost } from '@/core/host'
 import { CHECK, charKey, checkSet, lastReset, nextReset, type Per } from './checklist'
 
@@ -12,8 +12,6 @@ export type ChargeDef = {
   regen: number; every: number | 'day'
   /** Step of the − / + buttons (Odyle: one cube costs 40). */
   step: number
-  /** Bonus entries may lift the value above the cap by this much (the refill still stops at the cap). */
-  over?: number
 }
 
 export const CHARGES: ChargeDef[] = [
@@ -33,9 +31,6 @@ function resetsBetween(from: number, to: number) {
   for (let r = lastReset('d', new Date(to)).getTime(); r > from; r -= 864e5) n++
   return n
 }
-
-/** Highest value: the cap plus what bonus entries can add. */
-export const chargeMax = (d: ChargeDef) => d.cap() + (d.over ?? 0)
 
 /** Time of the last reading (game or by hand), null without one. */
 export const chargeReadAt = (d: ChargeDef, char?: string) => reading(d, char)?.at ?? null
@@ -69,7 +64,7 @@ export function chargeLight(d: ChargeDef, char?: string, now = Date.now()): Ligh
 }
 
 export function setCharge(d: ChargeDef, v: number, char?: string, extra?: { auto?: boolean; bonus?: number }) {
-  (U.charges ||= {})[key(d, char)] = { v: Math.max(0, Math.min(chargeMax(d), Math.round(v))), at: Date.now(), ...extra }
+  (U.charges ||= {})[key(d, char)] = { v: Math.max(0, Math.min(d.cap(), Math.round(v))), at: Date.now(), ...extra }
   saveUi(['charges']); bump()
 }
 /** Reading came from the game (not entered by hand), and the Odyle bonus pool sent with it. */
@@ -78,13 +73,17 @@ export const chargeBonus = (d: ChargeDef, char?: string) => reading(d, char)?.bo
 
 // Entry charges the server sends when they change or the content window opens (0x0c61 type 04): content id -> left.
 const CHARGE_IDS: Record<number, string> = { 4: 'nightmare', 8: 'invasion' }
+/** Owner of a game reading: the server slot, or the logged-in character (null while no character is known: the
+ *  value would land in another character's slot). */
+const gameOwner = (d: ChargeDef): string | undefined | null => (d.per === 'server' ? undefined : S.state.charName || null)
 onHost('charge', m => {
-  const d = CHARGES.find(x => x.id === CHARGE_IDS[m.id])
+  const d = CHARGES.find(x => x.id === CHARGE_IDS[m.id]), owner = d && gameOwner(d)
+  if (!d || owner === null || manual()) return
   // the bonus entries (items) come with the login list; keep them until the next one
-  if (d) setCharge(d, m.left, d.per === 'server' ? undefined : charKey(), { auto: true, bonus: reading(d, d.per === 'server' ? undefined : charKey())?.bonus })
+  setCharge(d, m.left, owner, { auto: true, bonus: reading(d, owner)?.bonus })
 })
 
-// Every entry limit of the character at login (0x0b61): [content id, charges left, bonus entries]. Bonus entries
+// Every entry limit of the character (0x0b61, with every map load): [content id, charges left, bonus entries]. Bonus entries
 // (from items) sit on top of the charges and do not refill; checked against the game's windows (Shugo 0+12,
 // Nightmare 0+21, Ascension trial 0+13).
 const ENTRY_IDS: Record<number, string> = { 1: 'shugo', 4: 'nightmare', 8: 'invasion' }
@@ -94,10 +93,10 @@ const ENTRY_CHECK: Record<number, string> = { 80000001: 'ascensionTrial', 101: '
 export const entryBonusKey = (item: string, per: Per, char?: string) => item + '|' + (per === 'server' ? 'srv' : char ?? charKey())
 export function applyEntryCharges(list: [number, number, number][]) {
   for (const [id, left, bonus] of list) {
-    const d = CHARGES.find(x => x.id === ENTRY_IDS[id])
-    if (d) setCharge(d, left, d.per === 'server' ? undefined : charKey(), { auto: true, bonus })
+    const d = CHARGES.find(x => x.id === ENTRY_IDS[id]), owner = d && gameOwner(d)
+    if (d && owner !== null) setCharge(d, left, owner, { auto: true, bonus })
     const item = CHECK.flatMap(([, items]) => items).find(i => i[0] === ENTRY_CHECK[id])
-    if (item) {
+    if (item && (item[2] === 'server' || S.state.charName)) {
       const kind = CHECK.find(([, items]) => items.includes(item))![0]
       checkSet(item[0], item[2], kind, item[1], item[1] - left)
       U.entryBonus = { ...U.entryBonus, [entryBonusKey(item[0], item[2])]: bonus }; saveUi(['entryBonus'])
@@ -110,10 +109,13 @@ onHost('entryCharges', m => { if (!manual()) applyEntryCharges(m.list || []) })
 // Above the normal cap there must be a membership.
 onHost('odyle', m => {
   const d = CHARGES.find(x => x.id === 'odyle')!
+  if (!S.state.charName || manual()) return
   if (m.energy > 560 && !U.member) { U.member = true; saveUi(['member']) }
   setCharge(d, m.energy, charKey(), { auto: true, bonus: m.bonus })
 })
+/** Set by hand (slider, −/+): the bonus pool read from the game stays. */
+export const setChargeByHand = (d: ChargeDef, v: number, char?: string) => setCharge(d, v, char, { bonus: chargeBonus(d, char) })
 /** −/+ one step from the projected value (or from 0 without a reading). */
-export const stepCharge = (d: ChargeDef, dir: 1 | -1, char?: string) => setCharge(d, (chargeNow(d, char) ?? 0) + dir * d.step, char)
+export const stepCharge = (d: ChargeDef, dir: 1 | -1, char?: string) => setChargeByHand(d, (chargeNow(d, char) ?? 0) + dir * d.step, char)
 
 export const chargesOf = (per: Per) => CHARGES.filter(d => d.per === per)

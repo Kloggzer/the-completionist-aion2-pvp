@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Text.Json;
 using K4os.Compression.LZ4;
 
 namespace PetOverlay;
@@ -211,6 +212,32 @@ sealed record PetList(uint Active, Dictionary<uint, int> Levels, Dictionary<uint
 
 static class PetFrames
 {
+    /// The match objects of a 0x2ce3 history frame: each is a JSON object starting with {"start_time" (length-prefixed,
+    /// so they are cut out by brace depth). Contents ids seen: 22 = arena, 44 = coop arena, 55 = battlefield.
+    public static List<JsonElement> PvpHistory(byte[] b)
+    {
+        var list = new List<JsonElement>();
+        var key = "{\"start_time\""u8.ToArray();
+        for (int i = 0; i + key.Length < b.Length; i++)
+        {
+            if (!b.AsSpan(i).StartsWith(key)) continue;
+            int depth = 0, j = i;
+            bool str = false;
+            for (; j < b.Length; j++)
+            {
+                byte c = b[j];
+                if (str) { if (c == (byte)'\\') j++; else if (c == (byte)'"') str = false; continue; }
+                if (c == (byte)'"') str = true;
+                else if (c == (byte)'{') depth++;
+                else if (c == (byte)'}' && --depth == 0) break;
+            }
+            if (j >= b.Length) break;
+            try { using var doc = JsonDocument.Parse(b.AsMemory(i, j - i + 1)); list.Add(doc.RootElement.Clone()); } catch { }
+            i = j;
+        }
+        return list;
+    }
+
     public static int Varint(byte[] b, ref int o)
     {
         int v = 0, s = 0;

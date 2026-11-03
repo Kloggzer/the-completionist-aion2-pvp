@@ -20,7 +20,7 @@ abstract class PetSource : IDisposable
     public event Action<uint, int, DateTime>? SoulsReceived;
     public event Action<string, string>? StatusChanged; // (live|waiting|off|error|replay, text)
     public event Action<uint>? CharIdReceived;
-    public event Action<string>? CharNameReceived;
+    public event Action<string?>? CharNameReceived; // after CharIdReceived on every 0x3336; null = name not readable
     public event Action<float, float, float, DateTime, int>? PositionReceived; // map x, map z, height (metres), source opcode
     // No own position while flying/running (the server only reports it on combat/skills). New mobs, players and objects
     // spawn ~35-60 m around the player, so the centroid of the last spawns estimates it (follows flying well; the
@@ -40,11 +40,13 @@ abstract class PetSource : IDisposable
     public event Action<Dictionary<byte, uint>, long>? UsageReceived;
     // Odyle energy (0x0c61 type 0c/01): regenerating energy and the bonus pool from Odyle items.
     public event Action<int, int>? OdyleReceived;
-    // Entry charges (0x0c61 type 04): u32 content id, u8 charges left. Verified: 4 = Nightmare, 8 = Dimensional Invasion.
+    // Entry charges (0x0c61 type 04): u32 content id, u8 charges left, u8 ? (2 / 3, not the bonus entries: those only come
+    // with 0x0b61). Verified: 4 = Nightmare, 8 = Dimensional Invasion.
     public event Action<uint, int>? ChargeReceived;
     // PvP match history when its window opens (0x2ce3): JSON per match (start, contents id, winning team, members).
     public event Action<List<JsonElement>>? PvpHistoryReceived;
-    // Every entry limit at login (0x0b61): content id, charges left, bonus entries.
+    // Every entry limit (0x0b61): content id, charges left, bonus entries. Sent with every map load (login, teleport,
+    // instance), i.e. every few minutes, ~8 s before the own character (0x3336).
     public event Action<List<(uint id, int left, int bonus)>>? EntryChargesReceived;
     // Black Cloud Merchant offer (0x9156) whenever its window/tab opens: tab id, offered items.
     public event Action<int, List<MerchantItem>>? MerchantReceived;
@@ -61,7 +63,8 @@ abstract class PetSource : IDisposable
     /// Research, same switch: every frame's opcode and length (to find what opening the board window sends).
     public event Action<int, int>? DaeOpFrame;
     public volatile bool DaeLog;
-    /// Research capture: every frame except movement, with its body (research-packets.log); for finding new counters.
+    /// Research capture: every frame except the high-rate ones (HighRate), with its body (research-packets.log); for
+    /// finding new counters. Live capture only (OverlayForm).
     public volatile bool Research;
     public event Action<int, byte[], DateTime>? ResearchFrame;
     HashSet<int> daeBoardIds = new();
@@ -154,23 +157,28 @@ abstract class PetSource : IDisposable
         foreach (var (at, ts, data) in items) Packet(ts, data, DateTime.UtcNow - at < TimeSpan.FromSeconds(15));
     }
 
+    /// Movement, combat and other frames sent many times a second (most of a research log without this filter:
+    /// 0x0638, 0x1b37, 0x1a37, 0x0538, 0x2c38, 0x0338 …). Kept out of the login ring and the research capture.
+    static bool HighRate(int op) => op is 0x0036 or 0x2a38 or 0x1d37 or 0x1c37 or 0x1338 or 0x0438 or 0x0238 or 0x2b38 or 0x008d
+        or 0x0638 or 0x1b37 or 0x1a37 or 0x0538 or 0x2c38 or 0x0338;
+
     void Frame(int op, byte[] body, DateTime ts)
     {
         GameFrames++;
-        // login research: keep the recent frames; after 0x26e2 collect 5 s more, then hand them over
-        // movement and other high-rate frames would push the login sequence out of the ring
-        if (op is not (0x0036 or 0x2a38 or 0x1d37 or 0x1c37 or 0x1338 or 0x0438 or 0x0238 or 0x2b38 or 0x008d))
+        // login research: keep the recent frames; after 0x26e2 collect LoginAfter (15 s) more, then hand them over.
+        // High-rate frames would push the login sequence out of the ring.
+        if (!HighRate(op))
         {
             ring.Enqueue((op, body, ts));
             if (ring.Count > RingSize) ring.Dequeue();
         }
         if (loginDump != null)
         {
-            if (op is not (0x0036 or 0x2a38 or 0x1d37 or 0x1c37 or 0x1338 or 0x0438 or 0x0238 or 0x2b38 or 0x008d)) loginDump.Add((op, body, ts));
+            if (!HighRate(op)) loginDump.Add((op, body, ts));
             if (ts > loginUntil) { DaeLoginFrames?.Invoke(loginDump); loginDump = null; }
         }
         else if (op == 0x26e2) { loginDump = ring.ToList(); loginUntil = ts + LoginAfter; }
-        if (Research && op is not (0x0036 or 0x2a38 or 0x1d37 or 0x1c37 or 0x1338 or 0x0438 or 0x0238 or 0x2b38 or 0x008d)) ResearchFrame?.Invoke(op, body, ts);
+        if (Research && !HighRate(op)) ResearchFrame?.Invoke(op, body, ts);
         if (DaeLog)
         {
             DaeOpFrame?.Invoke(op, body.Length);
@@ -209,7 +217,7 @@ abstract class PetSource : IDisposable
         }
         else if (op == 0x9156 && PetFrames.ParseMerchant(body) is { } merch)
             MerchantReceived?.Invoke(merch.tab, merch.items);
-        else if (op == 0x2ce3 && body.Length > 100 && ReplayCapture.PvpHistory(body) is { Count: > 0 } matches)
+        else if (op == 0x2ce3 && body.Length > 100 && PetFrames.PvpHistory(body) is { Count: > 0 } matches)
             PvpHistoryReceived?.Invoke(matches);
         else if (op == 0x0b61 && PetFrames.ParseEntryCharges(body) is { } entries)
             EntryChargesReceived?.Invoke(entries);
@@ -244,7 +252,7 @@ abstract class PetSource : IDisposable
         {
             OwnId = id;
             CharIdReceived?.Invoke(PetFrames.VarintValue(id));
-            if (PetFrames.CharName(body) is { } name) CharNameReceived?.Invoke(name);
+            CharNameReceived?.Invoke(PetFrames.CharName(body));
         }
         else if (op is 0x4136 or 0x4536 && PetFrames.SpawnPosition(body) is { } sp)
         {
@@ -496,30 +504,4 @@ sealed class ReplayCapture(string dir, double speed) : PetSource
         }
         catch (Exception ex) { SetStatus("error", L.T("Replay fehlgeschlagen: ", "Replay failed: ") + ex.Message); }
     });
-
-    /// The match objects of a 0x2ce3 history frame: each is a JSON object starting with {"start_time" (length-prefixed,
-    /// so they are cut out by brace depth). Contents ids seen: 22 = arena, 44 = coop arena, 55 = battlefield.
-    internal static List<JsonElement> PvpHistory(byte[] b)
-    {
-        var list = new List<JsonElement>();
-        var key = "{\"start_time\""u8.ToArray();
-        for (int i = 0; i + key.Length < b.Length; i++)
-        {
-            if (!b.AsSpan(i).StartsWith(key)) continue;
-            int depth = 0, j = i;
-            bool str = false;
-            for (; j < b.Length; j++)
-            {
-                byte c = b[j];
-                if (str) { if (c == (byte)'\\') j++; else if (c == (byte)'"') str = false; continue; }
-                if (c == (byte)'"') str = true;
-                else if (c == (byte)'{') depth++;
-                else if (c == (byte)'}' && --depth == 0) break;
-            }
-            if (j >= b.Length) break;
-            try { using var doc = JsonDocument.Parse(b.AsMemory(i, j - i + 1)); list.Add(doc.RootElement.Clone()); } catch { }
-            i = j;
-        }
-        return list;
-    }
 }
