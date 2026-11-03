@@ -12,6 +12,11 @@ for (const theme of ['light', 'dark'] as const) test('theme ' + theme, async ({ 
     await goPage(page, p)
     await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-${p}.png` })
   }
+  await page.locator('[data-tip="Einstellungen"]').click()
+  await page.locator('nav [data-tip="Karte & Radar"]').click()
+  await page.waitForTimeout(250) // colour transition of the nav item
+  await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-Settings.png` })
+  await page.locator('[data-tip="Einstellungen"]').click()
   await page.setViewportSize({ width: 360, height: 700 })
   await goPage(page, 'Übersicht')
   await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-narrow.png` })

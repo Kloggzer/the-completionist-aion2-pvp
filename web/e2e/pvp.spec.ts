@@ -84,6 +84,7 @@ test('arena: both teams, own party fills CP of mates out of range; team section 
 
   await page.locator('[data-tip="Einstellungen"]').click()
   await page.locator('nav [data-tip="Karte & Radar"]').click()
+  await page.locator('[data-disclosure="set.pvp.fine"] button[aria-expanded]').click()
   const teamLimit = page.locator('div.flex-wrap', { hasText: 'Team-Zeilen' }).last()
   await expect(teamLimit).toContainText('6')
   for (let i = 0; i < 3; i++) await teamLimit.getByRole('button').first().click()
@@ -140,6 +141,7 @@ test('open world: other faction only, zone title, empty list, settings: all play
   expect((await app.posted('pvpCfg')).at(-1)).toMatchObject({ all: true })
   await expect.poll(async () => (await lastRows(app)).rows.map((r: Any) => r.n)).toEqual(['Drei8Sechs', 'Chika7ilo', 'SamAdriel', 'Tyla'])
   expect((await lastRows(app)).title).toMatch(/ · 4 Spieler$/)
+  await page.locator('[data-disclosure="set.pvp.fine"] button[aria-expanded]').click()
   const limit = page.locator('div.flex-wrap', { hasText: 'Anzahl Zeilen' }).last()
   await expect(limit).toContainText('8')
   for (let i = 0; i < 6; i++) await limit.getByRole('button').first().click()
@@ -187,7 +189,7 @@ test('settings button of the window opens the PvP settings', async ({ page }) =>
   const app = await openApp(page)
   await app.send({ type: 'openSettings', cat: 'map' })
   await expect(page.getByText('PvP-Liste anzeigen')).toBeVisible()
-  await expect(page.locator('nav [data-tip="Karte & Radar"]')).toHaveClass(/text-gold/)
+  await expect(page.locator('nav [data-tip="Karte & Radar"]')).toHaveAttribute('data-on', 'on')
 })
 
 test('list and enemy feed switched off: no more rows are posted', async ({ page }) => {

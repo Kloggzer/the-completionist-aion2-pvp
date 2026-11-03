@@ -1,26 +1,38 @@
-// Building blocks of the settings panel: groups, rows, toggles, steppers.
-import { Minus, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+// Building blocks of the settings panel: groups (kit Panel look), rows, toggles, steppers, a closed fine-tuning block.
+// Rows keep `div.flex-wrap` (e2e specs find a setting by that plus its label).
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { Sect } from '@/components/kit'
+import { t } from '@/core/i18n'
+import { Disclosure, Panel, ROWS, SUB, StepBox } from '@/components/kit'
+
+const DIV = 'divide-y divide-border/50'
 
 export function Group({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <section className="mb-3">
-      {title && <Sect className="px-0.5 pt-0">{title}</Sect>}
-      <div className="divide-y divide-border/60 rounded-sm border bg-card">{children}</div>
-    </section>
+    <Panel title={title}>
+      <div className={cn(DIV, title && ROWS)}>{children}</div>
+    </Panel>
   )
 }
 
-/** Label + muted sub text left, control right; wraps below on narrow widths. */
+/** Appearance and fine-tuning rows of a long group: closed by default, remembered under `id`. */
+export function Fine({ id, sub, children }: { id: string; sub?: string; children: React.ReactNode }) {
+  return (
+    <div className="pb-1.5">
+      <Disclosure id={id} title={t('set.fine')} sub={sub}>
+        <div className={cn(DIV, ROWS, 'mt-1.5 -mb-1.5')}>{children}</div>
+      </Disclosure>
+    </div>
+  )
+}
+
+/** Label + muted sub text left, control right; wraps below on narrow widths (the control itself never wraps). */
 export function Row({ label, sub, children, subClass }: { label: React.ReactNode; sub?: React.ReactNode; children?: React.ReactNode; subClass?: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2">
+    <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2">
       <div className="min-w-0 flex-[1_1_10rem]">
         <div className="text-[13px] leading-snug">{label}</div>
-        {sub && <div className={cn('mt-0.5 text-xs leading-snug break-words text-muted-foreground', subClass)}>{sub}</div>}
+        {sub && <div className={cn(SUB, 'mt-0.5 leading-snug', subClass)}>{sub}</div>}
       </div>
       {children != null && <div className="flex flex-none items-center gap-1.5">{children}</div>}
     </div>
@@ -36,9 +48,7 @@ export function Stepper({ label, sub, value, onStep, minus, plus }: {
 }) {
   return (
     <Row label={label} sub={sub}>
-      <Button variant="outline" size="icon-sm" disabled={minus === false} onClick={() => onStep(-1)}><Minus /></Button>
-      <output className="min-w-12 text-center text-[13px] font-semibold tabular-nums">{value}</output>
-      <Button variant="outline" size="icon-sm" disabled={plus === false} onClick={() => onStep(1)}><Plus /></Button>
+      <StepBox value={value} onStep={onStep} minus={minus !== false} plus={plus !== false} />
     </Row>
   )
 }

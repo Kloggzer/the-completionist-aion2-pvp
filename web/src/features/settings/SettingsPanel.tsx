@@ -1,10 +1,10 @@
-// Settings overlay below the header: category sidebar left (icons only on narrow windows), content right; centred
-// with a max width on big windows.
-import { Bell, Database, Keyboard, Map as MapIcon, Radio, SlidersHorizontal, Target, X } from 'lucide-react'
+// Settings overlay below the header: category nav left (the Sidebar look; icons only on narrow windows), content
+// right in a form-width Page; centred with a max width on big windows.
+import { Bell, Database, Keyboard, Map as MapIcon, Radio, Settings, SlidersHorizontal, Target, X } from 'lucide-react'
 import { S, U, V, saveUi, bump, useApp } from '@/core/state'
 import { t } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
-import { BAR } from '@/components/kit'
+import { BAR, Page } from '@/components/kit'
 import { General, MapRadar, Filters, Notify, Hotkeys, Live, Data } from './sections'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +18,10 @@ const CATS = [
   ['data', Database, Data],
 ] as const
 
+// the same item classes as the app sidebar (components/Sidebar.tsx)
+const ITEM = 'flex h-8 w-full min-w-0 flex-none items-center gap-2 rounded-lg px-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground [&_svg]:size-4 [&_svg]:flex-none @max-[520px]:justify-center @max-[520px]:px-0'
+const ON = 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+
 export function SettingsPanel() {
   useApp()
   const cat = CATS.find(c => c[0] === U.setCat) || CATS[0]
@@ -25,23 +29,24 @@ export function SettingsPanel() {
   return (
     <div className="@container absolute inset-x-0 top-10 bottom-0 z-30 flex flex-col bg-background">
       <div className={cn(BAR, 'flex-nowrap pr-1 pl-3')}>
-        <span data-drag className="flex h-6 flex-1 cursor-grab items-center text-[13px] font-semibold tracking-wide text-gold">{t('set.title')}</span>
-        <Button variant="ghost" size="icon-xs" data-tip={t('common.close')} onClick={() => { V.settingsOpen = false; bump() }}><X className="size-4" /></Button>
+        <span data-drag className="flex h-6 min-w-0 flex-1 cursor-grab items-center gap-1.5 text-[13px] font-semibold text-foreground [&_svg]:size-3.5 [&_svg]:flex-none [&_svg]:text-gold">
+          <Settings /><span className="truncate">{t('set.title')}</span>
+        </span>
+        <Button variant="ghost" size="icon-xs" data-tip={t('common.close')} aria-label={t('common.close')} onClick={() => { V.settingsOpen = false; bump() }}><X className="size-4" /></Button>
       </div>
-      {/* Big windows: sidebar + content as one centred column (max 1000 px), the content max 760 px wide. */}
+      {/* Big windows: nav + content as one centred column (max 1000 px), the content a form-width Page. */}
       <div className="mx-auto flex min-h-0 w-full max-w-[1000px] flex-1 @min-[1000px]:border-x">
-        <nav className="flex w-48 flex-none flex-col gap-0.5 overflow-y-auto border-r bg-card/50 p-1.5 @max-[520px]:w-11 @max-[520px]:px-1">
+        <nav aria-label={t('set.title')} className="flex w-52 flex-none flex-col gap-0.5 overflow-y-auto border-r bg-sidebar p-1.5 @max-[520px]:w-12">
           {CATS.map(([k, I]) => (
-            <button key={k} data-tip={t('set.cat.' + k)} onClick={() => { U.setCat = k; saveUi(['setCat']); bump() }}
-              className={cn('flex h-8 flex-none items-center gap-2 rounded-md px-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground @max-[520px]:justify-center @max-[520px]:px-0',
-                cat[0] === k && 'bg-gold/15 font-semibold text-gold hover:bg-gold/20 hover:text-gold')}>
-              <I className="size-4 flex-none" />
+            <button key={k} data-tip={t('set.cat.' + k)} aria-label={t('set.cat.' + k)} data-on={cat[0] === k ? 'on' : undefined}
+              onClick={() => { U.setCat = k; saveUi(['setCat']); bump() }} className={cn(ITEM, cat[0] === k && ON)}>
+              <I />
               <span className="truncate @max-[520px]:hidden">{t('set.cat.' + k)}</span>
             </button>
           ))}
         </nav>
-        <div className="min-w-0 flex-1 overflow-y-auto p-3 [scrollbar-gutter:stable]">
-          <div className="max-w-[760px]">{S.settings ? <Body /> : null}</div>
+        <div className="min-w-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+          <Page w="form">{S.settings ? <Body /> : null}</Page>
         </div>
       </div>
     </div>

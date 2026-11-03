@@ -352,19 +352,35 @@ export function Chip({ on, onChange, children, tip, className, ...rest }: {
   )
 }
 
+const STEP_BTN = 'grid h-[22px] min-w-[22px] flex-none place-items-center rounded-[5px] px-1 text-[11px] text-muted-foreground tabular-nums transition-colors hover:bg-foreground/[0.07] hover:text-gold disabled:pointer-events-none disabled:opacity-30 [&_svg]:size-3'
+const STEP_BOX = 'flex flex-none items-center rounded-md border bg-background/40 p-px'
+
 /** −/value/+ with optional big steps (shown only where there is room). */
 export function Stepper({ value, onChange, min = 0, max = 999, big, className, ...rest }: {
   value: number; onChange: (v: number) => void; min?: number; max?: number; big?: number; className?: string
 } & Record<`data-${string}`, string | undefined>) {
   const set = (v: number) => onChange(Math.max(min, Math.min(max, v)))
-  const b = 'grid h-[22px] min-w-[22px] flex-none place-items-center rounded-[5px] px-1 text-[11px] text-muted-foreground tabular-nums transition-colors hover:bg-foreground/[0.07] hover:text-gold disabled:pointer-events-none disabled:opacity-30 [&_svg]:size-3'
+  const b = STEP_BTN
   return (
-    <span className={cn('flex flex-none items-center rounded-md border bg-background/40 p-px', className)} {...rest}>
+    <span className={cn(STEP_BOX, className)} {...rest}>
       {big && <button className={cn(b, 'hidden @min-[420px]:grid')} disabled={value <= min} onClick={() => set(value - big)}>−{big}</button>}
       <button className={b} aria-label="−1" disabled={value <= min} onClick={() => set(value - 1)}><Minus /></button>
       <output className="min-w-9 text-center text-[12.5px] font-semibold text-foreground tabular-nums">{value}</output>
       <button className={b} aria-label="+1" disabled={value >= max} onClick={() => set(value + 1)}><Plus /></button>
       {big && <button className={cn(b, 'hidden @min-[420px]:grid')} disabled={value >= max} onClick={() => set(value + big)}>+{big}</button>}
+    </span>
+  )
+}
+
+/** Stepper look for a formatted value with its own step rule (settings: 85 %, 120 m, ×1.1): −/value/+, `onStep(±1)`. */
+export function StepBox({ value, onStep, minus = true, plus = true, tips, className }: {
+  value: ReactNode; onStep: (d: 1 | -1) => void; minus?: boolean; plus?: boolean; tips?: [string, string]; className?: string
+}) {
+  return (
+    <span className={cn(STEP_BOX, className)}>
+      <button className={STEP_BTN} disabled={!minus} data-tip={tips?.[0]} aria-label={tips?.[0] ?? '−'} onClick={() => onStep(-1)}><Minus /></button>
+      <output className="min-w-14 px-0.5 text-center text-[12.5px] font-semibold text-foreground tabular-nums">{value}</output>
+      <button className={STEP_BTN} disabled={!plus} data-tip={tips?.[1]} aria-label={tips?.[1] ?? '+'} onClick={() => onStep(1)}><Plus /></button>
     </span>
   )
 }

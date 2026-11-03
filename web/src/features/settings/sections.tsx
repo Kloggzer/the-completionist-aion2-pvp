@@ -11,8 +11,8 @@ import { AppSelect } from '@/components/AppSelect'
 import { loadMapArt } from '@/core/data'
 import { ext } from '@/core/ext'
 import { Button } from '@/components/ui/button'
-import { Group, Row, Toggle, Stepper } from './parts'
-import { NpcapLink, Seg, rich } from '@/components/kit'
+import { Fine, Group, Row, Toggle, Stepper } from './parts'
+import { NpcapLink, SUB, Seg, rich } from '@/components/kit'
 import { applyTheme } from '@/core/theme'
 import { nextRange, MIN_RANGE, MAX_RANGE, radarCfg, setRadarCfg, toggleMiniRadar, toggleRadarLock, centerRadar } from '@/features/map/miniRadar'
 import { pvpCfg, setPvpCfg, togglePvp, toggleWinEdit } from '@/features/pvp'
@@ -57,7 +57,7 @@ export function General() {
         <Seg value={U.theme || 'system'} onChange={v => { U.theme = v; saveUi(['theme']); applyTheme(); bump() }} item={v => ({ 'data-theme': v })}
           options={[{ value: 'light', label: t('set.theme.light'), icon: Sun }, { value: 'dark', label: t('set.theme.dark'), icon: Moon }, { value: 'system', label: t('set.theme.system'), icon: Monitor }]} />
       </Row>
-      <Stepper label={t('set.opacity')} value={pct(st.opacity)} onStep={setOpacity} minus={st.opacity > 0.3} plus={st.opacity < 1} />
+      <Stepper label={t('set.opacity')} sub={t('set.opacity.sub')} value={pct(st.opacity)} onStep={setOpacity} minus={st.opacity > 0.3} plus={st.opacity < 1} />
       <Stepper label={t('set.zoom')} value={pct(st.zoom)} onStep={setZoom} minus={st.zoom > 0.7} plus={st.zoom < 1.6} />
       <UToggle k="toasts" />
     </Group>
@@ -86,8 +86,8 @@ export function General() {
 export function MapRadar() {
   // The cube layer explains its two symbols (tokens close to the fixed map colours in engine.ts).
   const cubeSub = <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-    {ext.features.has('liveCubes') && <span className="inline-flex items-center gap-1"><Star className="size-3 fill-cube text-cube" />{t('set.l.cubes.real')}</span>}
-    <span className="inline-flex items-center gap-1"><Box className="size-3 text-purple" />{t('set.l.cubes.spot')}</span>
+    {ext.features.has('liveCubes') && <span className="inline-flex items-center gap-1"><Star className="size-3.5 fill-cube text-cube" />{t('set.l.cubes.real')}</span>}
+    <span className="inline-flex items-center gap-1"><Box className="size-3.5 text-purple" />{t('set.l.cubes.spot')}</span>
   </span>
   const layer = (l: string) =>
     <Toggle key={l} label={t('set.l.' + l)} sub={l === 'cubes' ? cubeSub : undefined} on={!!U.layers[l]} onChange={() => { U.layers[l] = !U.layers[l]; saveUi(['layers']); emit('draw'); bump() }} />
@@ -122,46 +122,48 @@ function WinEdit() {
 }
 
 function PvpOverlay() {
-  const c = pvpCfg()
+  const c = pvpCfg(), team = c.team ?? true
   return (
     <Group title={t('set.g.pvp')}>
       <Toggle label={t('set.pvp')} sub={t('set.pvp.sub') + (hkText('pvp') ? ` · ${hkText('pvp')}` : '')} on={!!c.on} onChange={togglePvp} />
-      <Toggle label={t('set.pvpCompact')} sub={t('set.pvpCompact.sub')} on={!!c.compact} onChange={() => setPvpCfg({ compact: !c.compact })} />
       <Toggle label={t('set.feed')} sub={t('set.feed.sub')} on={c.feed !== false} onChange={() => setPvpCfg({ feed: c.feed === false })} />
-      {c.feed !== false && <>
-        <Stepper label={t('set.feedLimit')} value={String(c.feedLimit ?? 5)} minus={(c.feedLimit ?? 5) > 1} plus={(c.feedLimit ?? 5) < 10}
-          onStep={d => setPvpCfg({ feedLimit: Math.max(1, Math.min(10, (c.feedLimit ?? 5) + d)) })} />
-        <Stepper label={t('set.feedScale')} value={pct(c.feedScale ?? 1)} minus={(c.feedScale ?? 1) > 0.6} plus={(c.feedScale ?? 1) < 2}
-          onStep={d => setPvpCfg({ feedScale: stepVal(c.feedScale ?? 1, d, 0.05, 0.6, 2) })} />
-      </>}
       <Toggle label={t('set.pvpAuto')} sub={t('set.pvpAuto.sub')} on={!!c.auto} onChange={() => setPvpCfg({ auto: !c.auto })} />
-      {!!c.auto && <Row label={t('set.pvpIdle')} sub={t('set.pvpIdle.sub')}>
-        <AppSelect value={c.idle || 'bar'} options={['bar', 'dim', 'hide'].map(k => ({ value: k, label: t('set.pvpIdle.' + k) }))} className="w-44"
-          onChange={v => setPvpCfg({ idle: v })} />
-      </Row>}
       <Toggle label={t('set.pvpAll')} sub={t('set.pvpAll.sub')} on={!!c.all} onChange={() => setPvpCfg({ all: !c.all })} />
-      <Stepper label={t('set.pvpLimit')} sub={t('set.pvpLimit.sub')} value={String(c.limit)} minus={c.limit > 1} plus={c.limit < 30}
-        onStep={d => setPvpCfg({ limit: Math.max(1, Math.min(30, c.limit + d)) })} />
       <Row label={t('set.pvpFaction')} sub={t('set.pvpFaction.sub')}>
         <AppSelect value={String(c.faction ?? 0)} options={['0', '1', '2'].map(k => ({ value: k, label: t('set.pvpFaction.' + k) }))} className="w-40"
           onChange={v => setPvpCfg({ faction: Number(v) })} />
       </Row>
       <Toggle label={t('set.pvpAlarm')} sub={t('set.pvpAlarm.sub')} on={c.alarm !== false} onChange={() => setPvpCfg({ alarm: c.alarm === false })} />
-      {c.alarm !== false && <>
-        <Toggle label={t('set.pvpAlarmSound')} sub={t('set.pvpAlarmSound.sub')} on={c.alarmSound !== false} onChange={() => setPvpCfg({ alarmSound: c.alarmSound === false })} />
-        <Stepper label={t('set.pvpAlarmRange')} sub={t('set.pvpAlarmRange.sub')} value={(c.alarmRange ?? 60) + ' m'} minus={(c.alarmRange ?? 60) > 10} plus={(c.alarmRange ?? 60) < 200}
-          onStep={d => setPvpCfg({ alarmRange: Math.max(10, Math.min(200, (c.alarmRange ?? 60) + d * 10)) })} />
-      </>}
-      <Toggle label={t('set.pvpTeam')} sub={t('set.pvpTeam.sub')} on={c.team ?? true} onChange={() => setPvpCfg({ team: !(c.team ?? true) })} />
-      {(c.team ?? true) && <Toggle label={t('set.pvpSelf')} sub={t('set.pvpSelf.sub')} on={!!c.self} onChange={() => setPvpCfg({ self: !c.self })} />}
-      {(c.team ?? true) && <Stepper label={t('set.pvpTeamLimit')} sub={t('set.pvpTeamLimit.sub')} value={String(c.teamLimit ?? 6)}
-        minus={(c.teamLimit ?? 6) > 1} plus={(c.teamLimit ?? 6) < 30}
-        onStep={d => setPvpCfg({ teamLimit: Math.max(1, Math.min(30, (c.teamLimit ?? 6) + d)) })} />}
+      <Toggle label={t('set.pvpTeam')} sub={t('set.pvpTeam.sub')} on={team} onChange={() => setPvpCfg({ team: !team })} />
       <WinEdit />
-      <Stepper label={t('set.pvpScale')} value={pct(c.scale ?? 1)} minus={(c.scale ?? 1) > 0.6} plus={(c.scale ?? 1) < 2}
-        onStep={d => setPvpCfg({ scale: stepVal(c.scale ?? 1, d, 0.05, 0.6, 2) })} />
-      <Stepper label={t('set.pvpAlpha')} value={pct(c.alpha ?? 0.9)} minus={(c.alpha ?? 0.9) > 0.2} plus={(c.alpha ?? 0.9) < 1}
-        onStep={d => setPvpCfg({ alpha: stepVal(c.alpha ?? 0.9, d, 0.05, 0.2, 1) })} />
+      <Fine id="set.pvp.fine" sub={t('set.pvp.fineSub')}>
+        <Toggle label={t('set.pvpCompact')} sub={t('set.pvpCompact.sub')} on={!!c.compact} onChange={() => setPvpCfg({ compact: !c.compact })} />
+        <Stepper label={t('set.pvpLimit')} sub={t('set.pvpLimit.sub')} value={String(c.limit)} minus={c.limit > 1} plus={c.limit < 30}
+          onStep={d => setPvpCfg({ limit: Math.max(1, Math.min(30, c.limit + d)) })} />
+        {team && <Toggle label={t('set.pvpSelf')} sub={t('set.pvpSelf.sub')} on={!!c.self} onChange={() => setPvpCfg({ self: !c.self })} />}
+        {team && <Stepper label={t('set.pvpTeamLimit')} sub={t('set.pvpTeamLimit.sub')} value={String(c.teamLimit ?? 6)}
+          minus={(c.teamLimit ?? 6) > 1} plus={(c.teamLimit ?? 6) < 30}
+          onStep={d => setPvpCfg({ teamLimit: Math.max(1, Math.min(30, (c.teamLimit ?? 6) + d)) })} />}
+        {!!c.auto && <Row label={t('set.pvpIdle')} sub={t('set.pvpIdle.sub')}>
+          <AppSelect value={c.idle || 'bar'} options={['bar', 'dim', 'hide'].map(k => ({ value: k, label: t('set.pvpIdle.' + k) }))} className="w-44"
+            onChange={v => setPvpCfg({ idle: v })} />
+        </Row>}
+        {c.alarm !== false && <>
+          <Toggle label={t('set.pvpAlarmSound')} sub={t('set.pvpAlarmSound.sub')} on={c.alarmSound !== false} onChange={() => setPvpCfg({ alarmSound: c.alarmSound === false })} />
+          <Stepper label={t('set.pvpAlarmRange')} sub={t('set.pvpAlarmRange.sub')} value={(c.alarmRange ?? 60) + ' m'} minus={(c.alarmRange ?? 60) > 10} plus={(c.alarmRange ?? 60) < 200}
+            onStep={d => setPvpCfg({ alarmRange: Math.max(10, Math.min(200, (c.alarmRange ?? 60) + d * 10)) })} />
+        </>}
+        {c.feed !== false && <>
+          <Stepper label={t('set.feedLimit')} value={String(c.feedLimit ?? 5)} minus={(c.feedLimit ?? 5) > 1} plus={(c.feedLimit ?? 5) < 10}
+            onStep={d => setPvpCfg({ feedLimit: Math.max(1, Math.min(10, (c.feedLimit ?? 5) + d)) })} />
+          <Stepper label={t('set.feedScale')} value={pct(c.feedScale ?? 1)} minus={(c.feedScale ?? 1) > 0.6} plus={(c.feedScale ?? 1) < 2}
+            onStep={d => setPvpCfg({ feedScale: stepVal(c.feedScale ?? 1, d, 0.05, 0.6, 2) })} />
+        </>}
+        <Stepper label={t('set.pvpScale')} value={pct(c.scale ?? 1)} minus={(c.scale ?? 1) > 0.6} plus={(c.scale ?? 1) < 2}
+          onStep={d => setPvpCfg({ scale: stepVal(c.scale ?? 1, d, 0.05, 0.6, 2) })} />
+        <Stepper label={t('set.pvpAlpha')} value={pct(c.alpha ?? 0.9)} minus={(c.alpha ?? 0.9) > 0.2} plus={(c.alpha ?? 0.9) < 1}
+          onStep={d => setPvpCfg({ alpha: stepVal(c.alpha ?? 0.9, d, 0.05, 0.2, 1) })} />
+      </Fine>
     </Group>
   )
 }
@@ -179,17 +181,19 @@ function MiniRadar() {
       </Row>
       <Stepper label={t('set.miniRange')} sub={t('set.miniRange.sub')} value={r.range + ' m'} minus={r.range > MIN_RANGE} plus={r.range < MAX_RANGE}
         onStep={d => setRadarCfg({ range: nextRange(r.range, d) })} />
-      <Stepper label={t('set.miniSize')} sub={t('set.miniSize.sub')} value={r.size > 0 ? r.size + ' px' : '–'}
-        onStep={d => setRadarCfg({ size: Math.round((r.size > 0 ? r.size : 240) * (d > 0 ? 1.1 : 1 / 1.1)) })} />
-      <Stepper label={t('set.miniAlpha')} sub={t('set.miniAlpha.sub')} value={pct(r.alpha ?? 1)} minus={(r.alpha ?? 1) > 0.2} plus={(r.alpha ?? 1) < 1}
-        onStep={d => setRadarCfg({ alpha: stepVal(r.alpha ?? 1, d, 0.05, 0.2, 1) })} />
-      <Stepper label={t('set.miniDisc')} sub={t('set.miniDisc.sub')} value={pct(r.disc)} minus={r.disc > 0} plus={r.disc < 0.9}
-        onStep={d => setRadarCfg({ disc: stepVal(r.disc, d, 0.05, 0, 0.9) })} />
-      <Stepper label={t('set.miniRim')} sub={t('set.miniRim.sub')} value={pct(r.rim ?? 0.2)} minus={(r.rim ?? 0.2) > 0} plus={(r.rim ?? 0.2) < 1}
-        onStep={d => setRadarCfg({ rim: stepVal(r.rim ?? 0.2, d, 0.05, 0, 1) })} />
-      <Toggle label={t('set.miniArrow')} sub={t('set.miniArrow.sub')} on={!!r.arrow} onChange={() => setRadarCfg({ arrow: !r.arrow })} />
-      <Stepper label={t('set.miniOff')} sub={t('set.miniOff.sub')} value={(r.offY > 0 ? '+' : '') + r.offY + ' px'} minus={r.offY > -400} plus={r.offY < 400}
-        onStep={d => setRadarCfg({ offY: Math.max(-400, Math.min(400, r.offY + 10 * d)) })} />
+      <Fine id="set.mini.fine" sub={t('set.mini.fineSub')}>
+        <Stepper label={t('set.miniSize')} sub={t('set.miniSize.sub')} value={r.size > 0 ? r.size + ' px' : '–'}
+          onStep={d => setRadarCfg({ size: Math.round((r.size > 0 ? r.size : 240) * (d > 0 ? 1.1 : 1 / 1.1)) })} />
+        <Stepper label={t('set.miniAlpha')} sub={t('set.miniAlpha.sub')} value={pct(r.alpha ?? 1)} minus={(r.alpha ?? 1) > 0.2} plus={(r.alpha ?? 1) < 1}
+          onStep={d => setRadarCfg({ alpha: stepVal(r.alpha ?? 1, d, 0.05, 0.2, 1) })} />
+        <Stepper label={t('set.miniDisc')} sub={t('set.miniDisc.sub')} value={pct(r.disc)} minus={r.disc > 0} plus={r.disc < 0.9}
+          onStep={d => setRadarCfg({ disc: stepVal(r.disc, d, 0.05, 0, 0.9) })} />
+        <Stepper label={t('set.miniRim')} sub={t('set.miniRim.sub')} value={pct(r.rim ?? 0.2)} minus={(r.rim ?? 0.2) > 0} plus={(r.rim ?? 0.2) < 1}
+          onStep={d => setRadarCfg({ rim: stepVal(r.rim ?? 0.2, d, 0.05, 0, 1) })} />
+        <Toggle label={t('set.miniArrow')} sub={t('set.miniArrow.sub')} on={!!r.arrow} onChange={() => setRadarCfg({ arrow: !r.arrow })} />
+        <Stepper label={t('set.miniOff')} sub={t('set.miniOff.sub')} value={(r.offY > 0 ? '+' : '') + r.offY + ' px'} minus={r.offY > -400} plus={r.offY < 400}
+          onStep={d => setRadarCfg({ offY: Math.max(-400, Math.min(400, r.offY + 10 * d)) })} />
+      </Fine>
     </Group>
   )
 }
@@ -359,7 +363,7 @@ export function Data() {
       <Row label={t('set.version')} sub={`The Completionist ${st.version || '–'}`} />
     </Group>
     <Group title={t('set.credit.title')}>
-      <div className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+      <div className={cn(SUB, 'px-3 pt-2 pb-2.5 leading-relaxed')}>
         {t('set.credit.data')} <a href="https://aion2maps.com/" target="_blank" rel="noreferrer" className="text-gold hover:underline">aion2maps.com</a> {t('set.credit.thanks')}<br />
         <span data-credit-icons>{t('set.credit.icons')}</span><br />
         {t('set.credit.safe')}

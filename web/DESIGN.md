@@ -113,11 +113,13 @@ modifiers on tokens are fine (`bg-gold/10`, `border-foreground/10`).
 | A collection of peer objects with portrait and progress (pets, achievements) | `TILE` grid via `grid(size)` | rows with portraits |
 | More than 5 items | `TopN` (3 on overview pages, 4–5 in panels, 6 tiles; `moreClass="col-span-full"` in a tile grid) | `slice(0, n)` with no way to see the rest |
 | Details, inputs, raw tables | `Disclosure` (closed) | always-open sections |
+| Settings group | `Group` (Panel look, rows divided), appearance and fine-tuning of a long group in `Fine` (closed Disclosure) | groups of 10+ open rows |
 | Explanation of a calculation | `HowTo` | a toggled Hint, a long Foot |
 | Detail views inside one panel | `PanelTabs` | separate pages |
 | Blocking or important message | `Hint` (gold = attention, cyan = info) | Hint for plain info |
 | One muted line (empty, source) | `Note` | dashed boxes |
 | Number with −/+ in a row | `Stepper` (`big` adds ±10 from 420 px) | custom buttons |
+| −/+ for a formatted value with its own step rule (settings: `85 %`, `120 m`) | `StepBox` | custom −/+ buttons |
 | Labelled −/+ in a popover | `MiniStepper` | |
 | Frequent +1 on a tile | `StepCol` (tile needs `TILE_P pr-0`) | |
 | Alarm toggle on a row or tile | `BellBtn` | |

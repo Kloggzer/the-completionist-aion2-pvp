@@ -126,7 +126,7 @@ test('settings: every category opens, closes again', async ({ page }) => {
   await page.locator('[data-tip="Einstellungen"]').click()
   for (const c of ['Allgemein', 'Karte & Radar', 'Ziele & Filter', 'Benachrichtigungen', 'Hotkeys', 'Live-Tracking', 'Daten & Über']) {
     await page.locator(`nav [data-tip="${c}"]`).click()
-    await expect(page.locator(`nav [data-tip="${c}"]`)).toHaveClass(/text-gold/)
+    await expect(page.locator(`nav [data-tip="${c}"]`)).toHaveAttribute('data-on', 'on')
   }
   await shot(page, 'settings')
   await page.locator('[data-tip="Schließen"]').click()
@@ -168,6 +168,9 @@ test('mini radar: toggle, lock, centre, content goes to the host', async ({ page
   const range = page.locator('div.flex-wrap', { hasText: 'Reichweite (Zoom)' }).last()
   await range.getByRole('button').last().click()
   await expect.poll(async () => (await app.posted('radar2')).at(-1)?.range).toBe(125)
+  // appearance rows wait in the closed fine-tuning block
+  await expect(page.getByText('Deckkraft gesamt')).toHaveCount(0)
+  await page.locator('[data-disclosure="set.mini.fine"] button[aria-expanded]').click()
   const alpha = page.locator('div.flex-wrap', { hasText: 'Deckkraft gesamt' }).last()
   await alpha.getByRole('button').first().click()
   expect((await app.posted('radarCfg')).at(-1)).toMatchObject({ alpha: 0.95 })
@@ -305,3 +308,36 @@ for (const [w, h] of [[640, 800], [2000, 1100]]) {
     await shot(page, `map-style-relief-${w}`)
   })
 }
+
+test('header: fits at 360 px with every button, click-through always there, opacity only with Ctrl + wheel', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 700 })
+  const app = await openApp(page)
+  await app.send({ type: 'dock', dock: 'overlay', window: false })
+  await app.send({ type: 'update', version: '9.9.0', page: 'https://example.invalid/', auto: true })
+  const ct = page.locator('header [data-ct]')
+  await expect(ct).toHaveAttribute('data-ct', 'off')
+  await expect(page.locator('[data-update]')).toBeVisible()
+  // nothing leaves the header, every control stays one line high
+  for (const el of await page.locator('header > :not([data-drag])').all()) {
+    const b = (await el.boundingBox())!
+    expect(b.x + b.width).toBeLessThanOrEqual(360)
+    expect(b.height).toBeLessThanOrEqual(32)
+  }
+  await shot(page, 'header-360')
+  await ct.click()
+  expect(await app.posted('clickThrough')).toHaveLength(1)
+  await app.send({ type: 'clickThrough', on: true })
+  await expect(ct).toHaveAttribute('data-ct', 'on')
+  await ct.click() // still clickable while the rest of the app lets the mouse through
+  expect(await app.posted('clickThrough')).toHaveLength(2)
+  await app.send({ type: 'clickThrough', on: false })
+  // plain wheel over the header does nothing, Ctrl + wheel changes the opacity
+  await page.locator('header [data-drag]').first().hover()
+  await page.mouse.wheel(0, -100)
+  await page.waitForTimeout(100)
+  expect(await app.posted('opacity')).toHaveLength(0)
+  await page.keyboard.down('Control')
+  await page.mouse.wheel(0, -100)
+  await page.keyboard.up('Control')
+  await expect.poll(async () => (await app.posted('opacity')).length).toBe(1)
+})
