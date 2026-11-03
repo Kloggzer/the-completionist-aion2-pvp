@@ -209,7 +209,7 @@ abstract class PetSource : IDisposable
         }
         else if (op == 0x9156 && PetFrames.ParseMerchant(body) is { } merch)
             MerchantReceived?.Invoke(merch.tab, merch.items);
-        else if (op == 0x2ce3 && body.Length > 100 && PvpHistory(body) is { Count: > 0 } matches)
+        else if (op == 0x2ce3 && body.Length > 100 && ReplayCapture.PvpHistory(body) is { Count: > 0 } matches)
             PvpHistoryReceived?.Invoke(matches);
         else if (op == 0x0b61 && PetFrames.ParseEntryCharges(body) is { } entries)
             EntryChargesReceived?.Invoke(entries);
@@ -499,7 +499,7 @@ sealed class ReplayCapture(string dir, double speed) : PetSource
 
     /// The match objects of a 0x2ce3 history frame: each is a JSON object starting with {"start_time" (length-prefixed,
     /// so they are cut out by brace depth). Contents ids seen: 22 = arena, 44 = coop arena, 55 = battlefield.
-    static List<JsonElement> PvpHistory(byte[] b)
+    internal static List<JsonElement> PvpHistory(byte[] b)
     {
         var list = new List<JsonElement>();
         var key = "{\"start_time\""u8.ToArray();
