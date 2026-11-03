@@ -23,7 +23,7 @@ test('without character data: class, points and goal give a plan on the boards',
   await page.locator('[data-board-tab]').nth(spent.indexOf(Math.max(...spent))).click()
   await expect.poll(() => page.locator('[data-node="new"]').count()).toBeGreaterThan(5)
   // exactly the player's points: 30 of 30
-  await expect(page.getByText('30/30 Punkte verplant')).toBeVisible()
+  await expect(page.locator('[data-kpi="points"]')).toContainText('30 / 30')
   // in-game frames: on while the tab is open, the host gets every board with its marks
   await expect(page.locator('[data-ingame]')).toBeVisible()
   await expect.poll(async () => (await app.posted('daeOverlay')).some((m: { on: boolean; boards: { marks: unknown[] }[] }) => m.on && m.boards.length === 6 && m.boards.some(b => b.marks.length > 0))).toBe(true)

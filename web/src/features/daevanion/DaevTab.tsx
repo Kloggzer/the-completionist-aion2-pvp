@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Ban, Check, ChevronDown, ChevronUp, Download, Loader2, MonitorUp, Pin, RefreshCw, RotateCcw, Save, Shield, Sparkles, Swords, Trash2 } from 'lucide-react'
+import { Ban, Check, ChevronDown, ChevronUp, Download, Loader2, MonitorUp, MousePointerClick, Pin, RefreshCw, RotateCcw, Save, Shield, Sparkles, Swords, Trash2 } from 'lucide-react'
 import { U, V, bump, useApp } from '@/core/state'
 import { host } from '@/core/host'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
 import { Slider } from '@/components/ui/slider'
-import { Bar, BarInfo, BarRight, BAR_GAME_ICON, GameIcon, CHIP, CHIP_ON, Chip, Disclosure, Empty, Foot, Hint, Note, NumField, Page, Panel, PanelTabs, ROW, ROWS, SECT_BTN, Sect, Seg, Stepper, TopN, rich } from '@/components/kit'
+import { BADGE, BarInfo, BarRight, BAR_GAME_ICON, GameIcon, Chip, Kpi, KpiRow, Disclosure, Empty, Foot, Hint, Note, NumField, Page, Panel, PanelTabs, ROW, ROWS, SECT_BTN, Sect, Seg, Stepper, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import {
   LIVE, NONE_HINT, advice, ago, logHits, setLog, breakdown, charKey, charTotals, classIcon, classId, className, data, forgetLive, live, loadLive, loading,
@@ -44,11 +44,16 @@ const PRESETS = [['dmg', 1], ['both', 0.6], ['def', 0.2]] as const
 function Goal({ cls }: { cls: string }) {
   const w = weights(cls), [drag, setDrag] = useState<number | null>(null), v = drag ?? w.off, s = settings()
   const setOff = (x: number) => save({ off: { ...s.off, [cls]: x } })
-  const preset = PRESETS.find(([, x]) => Math.abs(w.off - x) < 0.001)?.[0] ?? ''
+  // the class default (no own goal) is an option of its own, so one option is always pressed unless the slider moved
+  const hasDef = CLASS_DEF[cls]?.off != null
+  const preset = hasDef && s.off[cls] == null ? 'class' : PRESETS.find(([, x]) => Math.abs(w.off - x) < 0.001)?.[0] ?? ''
+  const pick = (k: string) => {
+    if (k === 'class') { const off = { ...s.off }; delete off[cls]; save({ off }) } else setOff(PRESETS.find(([x]) => x === k)![1])
+  }
   return (
     <div className="px-2.5 pt-1.5 pb-2">
-      <Seg value={preset as 'dmg'} onChange={k => setOff(PRESETS.find(([x]) => x === k)![1])} item={k => ({ 'data-preset': k })}
-        options={PRESETS.map(([k]) => ({ value: k, label: t('dae.preset.' + k) }))} />
+      <Seg size="sm" value={preset as 'dmg'} onChange={pick} item={k => ({ 'data-preset': k })}
+        options={[...(hasDef ? [{ value: 'class' as const, label: t('dae.preset.classShort'), tip: t('dae.preset.class') }] : []), ...PRESETS.map(([k]) => ({ value: k, label: t('dae.preset.' + k) }))]} />
       <div className="mt-2 flex items-center gap-2 text-[11.5px] text-muted-foreground">
         <span className="flex-none">{t('dae.def')}</span>
         <Slider data-goal min={0} max={100} step={5} value={[Math.round(v * 100)]} className="flex-1"
@@ -70,21 +75,24 @@ function Goal({ cls }: { cls: string }) {
 function LiveBlock() {
   const char = charKey(), p = profile(char), l = live(char), busy = loading.has(char)
   const cp = l?.cp || [], last = cp.at(-1), prev = cp.at(-2)
+  // without a character the page says so once (the cyan hint above); only the research log stays
+  if (!p) return <PacketLog />
+  const src = l ? t(l.game ? 'dae.liveGame' : 'dae.live', { age: ago(l.at) }) : ''
   return (
     <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-0.5 px-2.5 py-1 text-[12px]" data-live>
-      <span className="min-w-0 flex-1 truncate text-muted-foreground">
-        {!p ? t(NONE_HINT) : <><b className="font-semibold text-foreground">{p.name}</b>{l && <> · {t(l.game ? 'dae.liveGame' : 'dae.live', { age: ago(l.at) })}</>}</>}
+      <span className="min-w-0 flex-1 truncate text-muted-foreground" data-tip={[p.name, src].filter(Boolean).join(' · ')}>
+        <b className="font-semibold text-foreground">{p.name}</b>{l && <> · {src}</>}
       </span>
       {last && <span data-cp className="text-muted-foreground tabular-nums" data-tip={t('dae.cpTip')}>
         {t('dae.cp')} <b className="font-semibold text-foreground">{fmt(last[1])}</b>
         {prev && <span className={cn('ml-1', tone(last[1] - prev[1]))}>{(last[1] >= prev[1] ? '+' : '') + fmt(last[1] - prev[1])}</span>}
       </span>}
-      {p && <span className="flex gap-0.5">
+      <span className="flex gap-0.5">
         <button className={SECT_BTN} disabled={busy} data-tip={t('dae.liveLoadTip')} onClick={() => loadLive(char)}>
           {l ? <RefreshCw /> : <Download />}{busy ? t('dae.liveBusy') : l ? t('dae.liveReload') : t('dae.liveLoad')}
         </button>
-        {l && <button className={SECT_BTN} data-tip={t('dae.liveForget')} onClick={() => forgetLive(char)}><Trash2 /></button>}
-      </span>}
+        {l && <button className={SECT_BTN} data-tip={t('dae.liveForget')} aria-label={t('dae.liveForget')} onClick={() => forgetLive(char)}><Trash2 /></button>}
+      </span>
       <PacketLog />
     </div>
   )
@@ -130,48 +138,33 @@ function ValHead({ children }: { children?: ReactNode }) {
 }
 const maxOf = (rows: { dmg: number; ehp: number }[]) => Math.max(0.01, ...rows.flatMap(r => [Math.abs(r.dmg), Math.abs(r.ehp)]))
 
-/** Big numbers of a plan: damage, healing (healers), effective HP. */
-function Tiles({ dmg, ehp, heal, sub }: { dmg: number; ehp: number; heal?: number; sub?: { dmg: number; ehp: number } }) {
-  const tile = (name: string, v: number, s: number | undefined, tip: string) => (
-    <div className="min-w-0 flex-1 rounded-sm border bg-card px-2 py-1" data-tip={tip}>
-      <div className="text-[11.5px] text-dim">{name}</div>
-      <div className={cn('text-[17px] leading-tight font-semibold tabular-nums', tone(v))}>{pc(v)}</div>
-      {s != null && <div className={cn('text-[10.5px] tabular-nums', tone(s))}>{t('dae.vsNowShort', { v: pc(s) })}</div>}
-    </div>
-  )
-  return (
-    <div className="flex gap-1.5 px-2.5 pb-1">
-      {tile(t('dae.dmgShort'), dmg, sub?.dmg, t('dae.dmgTip'))}
-      {heal != null && Math.abs(heal) > 0.005 && tile(t('dae.healShort'), heal, undefined, t('dae.dmgTip'))}
-      {tile(t('dae.ehpShort'), ehp, sub?.ehp, t('dae.ehpTip'))}
-    </div>
-  )
-}
-
-/** The answer first: what the plan of the shown board's pool gives (big numbers), points used, nodes to buy / reset. */
-function Summary({ p, d, cls, hasLive }: { p: PoolPlan; d: DaeData; cls: string; hasLive: boolean }) {
+/** The answer first: what the plan of the shown board's pool gives (damage, EHP against no Daevanion), the points it
+ *  uses and the next node to buy. */
+function Summary({ p, d, cls }: { p: PoolPlan; d: DaeData; cls: string }) {
   const added = [...p.plan.owned].filter(i => !p.cur.has(i)).length, removed = [...p.cur].filter(i => !p.plan.owned.has(i)).length
   const nPlan = numbers(p, p.plan.owned), nNow = numbers(p, p.cur)
-  const pool = p.slots.map(x => d.classes[cls].boards[x].name).join(' · ')
+  const pool = p.slots.map(x => d.classes[cls].boards[x].name).join(' · ') + ' · ' + (p.mode === 'pve' ? 'PvE' : 'PvP')
+  const vsNow = (a: number, b: number) => ((1 + a / 100) / (1 + b / 100) - 1) * 100
+  const sub = (v: number, now: number) => (p.spentNow > 0 ? t('dae.vsNowShort', { v: pc(vsNow(v, now)) }) : t('dae.vsNone'))
+  const heal = nPlan.heal != null && Math.abs(nPlan.heal) > 0.005 ? `${t('dae.healShort')} ${pc(nPlan.heal)}` : ''
+  // next node to buy: the first open step of the click order
+  const done: string[] = settings().done[charKey()] || [], worth = nodeWorth(p)
+  const next = p.plan.order.find(i => !p.cur.has(i) && !done.includes(pinKey(p.refs[i])))
+  const nw = next != null ? worth[next] : null, main = nw && (Math.abs(nw.dmg) >= Math.abs(nw.ehp) ? `${t('dae.dmgShort')} ${pc(nw.dmg)}` : `${t('dae.ehpShort')} ${pc(nw.ehp)}`)
+  const nextText = next != null ? `${d.classes[cls].boards[p.refs[next].slot].name} · ${nodeText(d, cls, p, next)}` : ''
+  const pending = p.pending && <span data-pending className="inline-flex items-center gap-1"><Loader2 className="size-3 animate-spin" />{t('dae.searching')}</span>
   return (
-    <Panel title={t('dae.sect.result')} sub={<>{pool} · {p.mode === 'pve' ? 'PvE' : 'PvP'}</>}
-      right={p.pending && <span data-pending className="flex items-center gap-1 text-[11px] text-dim"><Loader2 className="size-3 animate-spin" />{t('dae.searching')}</span>}>
-      <div data-gain={p.pool} data-result={p.pool}>
-        <Tiles dmg={nPlan.dmg} ehp={nPlan.ehp} heal={nPlan.heal}
-          sub={p.spentNow > 0 ? { dmg: ((1 + nPlan.dmg / 100) / (1 + nNow.dmg / 100) - 1) * 100, ehp: ((1 + nPlan.ehp / 100) / (1 + nNow.ehp / 100) - 1) * 100 } : undefined} />
-      </div>
-      <div className="px-2.5 pb-2">
-        <div className="flex items-baseline justify-between gap-2 text-[12px]">
-          <span className="text-muted-foreground">{t('dae.used', { n: p.plan.spent, total: p.budget })}</span>
-          <span className="flex gap-2 text-[11.5px] tabular-nums">
-            {added > 0 && <span className="text-gold">{t('dae.add', { n: added })}</span>}
-            {removed > 0 && <span className="text-red">{t('dae.remove', { n: removed })}</span>}
-          </span>
-        </div>
-        <Bar frac={p.budget ? p.plan.spent / p.budget : 0} tone="gold" />
-        <p className="text-[11px] text-dim">{hasLive ? t('dae.planGives') : rich(t('dae.noCharShort'))}</p>
-      </div>
-    </Panel>
+    <div data-gain={p.pool} data-result={p.pool}>
+      <KpiRow>
+        <Kpi icon={Swords} label={t('dae.dmgShort')} value={pc(nPlan.dmg)} sub={pending || [sub(nPlan.dmg, nNow.dmg), heal].filter(Boolean).join(' · ')}
+          tip={`${t('dae.dmgTip')}\n${pool}`} data-kpi="dmg" />
+        <Kpi icon={Shield} label={t('dae.ehpShort')} value={pc(nPlan.ehp)} sub={sub(nPlan.ehp, nNow.ehp)} tip={`${t('dae.ehpTip')}\n${pool}`} data-kpi="ehp" />
+        <Kpi icon={Sparkles} label={t('dae.kpi.points')} value={`${p.plan.spent} / ${p.budget}`} data-kpi="points"
+          sub={[added > 0 && t('dae.add', { n: added }), removed > 0 && t('dae.remove', { n: removed })].filter(Boolean).join(' · ') || t('dae.kpi.noChange')} />
+        <Kpi icon={MousePointerClick} label={t('dae.kpi.next')} value={main || '–'} sub={next != null ? nextText : t('dae.kpi.noNext')} data-kpi="next"
+          tip={next != null ? `${nextText}\n${worthText(nw!)}` : undefined} />
+      </KpiRow>
+    </div>
   )
 }
 
@@ -304,8 +297,8 @@ function BoardSide({ p, d, cls, slot }: { p: PoolPlan; d: DaeData; cls: string; 
   let spent = 0, max = 0
   p.refs.forEach((r, i) => { if (r.slot === slot) { max += p.g.nodes[i].cost; if (set.has(i)) spent += p.g.nodes[i].cost } })
   const hasNow = p.cur.size > p.g.starts.length
-  const delta = (a: number, was: number, pct: boolean) => hasNow && a !== was && <i className={cn('ml-1 text-[10.5px] not-italic', a > was ? 'text-green' : 'text-red')}>{amount(a - was, pct)}</i>
-  const sub = (en: string, de: string) => lang() === 'de' && en !== de && <span className="truncate text-[10.5px] text-dim">{en}</span>
+  const delta = (a: number, was: number, pct: boolean) => hasNow && a !== was && <i className={cn('ml-1 text-[11px] not-italic', a > was ? 'text-green' : 'text-red')}>{amount(a - was, pct)}</i>
+  const sub = (en: string, de: string) => lang() === 'de' && en !== de && <span className="truncate text-[11px] text-dim">{en}</span>
   return (
     <div data-board-side={b.name} className="min-w-0">
       <div className="flex items-baseline justify-between rounded-md border bg-card px-2.5 py-1.5">
@@ -351,7 +344,7 @@ function InGame({ d, cls, ps }: { d: DaeData; cls: string; ps: PoolPlan[] }) {
       <b className="font-semibold">{t('dae.ov.title')}</b>
       <span className="flex min-w-0 flex-1 items-center gap-1.5 text-muted-foreground"><i className={cn('size-1.5 flex-none rounded-full', dot)} /><span className="min-w-0">{text}</span></span>
       {on && st.state !== 'found' && st.state !== 'off' && <button className={SECT_BTN} data-tip={t('dae.ov.dumpTip')} onClick={() => host({ type: 'daeOverlayDump' })}><Save />{t('dae.ov.dump')}</button>}
-      <Chip data-ingame-toggle on={on} onChange={x => save({ overlay: x })} className="h-5 px-1.5 text-[11px]">{t(on ? 'dae.ov.on' : 'dae.ov.off')}</Chip>
+      <Chip data-ingame-toggle on={on} onChange={x => save({ overlay: x })} className="h-6 px-2 text-[11.5px]">{t(on ? 'dae.ov.on' : 'dae.ov.off')}</Chip>
     </div>
   )
 }
@@ -389,8 +382,8 @@ function Boards({ d, cls, ps }: { d: DaeData; cls: string; ps: PoolPlan[] }) {
             className={cn('flex min-w-0 flex-col rounded-md border bg-background/40 px-2 py-1 text-left transition-colors', q ? 'hover:border-gold/40' : 'opacity-45',
               k === sel && 'border-gold/70 bg-gold/[0.07]')}>
             <b className="truncate text-[12px] font-semibold">{b.name}</b>
-            <span className="text-[11px] font-semibold text-gold tabular-nums">{x.spent} / {x.max}</span>
-            <span className="text-[10.5px] text-dim">{q ? t('dae.fromLv', { lv: b.level }) : t('dae.locked', { lv: b.level })}</span>
+            <span className={cn('text-[11px] font-semibold tabular-nums', k === sel ? 'text-gold' : 'text-foreground')}>{x.spent} / {x.max}</span>
+            <span className="text-[11px] text-dim">{q ? t('dae.fromLv', { lv: b.level }) : t('dae.locked', { lv: b.level })}</span>
           </button>
         )
       })}
@@ -444,7 +437,7 @@ function Legend() {
 
 /** Skill name in the UI language; in German with the English name (the one players know) small behind it. */
 function SkillName({ sk }: { sk: Skill }) {
-  return <>{label(sk)}{lang() === 'de' && sk.de !== sk.en && <i className="ml-1 text-[10.5px] text-dim not-italic">{sk.en}</i>}</>
+  return <>{label(sk)}{lang() === 'de' && sk.de !== sk.en && <i className="ml-1 text-[11px] text-dim not-italic">{sk.en}</i>}</>
 }
 
 /** Per skill: used in the rotation, its share, its level without Daevanion, what +1 level gives, the
@@ -471,11 +464,11 @@ function Skills({ d, cls, p }: { d: DaeData; cls: string; p: PoolPlan }) {
             <div className="flex min-w-0 items-center gap-1.5">
               <SkillIcon sk={sk} className="size-6 flex-none" />
               <span className="min-w-0 flex-1 truncate" data-tip={sk.dmg ? t(sk.dmg.kind === 'heal' ? 'dae.skHeal' : 'dae.skDmg', { f: fmt(Math.round(sk.dmg.flat[9] ?? 0)), p: sk.dmg.pct, cd: sk.cd ?? 0 }) : sk.fx ? sk.fx.cols.join(' · ') : t('dae.skNoData')}>
-                <SkillName sk={sk} /> <i className="text-[10.5px] text-dim not-italic">{t(sk.active ? 'dae.active' : 'dae.passive')}</i>
+                <SkillName sk={sk} /> <i className="text-[11px] text-dim not-italic">{t(sk.active ? 'dae.active' : 'dae.passive')}</i>
               </span>
               {sw > 0 && <span className="text-[11px] text-dim tabular-nums" data-tip={t('dae.shareTip')}>{fmt(Math.round(sw * 1000) / 10)} %</span>}
-              <button data-use={used ? 'on' : 'off'} data-tip={t('dae.useTip')} onClick={() => put('use', sk.en, !used)}
-                className={cn(CHIP, 'h-5 px-1.5 text-[11px]', used ? CHIP_ON : 'border-red/50 bg-red/10 text-foreground')}>{t(used ? 'dae.used.on' : 'dae.used.off')}</button>
+              <Chip data-use={used ? 'on' : 'off'} tip={t('dae.useTip')} on={used} onChange={x => put('use', sk.en, x)}
+                className={cn('h-6 px-2 text-[11.5px]', !used && 'border-red/50 bg-red/10 text-foreground')}>{t(used ? 'dae.used.on' : 'dae.used.off')}</Chip>
             </div>
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1" data-tip={t('dae.baseTip')}>
@@ -492,7 +485,7 @@ function Skills({ d, cls, p }: { d: DaeData; cls: string; p: PoolPlan }) {
               {sk.spec && <span className="flex items-center gap-0.5" data-tip={t('dae.specTip')}>
                 {Object.entries(sk.spec).sort((x, y) => +x[0] - +y[0]).map(([lvS, what]) => (
                   <span key={lvS} data-spec={lvS} data-tip={t('dae.lv', { n: lvS }) + ': ' + what.join(' · ')}
-                    className={cn(CHIP, 'h-5 px-1 text-[11px] underline decoration-dotted underline-offset-2', lvNow >= +lvS && CHIP_ON)}>{lvS}</span>
+                    className={cn(BADGE, 'font-normal underline decoration-dotted underline-offset-2', lvNow >= +lvS && 'bg-green/15 text-green')}>{lvS}</span>
                 ))}
               </span>}
               {k > 0 && <span className="ml-auto font-semibold text-green tabular-nums">+{k} → {t('dae.lv', { n: lvNow })}</span>}
@@ -524,8 +517,9 @@ function StatValues({ d, ps, cls }: { d: DaeData; ps: PoolPlan[]; cls: string })
     return (
       <div key={st.key} data-stat={st.key} className={cn(ROW, 'min-h-7 gap-1.5', off && 'opacity-50')}>
         <i className={cn('size-1.5 flex-none rounded-full', CAT_DOT[cat(st.key)])} />
-        <span className="min-w-0 flex-1 truncate">{label(st)} <i className="text-[10.5px] text-dim not-italic">{amount(a, st.pct)}</i></span>
-        {key && <button data-ignore={off ? 'on' : 'off'} data-tip={t('dae.ignoreTip')} onClick={() => toggle(key)} className={cn(CHIP, 'h-5 px-1.5 text-[10.5px]', off ? 'border-red/50 bg-red/10 text-foreground' : 'border-transparent text-dim hover:border-border')}>{t('dae.ignore')}</button>}
+        <span className="min-w-0 flex-1 truncate">{label(st)} <i className="text-[11px] text-dim not-italic">{amount(a, st.pct)}</i></span>
+        {key && <Chip data-ignore={off ? 'on' : 'off'} tip={t('dae.ignoreTip')} on={!!off} onChange={() => toggle(key)}
+          className={cn('h-6 px-2 text-[11.5px]', off ? 'data-[pressed]:border-red/50 data-[pressed]:bg-red/10 data-[pressed]:text-foreground' : 'border-transparent text-dim hover:border-border')}>{t('dae.ignore')}</Chip>}
         {m ? <Vals dmg={m.dmg} ehp={m.ehp} max={max} /> : <i className="w-[9.45rem] flex-none text-right text-[11px] text-dim not-italic">{t('dae.notInModel')}</i>}
       </div>
     )
@@ -570,7 +564,7 @@ function Inputs({ d, cls, mode }: { d: DaeData; cls: string; mode: Mode }) {
           return (
             <div key={k} data-sheet-key={k} className={cn(ROW, 'min-h-7 gap-1.5')}>
               <span className="min-w-0 flex-1 truncate">{t('dae.k.' + k)}</span>
-              <i className="text-[10.5px] text-dim not-italic">{own ? t('dae.src.own') : ct.page[k] != null ? 'plaync' : ct.typical[k] != null ? t('dae.src.typical') : '—'}</i>
+              <i className="text-[11px] text-dim not-italic">{own ? t('dae.src.own') : ct.page[k] != null ? 'plaync' : ct.typical[k] != null ? t('dae.src.typical') : '—'}</i>
               <NumField data-num={k} value={val} onCommit={v => setOwn(k, v)} />
               {own && <button className="text-dim hover:text-gold" data-tip={t('dae.baseReset')} onClick={() => setOwn(k, null)}>↺</button>}
             </div>
@@ -586,7 +580,7 @@ function Inputs({ d, cls, mode }: { d: DaeData; cls: string; mode: Mode }) {
           return (
             <div key={k} data-assume-key={k} className={cn(ROW, 'min-h-7 gap-1.5')}>
               <span className="min-w-0 flex-1 truncate" data-tip={t('dae.a.' + k + 'Tip')}>{t('dae.a.' + k)}</span>
-              <i className="text-[10.5px] text-dim not-italic">{t('dae.src.' + (changed ? 'own' : ASSUME_SRC[k]))}</i>
+              <i className="text-[11px] text-dim not-italic">{t('dae.src.' + (changed ? 'own' : ASSUME_SRC[k]))}</i>
               <NumField data-num={k} value={a[k]} onCommit={v => setA(k, v)} />
               {changed && <button className="text-dim hover:text-gold" data-tip={t('dae.baseReset')} onClick={() => setA(k, null)}>↺</button>}
             </div>
@@ -606,15 +600,15 @@ export function DaevTab({ nav }: { nav?: ReactNode } = {}) {
   if (!d) return <Empty>{t('dae.missing')}</Empty>
   const s = settings(), cls = classId(), c = d.classes[cls], l = live(), ps = plans()
   const hasLive = !!l && l.cls === cls
-  const spent = ps.reduce((n, p) => n + p.spentNow, 0)
   const resetCls = () => {
     const off = { ...s.off }, use = { ...s.use }, assume = { ...s.assume }, ignore = { ...s.ignore }
     delete off[cls]; delete use[cls]; delete assume[cls]; delete ignore[cls]
     save({ off, use, assume, ignore })
   }
+  const p = profile()
   const bar = <>
     {nav}
-    <BarInfo><GameIcon name={classIcon(c)} className={BAR_GAME_ICON} />{hasLive ? t('dae.info', { cls: className(c), spent }) : t('dae.infoNoLive', { cls: className(c) })}</BarInfo>
+    <BarInfo><GameIcon name={classIcon(c)} className={BAR_GAME_ICON} />{[hasLive && p?.name, className(c), hasLive && l ? ago(l.at) : ''].filter(Boolean).join(' · ')}</BarInfo>
     <BarRight>
       {!hasLive && <AppSelect value={cls} tip={t('dae.class')} className="h-6 text-xs"
         options={Object.entries(d.classes).map(([k, x]) => ({ value: k, label: className(x), game: classIcon(x) }))} onChange={v => save({ cls: v })} />}
@@ -626,15 +620,17 @@ export function DaevTab({ nav }: { nav?: ReactNode } = {}) {
   const cur = ps.find(p => p.slots.includes(selectedSlot(c, ps))) ?? pve, w = weights(cls)
   // first visit (no points yet): the setup opens and stays open until the player closes it
   if (!open.some(p => p.total > 0) && U.open?.['dae.setup'] == null) U.open = { ...U.open, 'dae.setup': true }
-  const goalName = PRESETS.find(([, x]) => Math.abs(w.off - x) < 0.001)?.[0] ?? (Math.abs(w.off - (CLASS_DEF[cls]?.off ?? -1)) < 0.001 ? 'class' : 'custom')
+  const respecHint = s.mode === 'respec' && hasLive && cur.spentNow > 0, side = respecHint || advice().length > 0
+  const goalName = s.off[cls] == null && CLASS_DEF[cls]?.off != null ? 'class' : PRESETS.find(([, x]) => Math.abs(w.off - x) < 0.001)?.[0] ?? (Math.abs(w.off - (CLASS_DEF[cls]?.off ?? -1)) < 0.001 ? 'class' : 'custom')
   return (
     <Page w="rows" bar={bar}>
-      <div className="grid items-start @min-[900px]:grid-cols-2 [&>*]:min-w-0">
-        <div>
-          <Summary p={cur} d={d} cls={cls} hasLive={hasLive} />
-          {s.mode === 'respec' && hasLive && cur.spentNow > 0 && <Hint>{rich(t('dae.respecHint'))}</Hint>}
+      {!hasLive && <Hint tone="cyan"><span data-nochar>{rich(t('dae.noCharShort'))} {t(NONE_HINT)}</span></Hint>}
+      <Summary p={cur} d={d} cls={cls} />
+      <div className={cn('grid items-start [&>*]:min-w-0', side && '@min-[900px]:grid-cols-2')}>
+        {side && <div>
+          {respecHint && <Hint>{rich(t('dae.respecHint'))}</Hint>}
           <Advice d={d} cls={cls} />
-        </div>
+        </div>}
         <Panel className="pb-0.5">
           {LIVE && <LiveBlock />}
           <Disclosure id="dae.setup" title={t('dae.sect.setup')}

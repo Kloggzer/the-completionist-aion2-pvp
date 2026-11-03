@@ -85,7 +85,7 @@ test('checklist: own character page -> all characters -> other character -> back
 test('charges: odyle about to overflow shows a red warning with a CTA', async ({ page }) => {
   const at = Date.now()
   await openApp(page, { ui: { tab: 'home', checklist: CHK, charges: { 'odyle|Zweitchar': { v: 545, at } } } })
-  const warn = page.getByRole('button', { name: /Zweitchar:.*Odyle-Energie 545\/560/ })
+  const warn = page.getByRole('button', { name: /Odyle-Energie 545\/560.*Zweitchar/ })
   await expect(warn).toBeVisible()
   await shot(page, 'alerts-home')
   await warn.click()
