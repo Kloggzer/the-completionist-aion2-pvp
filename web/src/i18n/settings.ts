@@ -66,6 +66,7 @@ export default {
     'set.refresh.btn': 'Aktualisieren', 'set.refresh.busy': 'Lädt …',
     'set.credit.title': 'Quellen',
     'set.credit.data': 'Karten-, Mob-, Pet- und Cube-Daten:', 'set.credit.thanks': '– danke!',
+    'set.credit.icons': 'Icons: © NCSOFT, über aion2data.com',
     'set.credit.safe': 'Das Overlay liest keinen Speicher und verändert nichts am Spiel.',
   },
   en: {
@@ -134,6 +135,7 @@ export default {
     'set.refresh.btn': 'Update', 'set.refresh.busy': 'Loading …',
     'set.credit.title': 'Sources',
     'set.credit.data': 'Map, mob, pet and cube data:', 'set.credit.thanks': '– thank you!',
+    'set.credit.icons': 'Icons: © NCSOFT, via aion2data.com',
     'set.credit.safe': 'The overlay reads no memory and changes nothing in the game.',
   },
 }

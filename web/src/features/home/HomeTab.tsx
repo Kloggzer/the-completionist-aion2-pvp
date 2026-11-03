@@ -8,12 +8,12 @@ import { goTab } from '@/core/nav'
 import { fmtDist } from '@/core/geo'
 import { hm, fmt, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
-import { Bar, BarInfo, BellBtn, Disclosure, Kpi, KpiRow, META, More, Note, Page, Panel, ROW, ROW_CLICK, ROW_ICON, ROWS, SUB, TONE, TopN } from '@/components/kit'
+import { Bar, BarInfo, BellBtn, Disclosure, GameIcon, Kpi, KpiRow, META, More, Note, Page, Panel, ROW, ROW_CLICK, ROW_ICON, ROWS, SUB, TONE, TopN } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
 import { soulPets } from '@/features/pets/logic'
 import { allBosses, fbStatus, occOn, occurrences, timerName, timerOn, timerWhere, toggleBossBell, toggleOnce } from '@/features/events/events'
 import { KIND_ICON } from '@/features/events/TimerTab'
-import { CHECK, CHECK_ICON, CHECK_ICON_DEFAULT, TIER, TIER_TONE, charKey, checkCount, checkSet, nextReset, resetIn, type Kind, type Per } from '@/features/progress/checklist'
+import { CHECK, CHECK_GAME, CHECK_ICON, CHECK_ICON_DEFAULT, TIER, TIER_TONE, charKey, checkCount, checkSet, nextReset, resetIn, type Kind, type Per } from '@/features/progress/checklist'
 import { alerts } from '@/features/progress/alerts'
 import { AlertRow } from '@/features/progress/ChargeRows'
 import { achRows, loc } from '@/features/progress/achievements'
@@ -92,7 +92,7 @@ function OpenToday({ all }: { all: ReturnType<typeof checkItems> }) {
           const I = CHECK_ICON[o.id] || CHECK_ICON_DEFAULT, tier = TIER[o.id] ?? 2
           return (
             <div key={o.id} className={ROW} data-tip={[t('progress.sect.' + o.kind), t('chk.tier.' + tier), t('progress.tip.' + o.id)].filter(Boolean).join(' · ')}>
-              <span className={cn(ROW_ICON, TIER_TONE[tier] === 'gold' ? 'text-gold' : TIER_TONE[tier] === 'cyan' ? 'text-cyan' : 'text-dim')}><I /></span>
+              <span className={cn(ROW_ICON, TIER_TONE[tier] === 'gold' ? 'text-gold' : TIER_TONE[tier] === 'cyan' ? 'text-cyan' : 'text-dim')}><GameIcon name={CHECK_GAME[o.id]} fallback={I} className="size-[18px]" fallbackClass="size-4" /></span>
               <span className="min-w-0 flex-1 truncate">{t('progress.item.' + o.id)}</span>
               <span className={META}>{o.c}/{o.max}</span>
               <button onClick={() => checkSet(o.id, o.per, o.kind, o.max, o.c + 1)} data-tip={t('home.plus')}

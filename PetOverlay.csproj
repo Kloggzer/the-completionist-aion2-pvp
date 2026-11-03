@@ -40,6 +40,8 @@
     <ItemGroup>
       <_WebUi Include="ui\*" />
       <EmbeddedResource Include="@(_WebUi)" LogicalName="ui/%(_WebUi.Filename)%(_WebUi.Extension)" />
+      <_WebIcons Include="ui\icons\*" />
+      <EmbeddedResource Include="@(_WebIcons)" LogicalName="ui/icons/%(_WebIcons.Filename)%(_WebIcons.Extension)" />
     </ItemGroup>
   </Target>
 

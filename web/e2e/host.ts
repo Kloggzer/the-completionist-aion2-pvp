@@ -163,5 +163,7 @@ export async function goPage(page: Page, key: string) {
   const k = PAGE_KEY[key] ?? key, b = navBtn(page, k)
   if (await b.count()) return b.click()
   await page.locator(`[data-area="${AREA_OF[k]}"]:visible`).click()
+  // the area's page switch renders after the click (an area with one page has none)
+  await navBtn(page, k).waitFor({ timeout: 3000 }).catch(() => {})
   if (await navBtn(page, k).count()) await navBtn(page, k).click()
 }

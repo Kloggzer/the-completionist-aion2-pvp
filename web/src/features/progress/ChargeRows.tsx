@@ -13,6 +13,8 @@ export const LIGHT_DOT: Record<Light | 'red' | 'yellow', string> = {
   red: 'bg-red shadow-[0_0_6px_var(--red)]', yellow: 'bg-gold', green: 'bg-green', none: 'bg-dim',
 }
 const CHARGE_ICON: Record<string, LucideIcon> = { odyle: Zap, nightmare: Moon, shugo: KeyRound, invasion: Key }
+/** Game icon per charge (public/icons); the lucide icon is the fallback. */
+const CHARGE_GAME: Record<string, string> = { odyle: 'odyle', nightmare: 'nightmare', shugo: 'shugo', invasion: 'invasion' }
 const LIGHT_TONE: Record<Light, BoxTone> = { red: 'red', yellow: 'gold', green: 'green', none: 'dim' }
 const LIGHT_TXT: Record<Light, string> = { red: TONE.bad, yellow: TONE.warn, green: 'text-muted-foreground', none: 'text-muted-foreground' }
 
@@ -26,7 +28,7 @@ function ChargeTile({ d, char }: { d: ChargeDef; char?: string }) {
   const at = chargeReadAt(d, char), age = at == null ? 0 : Date.now() - at, old = age > 12 * 3600e3
   return (
     <div data-charge={d.id} data-tip={t('charge.tip.' + d.id)} className={cn(TILE, TILE_P, 'pr-0', ACCENT[light])}>
-      <TileIcon icon={CHARGE_ICON[d.id]} tone={LIGHT_TONE[light]} tip={light === 'red' || light === 'yellow' ? t('alert.' + light) : undefined} />
+      <TileIcon icon={CHARGE_ICON[d.id]} game={CHARGE_GAME[d.id]} tone={LIGHT_TONE[light]} tip={light === 'red' || light === 'yellow' ? t('alert.' + light) : undefined} />
       <div className={T_BODY}>
         <div className="flex min-w-0 items-center gap-1.5"><span className={T_TITLE}>{t('charge.' + d.id)}</span>{chargeAuto(d, char) && <AutoBadge tip={t('charge.autoTip')} />}</div>
         <div className={cn(T_SUB, LIGHT_TXT[light])}>

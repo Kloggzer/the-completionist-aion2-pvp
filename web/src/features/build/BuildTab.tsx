@@ -96,7 +96,7 @@ function StatsPage() {
         <Kpi icon={TrendingUp} label={t('build.kpi.best')} value={best ? gainPct(md.marg[best] * unit(best)) : '–'} tone={best && md.marg[best] > 0.005 ? 'ok' : undefined} data-kpi="best"
           sub={best ? `${t('build.k.' + best)} ${step(best)}` : undefined} tip={best ? t('build.k.' + best) : undefined} />
         <Kpi icon={Shirt} label={t('build.kpi.gear')} value={s0 ? ago(s0.at) : '–'} tone={s0 && Date.now() - s0.at > OLD ? 'warn' : undefined} data-kpi="gear"
-          sub={s0 ? t('build.gearN', { n: s0.items.length }) : t('build.kpi.noGear')} />
+          sub={s0 ? t(s0.items.length === 1 ? 'build.gearN1' : 'build.gearN', { n: s0.items.length }) : t('build.kpi.noGear')} />
       </KpiRow>
       <Sources />
       <Columns>
@@ -193,7 +193,7 @@ function GearPage() {
         <Kpi icon={ArrowRightLeft} label={t('build.kpi.swap')} value={swap ? gainPct(swap.c.gain) : '–'} tone={swap ? 'ok' : undefined} data-kpi="swap"
           sub={swap ? `${swap.slot} · ${swap.c.row[1]}` : gearRows().length ? t('build.noCand') : t('build.noGearDb')}
           tip={swap ? swap.c.row[1] : undefined} onClick={swap ? () => setBuild({ cmp: swap.slot }) : undefined} />
-        <Kpi icon={Package} label={t('build.kpi.gear')} value={t('build.gearN', { n: s0.items.length })} sub={ago(s0.at)}
+        <Kpi icon={Package} label={t('build.kpi.gear')} value={t(s0.items.length === 1 ? 'build.gearN1' : 'build.gearN', { n: s0.items.length })} sub={ago(s0.at)}
           tone={Date.now() - s0.at > OLD ? 'warn' : undefined} data-kpi="gear" />
       </KpiRow>
       <Columns>

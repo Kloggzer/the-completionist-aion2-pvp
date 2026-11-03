@@ -361,6 +361,7 @@ export function Data() {
     <Group title={t('set.credit.title')}>
       <div className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">
         {t('set.credit.data')} <a href="https://aion2maps.com/" target="_blank" rel="noreferrer" className="text-gold hover:underline">aion2maps.com</a> {t('set.credit.thanks')}<br />
+        <span data-credit-icons>{t('set.credit.icons')}</span><br />
         {t('set.credit.safe')}
       </div>
     </Group>

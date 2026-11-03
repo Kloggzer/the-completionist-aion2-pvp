@@ -5,10 +5,10 @@ import { host } from '@/core/host'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
 import { Slider } from '@/components/ui/slider'
-import { Bar, BarInfo, BarRight, CHIP, CHIP_ON, Chip, Disclosure, Empty, Foot, Hint, Note, NumField, Page, Panel, PanelTabs, ROW, ROWS, SECT_BTN, Sect, Seg, Stepper, TopN, rich } from '@/components/kit'
+import { Bar, BarInfo, BarRight, BAR_GAME_ICON, GameIcon, CHIP, CHIP_ON, Chip, Disclosure, Empty, Foot, Hint, Note, NumField, Page, Panel, PanelTabs, ROW, ROWS, SECT_BTN, Sect, Seg, Stepper, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import {
-  LIVE, NONE_HINT, advice, ago, logHits, setLog, breakdown, charKey, charTotals, classId, className, data, forgetLive, live, loadLive, loading,
+  LIVE, NONE_HINT, advice, ago, logHits, setLog, breakdown, charKey, charTotals, classIcon, classId, className, data, forgetLive, live, loadLive, loading,
   marginals, nodeWorth, numbers, overlayBoards, overlayState, pinKey, plans, POOL_KEY, profile, save, settings, skillBases, skillMarginals, toggleDone, togglePin, totals, weights, type PoolPlan,
 } from './daevanion'
 import { ASSUME, ASSUME_SRC, DAE_KEY, OFF_KEYS, type Assume, type Key, type Mode } from './model'
@@ -614,10 +614,10 @@ export function DaevTab({ nav }: { nav?: ReactNode } = {}) {
   }
   const bar = <>
     {nav}
-    <BarInfo>{hasLive ? t('dae.info', { cls: className(c), spent }) : t('dae.infoNoLive', { cls: className(c) })}</BarInfo>
+    <BarInfo><GameIcon name={classIcon(c)} className={BAR_GAME_ICON} />{hasLive ? t('dae.info', { cls: className(c), spent }) : t('dae.infoNoLive', { cls: className(c) })}</BarInfo>
     <BarRight>
       {!hasLive && <AppSelect value={cls} tip={t('dae.class')} className="h-6 text-xs"
-        options={Object.entries(d.classes).map(([k, x]) => ({ value: k, label: className(x) }))} onChange={v => save({ cls: v })} />}
+        options={Object.entries(d.classes).map(([k, x]) => ({ value: k, label: className(x), game: classIcon(x) }))} onChange={v => save({ cls: v })} />}
       <Seg value={s.mode as 'respec' | 'add'} onChange={m => save({ mode: m })} item={m => ({ 'data-mode': m })}
         options={(['respec', 'add'] as const).map(m => ({ value: m, label: t('dae.mode.' + m), tip: t(`dae.mode.${m}Tip`) }))} />
     </BarRight>

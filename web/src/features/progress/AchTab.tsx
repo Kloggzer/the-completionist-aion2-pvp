@@ -7,7 +7,7 @@ import { t, fmt } from '@/core/i18n'
 import { cn } from '@/lib/utils'
 import { ACH_BANDS, achFaction, achRows, loc, setAch, type AchRow } from './achievements'
 import { AppSelect } from '@/components/AppSelect'
-import { Bar, BarInfo, BarRight, Chip, Disclosure, Empty, Hint, Kpi, KpiRow, Page, Panel, Seg, Stepper, TopN, rich, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE, TILE_CLICK, TILE_P, TILE_SEL, TileIcon, grid, type BoxTone } from '@/components/kit'
+import { Bar, BarInfo, BarRight, Chip, Disclosure, Empty, GameIcon, Hint, Kpi, KpiRow, Page, Panel, Seg, Stepper, TopN, rich, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE, TILE_CLICK, TILE_P, TILE_SEL, TileIcon, grid, type BoxTone } from '@/components/kit'
 
 const more = (k: number) => t('common.moreN', { n: k })
 /** Share of the next tier from which an achievement counts as "close to done". */
@@ -89,7 +89,7 @@ function Tile({ r }: { r: AchRow }) {
             <span>{x ? <><b className="font-semibold text-foreground">{fmt(r.val)}</b>/{fmt(x.goal)}</> : <Check className="size-3.5 text-green" aria-label={t('progress.band.done')} />}</span>
             <span className="flex min-w-0 items-center gap-1.5">
               {title && <Award className="size-3.5 flex-none text-gold" aria-label={t('progress.titleReward')} />}
-              {!!kina && <span className="flex flex-none items-center gap-0.5 whitespace-nowrap text-dim"><Coins className="size-3.5" />{kinahShort(kina)}</span>}
+              {!!kina && <span className="flex flex-none items-center gap-0.5 whitespace-nowrap text-dim"><GameIcon name="kinah" fallback={Coins} className="size-3.5" />{kinahShort(kina)}</span>}
               <Pips n={a.tiers.length} reached={r.reached} />
             </span>
           </div>
@@ -111,7 +111,7 @@ function Tile({ r }: { r: AchRow }) {
                   </span>
                   {loc(y, 'objective')} <span className="text-foreground tabular-nums">{fmt(y.goal)}</span>
                   {y.rewards?.title && <em className="flex items-center gap-1 text-gold not-italic"><Award className="size-3.5" /> {y.rewards.title.name}</em>}
-                  {y.rewards?.kina ? <span className="flex items-center gap-0.5 text-dim"><Coins className="size-3.5" />{t('ach.kinah', { n: fmt(y.rewards.kina) })}</span> : null}
+                  {y.rewards?.kina ? <span className="flex items-center gap-0.5 text-dim"><GameIcon name="kinah" fallback={Coins} className="size-3.5" />{t('ach.kinah', { n: fmt(y.rewards.kina) })}</span> : null}
                 </div>
               )
             })}
@@ -174,7 +174,7 @@ export function AchTab() {
       <KpiRow>
         <Kpi icon={ListTodo} label={t('ach.kpi.open')} value={fmt(open.length)} sub={cat ? t('progress.cat.' + cat) : t('ach.kpi.openSub')} data-kpi="open" />
         <Kpi icon={Hourglass} label={t('ach.kpi.close')} value={fmt(close)} sub={t('ach.kpi.closeSub', { n: Math.round(CLOSE * 100) })} tone={close ? 'ok' : undefined} data-kpi="close" />
-        <Kpi icon={Award} label={t('ach.kpi.titles')} value={fmt(titles)} sub={t('ach.kpi.titlesSub')} tone={titles ? 'warn' : undefined} data-kpi="titles" />
+        <Kpi icon={Award} label={t('ach.kpi.titles')} value={fmt(titles)} sub={t('ach.kpi.titlesSub')} data-kpi="titles" />
         <Kpi icon={Trophy} label={t('ach.kpi.done')} value={`${fmt(done)} / ${fmt(rows.length)}`} sub={t('ach.kpi.doneSub', { n: rows.length ? Math.round(done / rows.length * 100) : 0 })} data-kpi="done" />
       </KpiRow>
       {!open.length && !U.achDone && <Panel><Empty>{t('ach.allDone')}</Empty></Panel>}

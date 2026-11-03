@@ -9,7 +9,7 @@ import { S, U, V, bump, manual, useApp } from '@/core/state'
 import { t, hm } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CHECK, CHECK_ICON, lastReset, CHECK_ICON_DEFAULT, TIER, TIER_TONE, resetIn, checkAuto, checkCount, checkSet, characters, nextReset, progressOf, removeChar, setAll, addChar, renameChar, selectChar, type Kind, type Per } from './checklist'
+import { CHECK, CHECK_GAME, CHECK_ICON, lastReset, CHECK_ICON_DEFAULT, TIER, TIER_TONE, resetIn, checkAuto, checkCount, checkSet, characters, nextReset, progressOf, removeChar, setAll, addChar, renameChar, selectChar, type Kind, type Per } from './checklist'
 import { AppSelect } from '@/components/AppSelect'
 import { ACCENT, AutoBadge, BOX, Bar, BarInfo, BarRight, Columns, HowTo, Kpi, KpiRow, META, Note, Page, Panel, ROW, ROW_CLICK, ROWS, SECT_BTN, SUB, Sect, StepCol, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_TITLE, TILE, TILE_P, TONE, TextEntry, TileIcon, TopN, grid } from '@/components/kit'
 import { alerts, ownerAlertsOf, ownerLevel } from './alerts'
@@ -29,7 +29,7 @@ function Entry({ id, max, per, kind, char }: { id: string; max: number; per: Per
   const tip = t('progress.item.' + id) + ' – ' + t('progress.tip.' + id) + (per === 'server' ? t('progress.perServer') : '') + (auto ? t('progress.isAuto') : '')
   return (
     <div data-check={id} data-done={full || undefined} data-tip={tip} className={cn(TILE, TILE_P, 'pr-0', full && 'border-green/30')}>
-      <TileIcon icon={CHECK_ICON[id] || CHECK_ICON_DEFAULT} tone={full ? 'green' : TIER_TONE[tier]} tip={t('chk.tier.' + tier)} />
+      <TileIcon icon={CHECK_ICON[id] || CHECK_ICON_DEFAULT} game={CHECK_GAME[id]} tone={full ? 'green' : TIER_TONE[tier]} tip={t('chk.tier.' + tier)} />
       <div className={T_BODY}>
         <span className={cn(T_TITLE, full && TONE.ok)}>{t('progress.item.' + id)}</span>
         <div className={T_FOOT}>

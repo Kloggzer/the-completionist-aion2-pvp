@@ -137,7 +137,10 @@ modifiers on tokens are fine (`bg-gold/10`, `border-foreground/10`).
 
 ## Icons
 
-- lucide-react only. No emoji or text glyphs as icons (`⛏`, `☠`, `🎯`, `☑`, `●`). `✓` becomes `<Check />`.
+- lucide-react, plus real game icons where the game has a fitting one (checklist entries, charges, Kinah, classes,
+  arcana cards): `GameIcon` / `TileIcon game` with `public/icons/<key>.webp` (`tools/fetch_icons.py`, © NCSOFT) and the
+  lucide icon as fallback. Game icons keep their own colours (game art); the tile box keeps the tone. Same sizes as lucide.
+  No emoji or text glyphs as icons (`⛏`, `☠`, `🎯`, `☑`, `●`). `✓` becomes `<Check />`.
 - Sizes: 14 px (`size-3.5`) in rows, chips, bars and Kpi labels. 16 px (`size-4`) in the sidebar and `ROW_ICON`.
   18 px (`size-4.5`) in bell and step columns and page heads. 28 px stroke 1.5 in tile icon columns (`TileIcon`).
 - Icons inherit the text colour. Tint only through a tone (`text-gold`, `BOX.cyan`).

@@ -5,6 +5,7 @@
 // Radius: rounded-lg for controls and tiles, rounded-xl for panels. Colours only via tokens (index.css: light "Aion
 // Ember", dark "Night Indigo"; `gold` = the accent). Controls never wrap (index.css): long labels truncate.
 // Icons: 14 px (size-3.5) in rows and bars, 28 px / stroke 1.5 in tile icon columns, 18 px in bell / step columns.
+// Game icons (GameIcon, public/icons) where the game has a fitting one, with the lucide icon as fallback.
 //
 // Responsive system (container queries, never the viewport: the overlay can be any size):
 // - Every tab renders inside <Page>: full width and dense at overlay sizes, centred with a max width on large
@@ -183,13 +184,30 @@ export function Foot({ children }: { children: ReactNode }) {
   return <p className="px-3 pt-2.5 text-[11.5px] leading-normal text-dim">{children}</p>
 }
 
-/** Icon column of a tile (same size as a portrait), tinted. */
-export function TileIcon({ icon: I, tone, tip, className, children }: { icon?: LucideIcon; tone: BoxTone; tip?: string; className?: string; children?: ReactNode }) {
+/** Icon column of a tile (same size as a portrait), tinted. `game`: a game icon instead of `icon` (`icon` is its fallback). */
+export function TileIcon({ icon: I, game, tone, tip, className, children }: { icon?: LucideIcon; game?: string; tone: BoxTone; tip?: string; className?: string; children?: ReactNode }) {
   return (
     <span data-tip={tip} className={cn(T_PORTRAIT, 'relative grid flex-none place-items-center rounded-sm border', BOX[tone], className)}>
-      {I && <I className="size-7" strokeWidth={1.5} />}{children}
+      {game ? <GameIcon name={game} fallback={I} className="size-8 @min-[1300px]:size-9" fallbackClass="size-7" stroke={1.5} />
+        : I && <I className="size-7" strokeWidth={1.5} />}{children}
     </span>
   )
+}
+
+/** A game icon at the start of a BarInfo text (16 px, on the text line). */
+export const BAR_GAME_ICON = 'mr-1 inline-block size-4 align-[-4px]'
+
+const gameIconBad = new Set<string>()
+/** AION 2 icon from web/public/icons/<name>.webp (tools/fetch_icons.py, © NCSOFT). Game art keeps its own colours.
+ *  Falls back to the lucide `fallback` when the file is missing or fails to load.
+ *  Size via `className` (`size-3.5` in rows, like a lucide icon); `fallbackClass` / `stroke` style the fallback. */
+export function GameIcon({ name, fallback: I, className, fallbackClass, stroke, tip, alt = '' }: {
+  name?: string; fallback?: LucideIcon; className?: string; fallbackClass?: string; stroke?: number; tip?: string; alt?: string
+}) {
+  const [, set] = useState(0)
+  if (!name || gameIconBad.has(name)) return I ? <I className={cn('flex-none', fallbackClass ?? className)} strokeWidth={stroke} data-tip={tip} aria-label={alt || undefined} /> : null
+  return <img src={`icons/${name}.webp`} alt={alt} data-tip={tip} data-game-icon={name} draggable={false}
+    onError={() => { gameIconBad.add(name); set(n => n + 1) }} className={cn('block flex-none object-contain select-none', className)} />
 }
 
 /** "A" badge: the value is counted / read automatically from the game. */

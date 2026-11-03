@@ -1,16 +1,21 @@
 import { useEffect } from 'react'
+import { Layers } from 'lucide-react'
 import { U, useApp } from '@/core/state'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
-import { BADGE, BarInfo, BarRight, CHIP, CHIP_ON, Chip, Columns, Disclosure, Empty, Foot, Hint, Note, Page, Panel, ROW, ROWS, Sect, Seg, TopN, rich } from '@/components/kit'
+import { BADGE, BarInfo, BarRight, BAR_GAME_ICON, GameIcon, CHIP, CHIP_ON, Chip, Columns, Disclosure, Empty, Foot, Hint, Note, Page, Panel, ROW, ROWS, Sect, Seg, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
-import { charKey, className, data as daeData } from '@/features/daevanion/daevanion'
+import { charKey, classIcon, className, data as daeData } from '@/features/daevanion/daevanion'
 import { advise, refetchCards } from './advise'
 import { GRADES, KINDS, arcClass, arcData, arcSave, arcSettings, arcSkills, classId, skillName, type ArcData, type ArcSkill, type Kind } from './arcana'
 
 const TIER_DOT = ['bg-red/70', 'bg-dim/60', 'bg-cyan/80', 'bg-gold'] as const
 const TIER_TEXT = ['text-dim line-through', 'text-muted-foreground', 'text-foreground', 'text-gold'] as const
 const GRADE_TEXT: Record<string, string> = { Common: 'text-muted-foreground', Rare: 'text-green', Epic: 'text-purple', Unique: 'text-gold' }
+/** Card frame in the grade colour (token version of the game's grade colours). */
+const GRADE_BORDER: Record<string, string> = { Common: 'border-foreground/25', Rare: 'border-green/70', Epic: 'border-purple/70', Unique: 'border-gold/80' }
+/** Card art of a kind (public/icons, the same for every grade): the magic set has its own picture, else the vigor set's. */
+const cardArt = (kind: string, set?: string) => `arcana-${kind.toLowerCase()}-${/magi/i.test(set ?? '') ? 'defenceset2' : 'pveset2'}`
 const pct = (v: number) => fmt(v >= 10 ? Math.round(v) : Math.round(v * 10) / 10) + ' %'
 const kindName = (k: string) => t('arc.kind.' + k)
 const gradeName = (g: string) => t('arc.grade.' + g)
@@ -108,10 +113,12 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
       <div className={ROWS}>
         {a.slots.map(s => (
           <div key={s.kind} data-arc-slot={s.kind} className={cn(ROW, 'gap-1.5')}>
+            <GameIcon name={cardArt(s.kind, s.card?.set?.name)} fallback={Layers} className={cn('size-6 rounded-[3px] border', s.card ? GRADE_BORDER[s.card.grade] : 'border-foreground/10 opacity-40 grayscale')}
+              fallbackClass="size-4 text-dim" tip={s.card ? `${gradeName(s.card.grade)} ${s.card.name}` : undefined} />
             <span className="w-[74px] min-w-0 flex-[0_1_auto] truncate text-muted-foreground">{kindName(s.kind)}</span>
             {s.card ? <>
               <span className={cn('w-20 min-w-0 flex-[0_1_auto] truncate text-[11.5px]', GRADE_TEXT[s.card.grade])}>{gradeName(s.card.grade)} +{s.card.enchant}</span>
-              <span className="min-w-0 flex-1 truncate text-[11.5px]" data-tip={s.card.set ? t('arc.adv.set', { s: s.card.set.name, n: s.card.set.count }) : undefined}>
+              <span className="min-w-0 flex-1 truncate text-[11.5px]" data-tip={s.card.set ? t(s.card.set.count === 1 ? 'arc.adv.set1' : 'arc.adv.set', { s: s.card.set.name, n: s.card.set.count }) : undefined}>
                 {s.card.skills.map(x => `${enName(cls, x.name)} +${x.level}`).join(' · ')}
               </span>
             </> : <span className="min-w-0 flex-1 truncate text-dim">{t('arc.adv.empty')}</span>}
@@ -160,10 +167,10 @@ export function ArcanaTab() {
   const all = arcSkills(d, cls), kind = s.kind as Kind | 'all', guide = !!s.guide
   const shown = all.filter(x => (kind === 'all' || kind === 'Chalice' || x.kind === kind) && (!guide || x.tier >= 2))
   const bar = <>
-    <BarInfo>{t('arc.info', { cls: className(dae.classes[cls]), n: all.length })}</BarInfo>
+    <BarInfo><GameIcon name={classIcon(dae.classes[cls])} className={BAR_GAME_ICON} />{t('arc.info', { cls: className(dae.classes[cls]), n: all.length })}</BarInfo>
     <BarRight>
       <AppSelect value={cls} tip={t('arc.class')} className="h-6 text-xs"
-        options={Object.entries(dae.classes).filter(([k]) => arcClass(d, k)).map(([k, x]) => ({ value: k, label: className(x) }))} onChange={v => arcSave({ cls: v })} />
+        options={Object.entries(dae.classes).filter(([k]) => arcClass(d, k)).map(([k, x]) => ({ value: k, label: className(x), game: classIcon(x) }))} onChange={v => arcSave({ cls: v })} />
     </BarRight>
   </>
   // the filters only change the lists in the disclosure: they sit in its header and show while it is open. Six kinds

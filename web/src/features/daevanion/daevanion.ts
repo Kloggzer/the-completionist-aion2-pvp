@@ -66,6 +66,8 @@ export function classId(): string {
   return hit ? hit[0] : '1'
 }
 export const className = (c: ClassData) => (lang() === 'de' ? c.de : c.en)
+/** Game icon of a class (public/icons/class-<english name>.webp). */
+export const classIcon = (c: ClassData | undefined) => c && 'class-' + c.en.toLowerCase()
 export const weights = (cls: string): Weights => {
   const s = settings()
   return {

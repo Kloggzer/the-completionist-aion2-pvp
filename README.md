@@ -104,6 +104,9 @@ UI in `web/src` (features per tab), analysis tools for captures in `tools/`.
 Map (terrain voxels), mob, pet, cube, portrait and instance data: **[aion2maps.com](https://aion2maps.com/)** – thank you!
 Achievement data: [aion2.app](https://aion2.app/). Packet framing based on SkeeveAN/Aion-DPS-Meter (MIT).
 Icons: [Lucide](https://lucide.dev/) (ISC).
+Game icons and art © NCSOFT (AION 2), from NCSOFT's public asset CDN (assets.playnccdn.com); icon file names via
+[aion2data.com](https://aion2data.com/). Unofficial fan tool, not affiliated with NCSOFT. They are bundled in
+`web/public/icons` (regenerate with `python tools/fetch_icons.py`).
 
 This is a fan project and not affiliated with NCSOFT. Aion is a trademark of NCSOFT Corporation.
 

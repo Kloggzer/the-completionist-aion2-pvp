@@ -60,7 +60,7 @@ test('Build tab: measured fight, stat values, gear and upgrades', async ({ page 
   await expect(page.locator('[data-marg]')).toContainText('Kampftempo')
   // gear from the character page
   await page.locator('[data-load-gear]').click()
-  await expect(page.getByText(/1 Teile/)).toBeVisible()
+  await expect(page.getByText(/^1 Teil$/)).toBeVisible()
   await goPage(page, 'Ausrüstung')
   // every piece sits in the closed "Alle Teile" disclosure
   await page.locator('[data-disclosure="build.items"] button[aria-expanded]').click()

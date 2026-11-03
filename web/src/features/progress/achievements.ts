@@ -5,6 +5,8 @@ import { host } from '@/core/host'
 import { t, lang } from '@/core/i18n'
 import { toast } from '@/core/toast'
 import { refreshBaselines } from './checklist'
+import { P } from '@/features/pvp'
+import { raceOfServer } from '@/features/pvp/logic'
 
 /** [difficulty below, i18n key]; band index 3 = done. */
 export const ACH_BANDS: [number, string][] = [[35, 'progress.band.easy'], [65, 'progress.band.medium'], [101, 'progress.band.hard']]
@@ -24,17 +26,24 @@ export function achRows(): AchRow[] {
   const st = S.state.ach || {}
   // Faction from the ids the game sent (Asmodian 4xx / Elyos 3xx); manual mode: chosen in the tab's bar.
   const fac = manual() && U.faction ? (U.faction === 'all' ? null : U.faction) : achFaction()
-  return G.ach.filter((a: Any) => !fac || a.faction === fac).map((a: Any) => {
+  // faction not known yet (automatic mode, before the login): a twin with the same name as its Elyos mirror is listed
+  // once; twins with their own name (faction regions) stay. Manual mode keeps both: there the player picks the faction.
+  const twin = !fac && !manual() ? new Set(G.ach.filter((a: Any) => a.faction === 'Asmodian' && G.achById.get(a.mirror_id)?.name_de === a.name_de).map((a: Any) => a.id)) : null
+  return G.ach.filter((a: Any) => fac ? a.faction === fac : !twin?.has(a.id)).map((a: Any) => {
     const val = st[a.id]?.[0] ?? 0, reached = a.tiers.filter((x: Any) => val >= x.goal).length, next = a.tiers[reached] || null
     const prev = reached ? a.tiers[reached - 1].goal : 0
     return { a, val, reached, next, done: !next, frac: next ? Math.min(1, (val - prev) / Math.max(1, next.goal - prev)) : 1, diff: next ? next.difficulty : 101 }
   })
 }
 
-/** Faction known from the progress entries (null: none yet). */
+/** Faction known from the progress entries, else from the own character the game sent (race 1 Elyos, 2 Asmodian);
+ *  null: neither yet (both factions' twins are listed then). */
 export function achFaction(): string | null {
   const ids = Object.keys(S.state.ach || {})
-  return ids.some(k => k[0] === '4') ? 'Asmodian' : ids.some(k => k[0] === '3') ? 'Elyos' : null
+  if (ids.some(k => k[0] === '4')) return 'Asmodian'
+  if (ids.some(k => k[0] === '3')) return 'Elyos'
+  const race = P.own?.race || raceOfServer(P.own?.srv || 0)
+  return race === 1 ? 'Elyos' : race === 2 ? 'Asmodian' : null
 }
 
 /** Manual mode: set an achievement's counter (the tier follows from the goals). The host stores it like a game
