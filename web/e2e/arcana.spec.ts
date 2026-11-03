@@ -20,12 +20,14 @@ test('class skills with their card, card blocks, drops and the filters', async (
   await expect(page.locator('[data-arc-skill]').first()).toHaveClass(/gap-1.5/)
   await expect(page.locator('[data-card]')).toHaveCount(5)
   await expect(page.locator('[data-drops]')).toHaveCount(2)
-  // card filter: only the Bell's passives
+  // card filter (a dropdown: six kinds): only the Bell's passives
+  await page.locator('[data-kind-select] button').click()
   await page.locator('[data-kind-filter="Bell"]').click()
   await expect(page.locator('[data-card]')).toHaveCount(1)
   const n = await page.locator('[data-arc-skill]').count()
   expect(n).toBe(5)
   // guide filter: only core / good skills
+  await page.locator('[data-kind-select] button').click()
   await page.locator('[data-kind-filter="all"]').click()
   await page.locator('[data-guide-filter]').click()
   const g = await page.locator('[data-arc-skill]').count()

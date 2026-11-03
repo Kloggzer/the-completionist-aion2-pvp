@@ -15,8 +15,10 @@ const Label = ({ o }: { o: Option }) => o.icon || o.game
   </span>
   : <>{o.label}</>
 
-export function AppSelect({ value, options, onChange, tip, className, size = 'sm' }: {
+/** `item`: data attributes per option (test hooks on the list items). */
+export function AppSelect({ value, options, onChange, tip, className, size = 'sm', item }: {
   value: string; options: Option[]; onChange: (v: string) => void; tip?: string; className?: string; size?: 'sm' | 'default'
+  item?: (v: string) => Record<`data-${string}`, string>
 }) {
   const icons = options.some(o => o.icon || o.game)
   return (
@@ -25,7 +27,7 @@ export function AppSelect({ value, options, onChange, tip, className, size = 'sm
         {icons ? <SelectValue>{(v: unknown) => { const o = options.find(x => x.value === v); return o ? <Label o={o} /> : null }}</SelectValue> : <SelectValue />}
       </SelectTrigger>
       <SelectContent alignItemWithTrigger={false} className="max-h-80">
-        {options.map(o => <SelectItem key={o.value} value={o.value}><Label o={o} /></SelectItem>)}
+        {options.map(o => <SelectItem key={o.value} value={o.value} {...item?.(o.value)}><Label o={o} /></SelectItem>)}
       </SelectContent>
     </Select>
   )

@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
-import { Layers } from 'lucide-react'
+import { Layers, MapPin, Swords, Wine } from 'lucide-react'
+import { goTab } from '@/core/nav'
 import { U, useApp } from '@/core/state'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
-import { BADGE, BarInfo, BarRight, BAR_GAME_ICON, GameIcon, CHIP, CHIP_ON, Chip, Columns, Disclosure, Empty, Foot, Hint, Note, Page, Panel, ROW, ROWS, Sect, Seg, TopN, rich } from '@/components/kit'
+import { BADGE, BarInfo, BarRight, BAR_GAME_ICON, GameIcon, Chip, Columns, Disclosure, Empty, Foot, Hint, HowTo, Kpi, KpiRow, Note, Page, Panel, ROW, ROWS, Sect, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { charKey, classIcon, className, data as daeData, live } from '@/features/daevanion/daevanion'
 import { advise, refetchCards } from './advise'
@@ -25,7 +26,7 @@ function SkillRow({ s }: { s: ArcSkill }) {
   return (
     <div data-arc-skill={s.en} className={cn(ROW, 'gap-1.5')} data-tip={(lang() === 'de' ? s.en + '\n' : '') + tip}>
       <span className={cn('size-2 flex-none rounded-full', TIER_DOT[s.tier])} data-tip={t('arc.tier.' + s.tier)} />
-      <span className={cn('min-w-0 flex-1 truncate', TIER_TEXT[s.tier])}>{skillName(s)} <i className="text-[10.5px] text-dim not-italic">{t(s.active ? 'arc.active' : 'arc.passive')}</i></span>
+      <span className={cn('min-w-0 flex-1 truncate', TIER_TEXT[s.tier])}>{skillName(s)} <i className="text-[11px] text-dim not-italic">{t(s.active ? 'arc.active' : 'arc.passive')}</i></span>
       {s.need > 0 && <span className={cn(BADGE, 'text-gold')} data-tip={t('arc.needTip')}>{t('arc.need', { n: s.need })}</span>}
       <span data-kind={s.kind} className={cn(BADGE, 'w-[74px] text-center')}>{kindName(s.kind)}</span>
       <span className="w-12 flex-none text-right font-semibold text-gold tabular-nums" data-tip={t('arc.uniqueTip')}>{pct(s.chance[3])}</span>
@@ -46,7 +47,7 @@ function CardBlock({ d, k, skills }: { d: ArcData; k: Kind; skills: ArcSkill[] }
     </Note>
     <Note>{c.main.join(' · ')}{c.drops.length > 0 && <> · <span className="text-cyan">{c.drops.join(', ')}</span></>}</Note>
     {k !== 'Chalice' && <div className="flex flex-wrap gap-1 px-2.5 pb-1.5">
-      {on.map(s => <span key={s.en} className={cn(CHIP, 'h-5 px-1.5 text-[11px]', s.tier >= 2 && CHIP_ON, TIER_TEXT[s.tier])}>{skillName(s)}{s.need > 0 && <i className="text-gold not-italic">+{s.need}</i>}</span>)}
+      {on.map(s => <span key={s.en} className={cn(BADGE, 'font-normal', TIER_TEXT[s.tier])}>{skillName(s)}{s.need > 0 && <i className="text-gold not-italic">+{s.need}</i>}</span>)}
     </div>}
   </div>
 }
@@ -97,8 +98,17 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
   const best = a.farm[0], tm = a.transmute
   const chalice = tm.filter(x => x.kind === 'Chalice').sort((x, y) => y.mean - x.mean)[0]
   const tmBest = [...tm].sort((x, y) => y.mean - x.mean)
+  const have = a.slots.filter(s => s.card), worth = have.reduce((x, s) => x * (1 + s.cur), 1) - 1
   return <>
     {a.m.state !== 'cards' && <Hint tone="cyan">{t({ loading: 'arc.adv.loading', other: 'arc.adv.other', none: 'arc.adv.noLive' }[a.m.state])}</Hint>}
+    <KpiRow>
+      <Kpi icon={MapPin} label={t('arc.kpi.best')} value={best ? sign(best.gain) : '–'} sub={best ? `${best.dungeon} · ${t('arc.stage', { n: best.stage })}` : undefined}
+        tip={best ? t('arc.adv.gainTip') : undefined} onClick={best ? () => goTab('arc', '[data-arc-farm]') : undefined} data-kpi="best" />
+      <Kpi icon={Wine} label={t('arc.kpi.chalice')} value={chalice ? sign(chalice.mean) : '–'} data-kpi="chalice"
+        sub={chalice ? t(chalice.mean > 0.001 ? 'arc.kpi.pays' : 'arc.kpi.paysNot') : undefined} tip={chalice ? t('arc.adv.meanTip') : undefined} />
+      <Kpi icon={Layers} label={t('arc.kpi.cards')} value={`${have.length} / ${a.slots.length}`} sub={t(a.m.state === 'cards' ? 'arc.kpi.fromPage' : 'arc.kpi.noCards')} data-kpi="cards" />
+      <Kpi icon={Swords} label={t('arc.kpi.worth')} value={have.length ? sign(worth) : '–'} sub={t('arc.kpi.worthSub')} tip={t('arc.adv.worthTip')} data-kpi="worth" />
+    </KpiRow>
     {best && <Panel title={t('arc.adv.title')} sub={t('arc.adv.sub')} data-arc-advice>
       <div className="px-2.5 pb-2 text-[12.5px]" data-arc-best>
         {rich(t('arc.adv.best', { d: best.dungeon, st: t('arc.adv.st', { n: best.stage }), g: sign(best.gain), n: every(best.p) }))}
@@ -174,12 +184,11 @@ export function ArcanaTab() {
         options={Object.entries(dae.classes).filter(([k]) => arcClass(d, k)).map(([k, x]) => ({ value: k, label: className(x), game: classIcon(x) }))} onChange={v => arcSave({ cls: v })} />
     </BarRight>
   </>
-  // the filters only change the lists in the disclosure: they sit in its header and show while it is open. Six kinds
-  // do not fit a Seg on the overlay: a dropdown there, the Seg from 440 px
+  // the filters only change the lists in the disclosure: they sit in its header and show while it is open. Six kinds:
+  // a dropdown (more than 4 options)
   const kinds = (['all', ...KINDS] as const).map(k => ({ value: k, label: k === 'all' ? t('arc.allCards') : kindName(k) }))
   const filters = U.open?.['arc.all'] && <span className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-1">
-    <Seg size="sm" value={kind} onChange={k => arcSave({ kind: k })} item={k => ({ 'data-kind-filter': k })} options={kinds} className="hidden @min-[440px]:flex" />
-    <AppSelect value={kind} tip={t('arc.kindTip')} className="h-6 text-xs @min-[440px]:hidden" options={kinds} onChange={k => arcSave({ kind: k })} />
+    <span data-kind-select><AppSelect value={kind} tip={t('arc.kindTip')} className="h-6 text-xs" options={kinds} onChange={k => arcSave({ kind: k as Kind | 'all' })} item={k => ({ 'data-kind-filter': k })} /></span>
     <Chip on={guide} onChange={v => arcSave({ guide: v })} tip={t('arc.guideTip')} className="h-6" data-guide-filter="">{t('arc.guide')}</Chip>
   </span>
   return (
@@ -187,7 +196,6 @@ export function ArcanaTab() {
       <Advice d={d} cls={cls} />
       <Panel>
       <Disclosure id="arc.all" title={t('arc.sect.all')} sub={t('arc.allSub')} right={filters}>
-      <Hint>{t('arc.hint')}</Hint>
       <Columns>
         <div>
           <Sect sub={<span className="flex gap-3"><span>{t('arc.colUnique')}</span><span>{t('arc.colChalice')}</span></span>}>{t('arc.sect.skills')}</Sect>
@@ -201,6 +209,7 @@ export function ArcanaTab() {
       </Columns>
       </Disclosure>
       </Panel>
+      <Panel className="pb-1.5"><HowTo id="arc.how" title={t('arc.how')}>{t('arc.hint')}</HowTo></Panel>
       <Foot>{t('arc.foot', { date: d.date })}</Foot>
     </Page>
   )

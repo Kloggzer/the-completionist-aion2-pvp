@@ -30,6 +30,7 @@ export default {
     'arc.adv.tm': 'Umwandeln', 'arc.adv.tmSub': 'Einzigartige Karte, bis zu 2 Skills selbst wählen, der Rest zufällig (+1–3 Stufen je Skill, geschätzt)',
     'arc.adv.cost': '{n} Kristalle · {k} Mio.', 'arc.adv.betterTip': 'Chance, dass das Ergebnis besser ist als die Karte jetzt',
     'arc.adv.meanTip': 'Mittlere Änderung gegenüber der Karte jetzt (angenommen: Umwandeln ersetzt die Skills der Karte; negativ = meist schlechter)',
+    'arc.kpi.best': 'Bester Dungeon', 'arc.kpi.chalice': 'Kelch umwandeln', 'arc.kpi.pays': 'lohnt sich', 'arc.kpi.paysNot': 'lohnt sich nicht', 'arc.kpi.cards': 'Karten', 'arc.kpi.fromPage': 'von plaync gelesen', 'arc.kpi.noCards': 'noch nicht gelesen', 'arc.kpi.worth': 'Wert der Karten', 'arc.kpi.worthSub': 'Schaden durch die Karten', 'arc.how': 'Wie Seelenbindungen ziehen',
     'arc.foot': 'Daten: aion2data.com (aus den Spieldateien, Wahrscheinlichkeiten nach NCSOFTs Hinweis berechnet), Stand {date}. Guide-Priorität: Daevanion-Standards nach wakayashi.gg. Icons: © NCSOFT, über aion2data.com.',
   },
   en: {
@@ -62,6 +63,7 @@ export default {
     'arc.adv.tm': 'Transmute', 'arc.adv.tmSub': 'Unique card, pick up to 2 skills yourself, the rest random (+1–3 levels per skill, estimated)',
     'arc.adv.cost': '{n} crystals · {k} M', 'arc.adv.betterTip': 'Chance the result beats the card now',
     'arc.adv.meanTip': 'Mean change against the card now (assumed: Transmute replaces the card’s skills; negative = mostly worse)',
+    'arc.kpi.best': 'Best dungeon', 'arc.kpi.chalice': 'Transmute chalice', 'arc.kpi.pays': 'pays off', 'arc.kpi.paysNot': 'does not pay off', 'arc.kpi.cards': 'Cards', 'arc.kpi.fromPage': 'read from plaync', 'arc.kpi.noCards': 'not read yet', 'arc.kpi.worth': 'Card worth', 'arc.kpi.worthSub': 'damage from the cards', 'arc.how': 'How soul bindings draw',
     'arc.foot': 'Data: aion2data.com (from the game files, chances computed per NCSOFT’s notice), as of {date}. Guide priority: Daevanion defaults after wakayashi.gg. Icons: © NCSOFT, via aion2data.com.',
   },
 }
