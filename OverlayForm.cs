@@ -1016,6 +1016,11 @@ sealed class OverlayForm : Form
             Log($"Kartenwechsel: {id}");
             Post(new { type = "zone", id });
         });
+        source.EntryChargesReceived += list => BeginInvoke(() =>
+        {
+            Log("Eintritte (Login): " + string.Join(", ", list.Where(x => x.left > 0 || x.bonus > 0).Select(x => $"{x.id}={x.left}+{x.bonus}")));
+            Post(new { type = "entryCharges", list = list.Select(x => new[] { (long)x.id, x.left, x.bonus }) });
+        });
         source.ChargeReceived += (id, left) => BeginInvoke(() =>
         {
             Log($"Ladungen: Inhalt {id} = {left}");
@@ -1033,6 +1038,9 @@ sealed class OverlayForm : Form
             try { File.AppendAllText(Path.Combine(Settings.DataDir, "daevanion-packets.log"), line + "\n"); } catch { }
             Post(new { type = "daeLogHit", op = $"0x{op:x4}", ids, at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
         });
+        // research capture (all frames but movement, with bodies): on while research.on exists in the data folder
+        source.Research = File.Exists(Path.Combine(Settings.DataDir, "research.on"));
+        source.ResearchFrame += (op, body, ts) => Research($"{ts.ToLocalTime():HH:mm:ss.fff} op 0x{op:x4} len {body.Length} | {Convert.ToHexString(body.AsSpan(0, Math.Min(body.Length, 4000)))}");
         // opcode timeline (no bodies) next to the board detection's found / gone, buffered, at most 30 MB
         source.DaeOpFrame += (op, len) => DaeOps($"{DateTime.Now:HH:mm:ss.fff} op 0x{op:x4} len {len}");
         source.DaeLoginFrames += frames =>
@@ -1186,6 +1194,27 @@ sealed class OverlayForm : Form
     static readonly object daeOpsLock = new();
     static readonly System.Text.StringBuilder daeOps = new();
     static DateTime daeOpsFlush = DateTime.UtcNow;
+    static readonly object researchLock = new();
+    static readonly System.Text.StringBuilder research = new();
+    static DateTime researchFlush = DateTime.UtcNow;
+    /// Research capture (research-packets.log): appended in batches, stops at 200 MB.
+    internal static void Research(string line)
+    {
+        lock (researchLock)
+        {
+            research.Append(line).AppendLine();
+            if (research.Length < 64_000 && DateTime.UtcNow - researchFlush < TimeSpan.FromSeconds(1)) return;
+            researchFlush = DateTime.UtcNow;
+            try
+            {
+                var f = Path.Combine(Settings.DataDir, "research-packets.log");
+                if (!File.Exists(f) || new FileInfo(f).Length < 200_000_000) File.AppendAllText(f, research.ToString());
+            }
+            catch { }
+            research.Clear();
+        }
+    }
+
     /// Daevanion research timeline (daevanion-ops.log): appended in batches, stops at 30 MB.
     internal static void DaeOps(string line)
     {

@@ -2,10 +2,9 @@
 export default {
   de: {
     'charge.title': 'Vorräte', 'charge.sub': 'laufen voll – was drüber geht, verfällt',
-    'charge.overTip': 'Bonus-Einträge über dem Maximum: sie verfallen nicht, die tägliche Aufladung pausiert aber, bis du unter das Maximum kommst.',
     'charge.old': 'geschätzt, gelesen vor {t}', 'charge.oldTip': 'Der Wert kommt aus dem Spiel nur beim Login oder wenn du das Fenster öffnest – seitdem hochgerechnet. Einloggen oder das Fenster öffnen aktualisiert ihn.',
     'charge.perDay': '+{n} pro Tag', 'charge.perH': '+{n} alle {h} h',
-    'charge.enter': 'Wert eintragen', 'charge.bonus': 'Bonus', 'charge.bonusTip': 'Bonus-Energie aus benutzten Odyle-Items, zusätzlich zum normalen Vorrat',
+    'charge.enter': 'Wert eintragen', 'charge.bonus': 'Bonus', 'charge.bonusTip': 'Bonus aus benutzten Items, zusätzlich zum normalen Vorrat – verfällt nicht und füllt sich nicht nach',
     'charge.autoTip': 'Wert kommt direkt aus dem Spiel (wenn er sich ändert oder du das Fenster im Spiel öffnest)', 'charge.member': 'Mitgliedschaft', 'charge.memberTip': 'Mit Mitgliedschaft: Odyle bis 840, Shugo-Schlüssel bis 21',
     'charge.odyle': 'Odyle-Energie', 'charge.tip.odyle': '+15 alle 3 h, max. 560 (840 mit Mitgliedschaft) · ein Würfel in Expedition, Transzendenz oder Ludra kostet 40 · Regler oder −40/+40 nach dem Lauf',
     'charge.nightmare': 'Albtraum-Versuche', 'charge.tip.nightmare': '+2 pro Tag, bis 14 ansparbar · nur erfolgreiche Clears verbrauchen einen Versuch',
@@ -20,10 +19,9 @@ export default {
   },
   en: {
     'charge.title': 'Charges', 'charge.sub': 'they fill up – anything above the cap is lost',
-    'charge.overTip': 'Bonus entries above the maximum: they do not expire, but the daily refill pauses until you are below the maximum.',
     'charge.old': 'estimated, read {t} ago', 'charge.oldTip': 'The game sends the value only at login or when you open the window – projected since then. Logging in or opening the window updates it.',
     'charge.perDay': '+{n} per day', 'charge.perH': '+{n} every {h} h',
-    'charge.enter': 'enter value', 'charge.bonus': 'bonus', 'charge.bonusTip': 'Bonus energy from used Odyle items, on top of the regular energy',
+    'charge.enter': 'enter value', 'charge.bonus': 'bonus', 'charge.bonusTip': 'Bonus from used items on top of the regular amount – it does not expire and does not refill',
     'charge.autoTip': 'Value comes straight from the game (when it changes or you open its window in the game)', 'charge.member': 'Membership', 'charge.memberTip': 'With membership: Odyle up to 840, Shugo keys up to 21',
     'charge.odyle': 'Odyle energy', 'charge.tip.odyle': '+15 every 3 h, max 560 (840 with membership) · a cube in Expedition, Transcendence or Ludra costs 40 · slider or −40/+40 after a run',
     'charge.nightmare': 'Nightmare attempts', 'charge.tip.nightmare': '+2 per day, banks up to 14 · only successful clears use an attempt',

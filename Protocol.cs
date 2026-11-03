@@ -429,6 +429,32 @@ static class PetFrames
         for (int k = 0; k < b[0]; k++) d[b[1 + k * 3]] = BitConverter.ToUInt16(b, 2 + k * 3);
         return d;
     }
+    // 0x0b61 (login): every entry limit of the character: u8 n, n x {u8 field mask, u32 content id, fields}; mask 01 =
+    // u64 (time), 02 = varint (?), 04 = varint charges left, 08 = varint bonus entries (a missing field = 0). Checked
+    // against the game's windows: 1 = Shugo keys 0+12, 4 = Nightmare 0+21, 80000001 = Ascension trial 0+13.
+    public static List<(uint id, int left, int bonus)>? ParseEntryCharges(byte[] b)
+    {
+        try
+        {
+            int o = 0, n = b[o++];
+            var list = new List<(uint, int, int)>();
+            for (int k = 0; k < n; k++)
+            {
+                int m = b[o++];
+                uint id = BitConverter.ToUInt32(b, o); o += 4;
+                int left = 0, bonus = 0;
+                if ((m & 1) != 0) o += 8;
+                if ((m & 2) != 0) Varint(b, ref o);
+                if ((m & 4) != 0) left = Varint(b, ref o);
+                if ((m & 8) != 0) bonus = Varint(b, ref o);
+                if ((m & ~15) != 0 || o > b.Length) return null;
+                list.Add((id, left, bonus));
+            }
+            return list;
+        }
+        catch { return null; }
+    }
+
     // 0x29e2: whole boards reset: u8 n, n x u32 Start node id of the board (board * 10000 + 113)
     public static uint[]? ParseDaeBoardReset(byte[] b)
     {

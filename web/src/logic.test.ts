@@ -211,13 +211,18 @@ describe('checklist: counted progress is kept per character', async () => {
   })
 })
 
-describe('charges: bonus entries above the cap', async () => {
-  const { CHARGES, chargeNow, setCharge } = await import('@/features/progress/charges')
-  it('Nightmare keeps 18 (14 + 4 bonus) and does not refill above it; Odyle stays capped', () => {
-    const nightmare = CHARGES.find(c => c.id === 'nightmare')!, odyle = CHARGES.find(c => c.id === 'odyle')!
-    setCharge(nightmare, 18, 'A')
-    expect(chargeNow(nightmare, 'A', Date.now() + 3 * 864e5)).toBe(18)
-    setCharge(odyle, 900, 'A')
-    expect(chargeNow(odyle, 'A')).toBe(odyle.cap())
+describe('charges: the login list of entry limits (0x0b61)', async () => {
+  const { S } = await import('@/core/state')
+  const { CHARGES, applyEntryCharges, chargeNow, chargeBonus } = await import('@/features/progress/charges')
+  const { checkCount } = await import('@/features/progress/checklist')
+  it('Shugo 0+12, Nightmare 0+21, Ascension trial 0+13 as the game windows show them', () => {
+    S.state = { levels: {}, souls: {}, charName: 'A' }
+    U.checklist = { srv: {}, chars: {} }
+    applyEntryCharges([[1, 0, 12], [4, 0, 21], [80000001, 0, 13]])
+    const shugo = CHARGES.find(c => c.id === 'shugo')!, nightmare = CHARGES.find(c => c.id === 'nightmare')!
+    expect([chargeNow(shugo), chargeBonus(shugo)]).toEqual([0, 12])
+    expect([chargeNow(nightmare, 'A'), chargeBonus(nightmare, 'A')]).toEqual([0, 21])
+    expect(checkCount('ascensionTrial', 'char', 'w', 'A')).toBe(3) // all 3 weekly entries used
+    expect(U.entryBonus['ascension|A']).toBe(13)
   })
 })

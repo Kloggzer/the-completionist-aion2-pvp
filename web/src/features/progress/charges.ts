@@ -3,7 +3,7 @@
 // player enters a value once (or corrects it), the app projects it from that reading.
 import { U, saveUi, bump, manual } from '@/core/state'
 import { onHost } from '@/core/host'
-import { charKey, lastReset, nextReset, type Per } from './checklist'
+import { CHECK, charKey, checkSet, lastReset, nextReset, type Per } from './checklist'
 
 export type ChargeDef = {
   id: string; per: Per; tier: 1 | 2 | 3
@@ -18,7 +18,7 @@ export type ChargeDef = {
 
 export const CHARGES: ChargeDef[] = [
   { id: 'odyle', per: 'char', tier: 1, cap: () => (U.member ? 840 : 560), regen: 15, every: 3 * 3600e3, step: 40 },
-  { id: 'nightmare', per: 'char', tier: 1, cap: () => 14, regen: 2, every: 'day', step: 1, over: 30 }, // bonus entries from items
+  { id: 'nightmare', per: 'char', tier: 1, cap: () => 14, regen: 2, every: 'day', step: 1 },
   { id: 'shugo', per: 'server', tier: 2, cap: () => (U.member ? 21 : 12), regen: 3, every: 'day', step: 1 },
   { id: 'invasion', per: 'server', tier: 3, cap: () => 7, regen: 1, every: 'day', step: 1 },
 ]
@@ -80,8 +80,28 @@ export const chargeBonus = (d: ChargeDef, char?: string) => reading(d, char)?.bo
 const CHARGE_IDS: Record<number, string> = { 4: 'nightmare', 8: 'invasion' }
 onHost('charge', m => {
   const d = CHARGES.find(x => x.id === CHARGE_IDS[m.id])
-  if (d) setCharge(d, m.left, charKey(), { auto: true })
+  // the bonus entries (items) come with the login list; keep them until the next one
+  if (d) setCharge(d, m.left, d.per === 'server' ? undefined : charKey(), { auto: true, bonus: reading(d, d.per === 'server' ? undefined : charKey())?.bonus })
 })
+
+// Every entry limit of the character at login (0x0b61): [content id, charges left, bonus entries]. Bonus entries
+// (from items) sit on top of the charges and do not refill; checked against the game's windows (Shugo 0+12,
+// Nightmare 0+21, Ascension trial 0+13).
+const ENTRY_IDS: Record<number, string> = { 1: 'shugo', 4: 'nightmare', 8: 'invasion' }
+const ASCENSION = 80000001
+export function applyEntryCharges(list: [number, number, number][]) {
+  for (const [id, left, bonus] of list) {
+    const d = CHARGES.find(x => x.id === ENTRY_IDS[id])
+    if (d) setCharge(d, left, d.per === 'server' ? undefined : charKey(), { auto: true, bonus })
+    // Ascension trial: 3 entries a week, done = 3 − left; the bonus entries are kept for its tooltip
+    if (id === ASCENSION) {
+      const item = CHECK.flatMap(([, items]) => items).find(i => i[0] === 'ascensionTrial')
+      if (item) checkSet('ascensionTrial', 'char', 'w', item[1], item[1] - left)
+      U.entryBonus = { ...U.entryBonus, ['ascension|' + charKey()]: bonus }; saveUi(['entryBonus'])
+    }
+  }
+}
+onHost('entryCharges', m => { if (!manual()) applyEntryCharges(m.list || []) })
 
 // The server sends the logged-in character's Odyle energy when it changes and when the Odyle window opens.
 // Above the normal cap there must be a membership.

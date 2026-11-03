@@ -42,6 +42,8 @@ abstract class PetSource : IDisposable
     public event Action<int, int>? OdyleReceived;
     // Entry charges (0x0c61 type 04): u32 content id, u8 charges left. Verified: 4 = Nightmare, 8 = Dimensional Invasion.
     public event Action<uint, int>? ChargeReceived;
+    // Every entry limit at login (0x0b61): content id, charges left, bonus entries.
+    public event Action<List<(uint id, int left, int bonus)>>? EntryChargesReceived;
     // Black Cloud Merchant offer (0x9156) whenever its window/tab opens: tab id, offered items.
     public event Action<int, List<MerchantItem>>? MerchantReceived;
     /// Own Daevanion boards (0x26e2 at login): board id -> open node ids.
@@ -57,6 +59,9 @@ abstract class PetSource : IDisposable
     /// Research, same switch: every frame's opcode and length (to find what opening the board window sends).
     public event Action<int, int>? DaeOpFrame;
     public volatile bool DaeLog;
+    /// Research capture: every frame except movement, with its body (research-packets.log); for finding new counters.
+    public volatile bool Research;
+    public event Action<int, byte[], DateTime>? ResearchFrame;
     HashSet<int> daeBoardIds = new();
     /// Research (where are the total Daevanion points?): the frames around the login, written when 0x26e2 arrives: the
     /// last RingSize frames before it and everything in the LoginAfter after it. (op, body, time) per frame.
@@ -163,6 +168,7 @@ abstract class PetSource : IDisposable
             if (ts > loginUntil) { DaeLoginFrames?.Invoke(loginDump); loginDump = null; }
         }
         else if (op == 0x26e2) { loginDump = ring.ToList(); loginUntil = ts + LoginAfter; }
+        if (Research && op is not (0x0036 or 0x2a38 or 0x1d37 or 0x1c37 or 0x1338 or 0x0438 or 0x0238 or 0x2b38 or 0x008d)) ResearchFrame?.Invoke(op, body, ts);
         if (DaeLog)
         {
             DaeOpFrame?.Invoke(op, body.Length);
@@ -201,6 +207,8 @@ abstract class PetSource : IDisposable
         }
         else if (op == 0x9156 && PetFrames.ParseMerchant(body) is { } merch)
             MerchantReceived?.Invoke(merch.tab, merch.items);
+        else if (op == 0x0b61 && PetFrames.ParseEntryCharges(body) is { } entries)
+            EntryChargesReceived?.Invoke(entries);
         else if (op == 0x0c61 && body.Length == 8 && body[1] == 0x04)
             ChargeReceived?.Invoke(BitConverter.ToUInt32(body, 2), body[6]);
         else if (op == 0x0c61 && body.Length == 7 && body[1] == 0x00)

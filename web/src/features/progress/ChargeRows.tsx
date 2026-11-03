@@ -32,7 +32,6 @@ function ChargeTile({ d, char }: { d: ChargeDef; char?: string }) {
         <div className={cn(T_SUB, LIGHT_TXT[light])}>
           {status}
           {!!bonus && <span className="text-cyan" data-tip={t('charge.bonusTip')}> · +{bonus} {t('charge.bonus')}</span>}
-          {v != null && v > cap && <span className="text-cyan" data-tip={t('charge.overTip')}> · +{v - cap} {t('charge.bonus')}</span>}
           {old && <span className="text-dim" data-tip={t('charge.oldTip')} data-old> · {t('charge.old', { t: resetIn(new Date(Date.now() + age)) })}</span>}
         </div>
         <div className={T_FOOT}>
