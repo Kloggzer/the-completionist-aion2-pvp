@@ -55,11 +55,15 @@ test('Build tab: measured fight, stat values, gear and upgrades', async ({ page 
   // the newest dummy fight is measured on its own: 20 crits in 68 hits, Doubles ×2
   await expect(page.locator('[data-rates]')).toContainText('29,4 %')
   await expect(page.locator('[data-rates]')).toContainText('gemessen')
+  // value per stat: top 5, the rest behind "alle zeigen"
+  await page.locator('[data-more="build.marg"]').click()
   await expect(page.locator('[data-marg]')).toContainText('Kampftempo')
   // gear from the character page
   await page.locator('[data-load-gear]').click()
   await expect(page.getByText(/1 Teile/)).toBeVisible()
   await goPage(page, 'Ausrüstung')
+  // every piece sits in the closed "Alle Teile" disclosure
+  await page.locator('[data-disclosure="build.items"] button[aria-expanded]').click()
   await expect(page.locator('[data-item="MainHand"]')).toContainText('Test Mace')
   await expect(page.locator('[data-upgrades]')).toContainText('+5 → +6')
   await page.screenshot({ path: 'e2e/.out/shots/build-gear.png', fullPage: true })

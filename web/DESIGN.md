@@ -111,7 +111,7 @@ modifiers on tokens are fine (`bg-gold/10`, `border-foreground/10`).
 | A topic with a header | `Panel` | bare `Sect` + rows on the page ground |
 | A ranked or scannable list | `ListRow` inside a Panel, `ROWS` hairline above | tiles |
 | A collection of peer objects with portrait and progress (pets, achievements) | `TILE` grid via `grid(size)` | rows with portraits |
-| More than 5 items | `TopN` (3 on overview pages, 4–5 in panels) | `slice(0, n)` with no way to see the rest |
+| More than 5 items | `TopN` (3 on overview pages, 4–5 in panels, 6 tiles; `moreClass="col-span-full"` in a tile grid) | `slice(0, n)` with no way to see the rest |
 | Details, inputs, raw tables | `Disclosure` (closed) | always-open sections |
 | Explanation of a calculation | `HowTo` | a toggled Hint, a long Foot |
 | Detail views inside one panel | `PanelTabs` | separate pages |
@@ -122,14 +122,17 @@ modifiers on tokens are fine (`bg-gold/10`, `border-foreground/10`).
 | Frequent +1 on a tile | `StepCol` (tile needs `TILE_P pr-0`) | |
 | Alarm toggle on a row or tile | `BellBtn` | |
 | Text input | `TextEntry` (focuses itself), `Field` (stays in place; both set host `typing`) | inputs without `typing` |
+| Number input in a row (stats, assumptions) | `NumField` (commits on Enter / blur, empty = `null`, placeholder = default) | page-local number inputs |
+| Dropdown option with a kind (gathered / dropped, dummy / boss fight) | `AppSelect` option `icon` | text glyphs in labels |
 | Rank in a ranked list (spots, routes) | `Rank` | hand-made rank squares |
 | Icon-only switch (view, mode) | `Seg iconOnly` (tip = label = aria-label) | rows of icon buttons |
+| Seg whose labels do not fit on the overlay | `Seg` with icons and `labelClass="@max-[520px]/main:hidden"` (in a page bar) | a second, shorter set of labels |
 | Value read from the game | `AutoBadge` | |
 | Section action / link | `SECT_BTN`, `More` | Chip |
 | Real action button | shadcn `Button` size `xs`/`sm` | Chip styled as a button |
 
 - Every input must send `host({ type: 'typing', on })` on focus and blur, or the overlay cannot take keys.
-  Numeric fields: one shared `NumField` in kit (today duplicated in DaevTab, BuildTab, MerchantTab; merge in stage 3).
+  Numeric fields: the shared `NumField` in kit (DaevTab, BuildTab).
 - New primitives go into kit.tsx with a one-line doc comment. No page-local copies of kit styles.
 
 ## Icons
@@ -144,7 +147,8 @@ modifiers on tokens are fine (`bg-gold/10`, `border-foreground/10`).
 
 - No `uppercase`, no `tracking-wide`, no all-caps strings in i18n (`"Buy"`, not `"BUY"`). Game acronyms stay (PvE, PvP, EHP, DPS).
 - Sentence case for titles, buttons and labels in English too ("Show all", not "Show All").
-- Numbers: `tabular-nums`, formatted with `fmt()` (locale aware). No `toFixed` or `toLocaleString(undefined)` in views.
+- Numbers: `tabular-nums`, formatted with `fmt(n, digits?)` (locale aware), percent values with `fmtPct()` (one decimal
+  from 1 %, two below). No `toFixed` or `toLocaleString(undefined)` in views.
 - Units with a space: `12 %`, `60 m`, `5 min`, `1,2 Mio.`. Deltas with a sign: `+3,4 %`, `−1,2 %` (U+2212). Missing value: `–`.
 - Percent: one decimal from 1 %, two below. Times: `hm()` for clock time, `m:ss` for countdowns.
 - Short. A sub line is one line. A Kpi sub is a few words. Bold parts via `rich()` (`**…**`), never split strings by hand.

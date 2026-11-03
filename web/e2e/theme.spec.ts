@@ -8,7 +8,7 @@ for (const theme of ['light', 'dark'] as const) test('theme ' + theme, async ({ 
   await page.setViewportSize({ width: 1280, height: 800 })
   await openApp(page, { ui: { theme } })
   await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^(?!.*dark)/)
-  for (const p of ['Übersicht', 'Ziele', 'Daevanion']) {
+  for (const p of ['Übersicht', 'Ziele', 'Daevanion', 'Farmen', 'Werte', 'Ausrüstung', 'Erfolge']) {
     await goPage(page, p)
     await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-${p}.png` })
   }

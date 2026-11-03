@@ -121,7 +121,7 @@ test('achievements: counter and tier ticks by hand', async ({ page }) => {
   await expect.poll(async () => (await app.posted('setAch')).length).toBe(1)
   const [tick] = await app.posted('setAch')
   expect(tick).toMatchObject({ type: 'setAch', id, tier: 1 })
-  await expect(tile.locator('[data-tier="1"]')).toContainText('☑')
+  await expect(tile.locator('[data-tier="1"]')).toHaveAttribute('data-ok', 'on')
   // fine counter
   await edit.getByRole('button', { name: '+1', exact: true }).click()
   await expect.poll(async () => (await app.posted('setAch')).at(-1).val).toBe(tick.val + 1)

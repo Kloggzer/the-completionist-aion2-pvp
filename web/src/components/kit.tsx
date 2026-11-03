@@ -21,7 +21,7 @@
 //   optional control columns (bell, −/+) at the right edge.
 // - Breakpoints: 520 (overlay wide), 900 (2 columns / bigger tiles), 1300 (3 columns / biggest tiles). The map tabs
 //   switch to map left / list right at 1100 px content width (App.tsx).
-import { Fragment, useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { Bell, BellOff, ChevronRight, Minus, Plus, type LucideIcon } from 'lucide-react'
 import { host } from '@/core/host'
 import { U, bump, saveUi, useApp } from '@/core/state'
@@ -268,6 +268,25 @@ export function Field({ value, onChange, onKey, onBlur, placeholder, className, 
     className={cn('h-7 min-w-0 rounded-lg border bg-background px-2.5 text-[12.5px] text-foreground outline-none placeholder:text-dim focus:border-gold/60', className)} />
 }
 
+/** Number field that stays in place: shows `value` (empty = not set, `placeholder` instead), commits on Enter or blur
+ *  (`null` = cleared), Escape cancels. Sends host 'typing' while focused. Accepts a decimal comma. data-* pass through. */
+export function NumField({ value, onCommit, placeholder = '–', className, tip, ...rest }: {
+  value: number | undefined | null; onCommit: (v: number | null) => void; placeholder?: string; className?: string; tip?: string
+} & Record<`data-${string}`, string | undefined>) {
+  const [txt, setTxt] = useState<string | null>(null)
+  const commit = () => {
+    if (txt != null) { const v = txt.trim() === '' ? null : Number(txt.trim().replace(',', '.')); if (v == null || isFinite(v)) onCommit(v) }
+    setTxt(null)
+  }
+  return (
+    <input value={txt ?? (value == null ? '' : String(Math.round(value * 100) / 100))} placeholder={placeholder} inputMode="decimal" spellCheck={false} data-tip={tip} {...rest}
+      onFocus={() => host({ type: 'typing', on: true })} onBlur={() => { host({ type: 'typing', on: false }); commit() }}
+      onChange={e => setTxt(e.target.value)} onClick={e => e.stopPropagation()}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') { setTxt(null); e.currentTarget.blur() } }}
+      className={cn('h-6 w-16 flex-none rounded-md border bg-background/60 px-1.5 text-right text-[12px] text-foreground tabular-nums outline-none placeholder:text-dim focus:border-gold/60', className)} />
+  )
+}
+
 /** Rank square of a ranked list (spots, farm routes): gold for the first, muted for the rest. */
 export function Rank({ n, className }: { n: number; className?: string }) {
   return <span className={cn('grid size-5 flex-none place-items-center rounded-sm text-[11px] font-bold tabular-nums', n === 1 ? 'bg-gold/15 text-gold' : 'bg-foreground/[0.06] text-muted-foreground', className)}>{n}</span>
@@ -280,20 +299,23 @@ export function Rank({ n, className }: { n: number; className?: string }) {
 // <Disclosure> or behind "show all" and are remembered (U.open) – never everything at once.
 
 /** Segmented control (one of a few options): Base UI ToggleGroup. `item` adds attributes per option (tests, tips). */
-export function Seg<T extends string>({ value, onChange, options, size = 'md', className, item, iconOnly }: {
+export function Seg<T extends string>({ value, onChange, options, size = 'md', className, item, iconOnly, labelClass }: {
   value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode; tip?: string; icon?: LucideIcon }[]; size?: 'sm' | 'md'; className?: string
   item?: (v: T) => Record<string, string | undefined>
   /** Icons only: the label is hidden, the tip (else a string label) becomes the aria-label. */
   iconOnly?: boolean
+  /** Extra classes of each label, e.g. a container query that hides it on narrow windows (`@max-[520px]/main:hidden`);
+   *  the tip (else a string label) becomes the aria-label then. */
+  labelClass?: string
 }) {
   return (
     <ToggleGroup value={[value]} onValueChange={(v: unknown[]) => { if (v.length) onChange(v[v.length - 1] as T) }} spacing={0}
       className={cn('max-w-full min-w-0 flex-none rounded-lg border bg-background p-0.5', className)}>
       {options.map(o => (
-        <ToggleGroupItem key={o.value} value={o.value} data-tip={o.tip} aria-label={iconOnly ? o.tip ?? (typeof o.label === 'string' ? o.label : undefined) : undefined} {...item?.(o.value)}
+        <ToggleGroupItem key={o.value} value={o.value} data-tip={o.tip} aria-label={iconOnly || labelClass ? o.tip ?? (typeof o.label === 'string' ? o.label : undefined) : undefined} {...item?.(o.value)}
           className={cn('min-w-0 shrink gap-1.5 rounded-md! border-0 font-normal whitespace-nowrap text-muted-foreground hover:bg-foreground/5 hover:text-foreground data-[pressed]:bg-gold/[0.14] data-[pressed]:font-semibold data-[pressed]:text-gold [&_svg]:size-3.5 [&_svg]:flex-none',
             size === 'sm' ? 'h-6 px-2 text-[11.5px]' : 'h-7 px-2.5 text-[12.5px]', iconOnly && (size === 'sm' ? 'px-1.5' : 'px-2'))}>
-          {o.icon && <o.icon />}{!(iconOnly && o.icon) && <span className="min-w-0 truncate">{o.label}</span>}
+          {o.icon && <o.icon />}{!(iconOnly && o.icon) && <span className={cn('min-w-0 truncate', labelClass)}>{o.label}</span>}
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
@@ -365,14 +387,18 @@ export function Disclosure({ id, title, sub, children, defaultOpen = false, righ
 }
 
 /** The first `n` items, the rest behind "show all (k more)"; remembered under `id`. */
-export function TopN<T>({ id, items, n, render, more }: { id: string; items: T[]; n: number; render: (x: T, i: number) => ReactNode; more: (k: number) => string }) {
+export function TopN<T>({ id, items, n, render, more, moreClass }: {
+  id: string; items: T[]; n: number; render: (x: T, i: number) => ReactNode; more: (k: number) => string
+  /** Extra classes of the "show all" line (e.g. `col-span-full` inside a tile grid). */
+  moreClass?: string
+}) {
   useApp()
   const all = !!U.open?.[id], shown = all ? items : items.slice(0, n)
   return <>
     {shown.map(render)}
     {items.length > n && (
       <button data-more={id} onClick={() => { U.open = { ...U.open, [id]: !all }; saveUi(['open']); bump() }}
-        className="flex w-full items-center gap-1 px-3 py-1.5 text-[12px] text-muted-foreground hover:text-gold [&_svg]:size-3.5">
+        className={cn('flex w-full items-center gap-1 px-3 py-1.5 text-[12px] text-muted-foreground hover:text-gold [&_svg]:size-3.5', moreClass)}>
         <ChevronRight className={cn('transition-transform', all && '-rotate-90')} />{all ? '−' : more(items.length - n)}
       </button>
     )}

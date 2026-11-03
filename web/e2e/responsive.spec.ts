@@ -30,6 +30,7 @@ async function check(page: Page, w: number, name: string) {
 
 for (const [w, h] of SIZES) {
   test(`every view fits at ${w}x${h}`, async ({ page }) => {
+    test.setTimeout(90000) // 13 views plus extras in one test; slow under 4 workers
     await page.setViewportSize({ width: w, height: h })
     await openApp(page, { ui: { checklist: CHK, timerAll: true, charges: { 'odyle|Zweitchar': { v: 545, at: Date.now() } } } })
     for (const name of TABS) {

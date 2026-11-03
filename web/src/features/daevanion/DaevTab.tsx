@@ -5,7 +5,7 @@ import { host } from '@/core/host'
 import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
 import { Slider } from '@/components/ui/slider'
-import { Bar, BarInfo, BarRight, CHIP, CHIP_ON, Chip, Disclosure, Empty, Foot, Hint, Note, Page, Panel, PanelTabs, ROW, ROWS, SECT_BTN, Sect, Seg, Stepper, TopN, rich } from '@/components/kit'
+import { Bar, BarInfo, BarRight, CHIP, CHIP_ON, Chip, Disclosure, Empty, Foot, Hint, Note, NumField, Page, Panel, PanelTabs, ROW, ROWS, SECT_BTN, Sect, Seg, Stepper, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import {
   LIVE, NONE_HINT, advice, ago, logHits, setLog, breakdown, charKey, charTotals, classId, className, data, forgetLive, live, loadLive, loading,
@@ -19,18 +19,6 @@ const amount = (v: number, pct: boolean) => (v > 0 ? '+' : '') + (pct ? fmt(Math
 /** Percent change with sign, two decimals below 1 %. */
 const pc = (v: number) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v) < 1 ? Math.round(Math.abs(v) * 100) / 100 : Math.round(Math.abs(v) * 10) / 10) + ' %'
 const tone = (v: number) => (v > 0.005 ? 'text-green' : v < -0.005 ? 'text-red' : 'text-dim')
-
-/** Number field: the overlay only takes the keyboard while it has focus (host 'typing'); Enter / leaving commits. */
-function NumField({ value, onCommit, className, data: dk }: { value: number; onCommit: (v: number | null) => void; className?: string; data?: string }) {
-  const [txt, setTxt] = useState<string | null>(null)
-  const commit = () => { if (txt != null) { const v = txt.trim() === '' ? null : Number(txt.replace(',', '.')); if (v == null || isFinite(v)) onCommit(v) } setTxt(null) }
-  return (
-    <input data-num={dk} value={txt ?? String(Math.round(value * 100) / 100)} inputMode="decimal" spellCheck={false}
-      onFocus={() => host({ type: 'typing', on: true })} onBlur={() => { host({ type: 'typing', on: false }); commit() }}
-      onChange={e => setTxt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setTxt(null); (e.target as HTMLInputElement).blur() } }}
-      className={cn('h-6 w-16 rounded-sm border bg-background/60 px-1.5 text-right text-[12px] text-foreground tabular-nums outline-none focus:border-gold/60', className)} />
-  )
-}
 
 /** One point pool: name, spent / free (with character data), PvE / PvP, the points. */
 function PointsEdit({ label: l, value, onChange, dataKey, spent, mode, onMode }: {
@@ -583,7 +571,7 @@ function Inputs({ d, cls, mode }: { d: DaeData; cls: string; mode: Mode }) {
             <div key={k} data-sheet-key={k} className={cn(ROW, 'min-h-7 gap-1.5')}>
               <span className="min-w-0 flex-1 truncate">{t('dae.k.' + k)}</span>
               <i className="text-[10.5px] text-dim not-italic">{own ? t('dae.src.own') : ct.page[k] != null ? 'plaync' : ct.typical[k] != null ? t('dae.src.typical') : '—'}</i>
-              <NumField data={k} value={val} onCommit={v => setOwn(k, v)} />
+              <NumField data-num={k} value={val} onCommit={v => setOwn(k, v)} />
               {own && <button className="text-dim hover:text-gold" data-tip={t('dae.baseReset')} onClick={() => setOwn(k, null)}>↺</button>}
             </div>
           )
@@ -599,7 +587,7 @@ function Inputs({ d, cls, mode }: { d: DaeData; cls: string; mode: Mode }) {
             <div key={k} data-assume-key={k} className={cn(ROW, 'min-h-7 gap-1.5')}>
               <span className="min-w-0 flex-1 truncate" data-tip={t('dae.a.' + k + 'Tip')}>{t('dae.a.' + k)}</span>
               <i className="text-[10.5px] text-dim not-italic">{t('dae.src.' + (changed ? 'own' : ASSUME_SRC[k]))}</i>
-              <NumField data={k} value={a[k]} onCommit={v => setA(k, v)} />
+              <NumField data-num={k} value={a[k]} onCommit={v => setA(k, v)} />
               {changed && <button className="text-dim hover:text-gold" data-tip={t('dae.baseReset')} onClick={() => setA(k, null)}>↺</button>}
             </div>
           )

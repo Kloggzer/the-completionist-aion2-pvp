@@ -20,12 +20,12 @@ for (const [res, title] of [['g:Odyle', 'odyle'], ['d:610530011', 'leather']] as
     await shot(page, `farm-${title}-list`)
 
     await tiles.first().click()
-    await expect(tiles.first()).toHaveAttribute('data-sel', 'true')
+    await expect(tiles.first()).toHaveAttribute('data-sel', 'on')
     await shot(page, `farm-${title}-route`)
 
     // "Ausweichen" moves on to the next hotspot
     await page.getByRole('button', { name: 'Ausweichen' }).click()
-    await expect(page.locator('[data-farmspot="2"]')).toHaveAttribute('data-sel', 'true')
+    await expect(page.locator('[data-farmspot="2"]')).toHaveAttribute('data-sel', 'on')
     await shot(page, `farm-${title}-switched`)
   })
 }

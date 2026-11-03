@@ -30,5 +30,7 @@ export function t(key: string, vars?: Record<string, string | number>): string {
 
 /** "HH:MM" in the UI locale. */
 export const hm = (ms: number | Date) => new Date(ms).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
-/** Number with thousands separators. */
-export const fmt = (n: number) => n.toLocaleString(locale())
+/** Number with thousands separators; `d` = at most that many decimals (rounded). */
+export const fmt = (n: number, d?: number) => n.toLocaleString(locale(), d == null ? undefined : { maximumFractionDigits: d })
+/** Percent value (already ×100) with unit: one decimal from 1 %, two below. */
+export const fmtPct = (v: number) => fmt(v, Math.abs(v) < 1 ? 2 : 1) + ' %'

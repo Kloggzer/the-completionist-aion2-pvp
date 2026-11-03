@@ -1,46 +1,97 @@
 // "Farm" tab: pick a resource, get ranked hotspots with a loop route each; "Switch" jumps to the next one
-// (bots or other gatherers on your spot).
-import { ArrowRightLeft, ChevronDown, Info } from 'lucide-react'
-import { G, U, V, saveUi, bump, useApp, type Any } from '@/core/state'
+// (bots or other gatherers on your spot). Number tiles first (best rate, route of the selected / best spot, how many
+// hotspots, the resource), then the ranked list, the resource details in a closed disclosure, the ranking in a HowTo.
+import { ArrowRightLeft, Feather, Gauge, MapPin, Pickaxe, Route, Skull } from 'lucide-react'
+import { G, U, V, saveUi, useApp, type Any } from '@/core/state'
 import { emit } from '@/core/bus'
-import { t, fmt } from '@/core/i18n'
+import { t, fmt, fmtPct } from '@/core/i18n'
+import { mapName } from '@/core/data'
 import { cn } from '@/lib/utils'
-import { AppSelect } from '@/components/AppSelect'
-import { Bar, CHIP, Empty, Hint, LEAD, Page, T_BODY, T_TITLE, TILE as KTILE, TILE_CLICK, TILE_SEL, ToolbarStrip, grid, rich } from '@/components/kit'
+import { AppSelect, type Option } from '@/components/AppSelect'
+import { Button } from '@/components/ui/button'
+import { Disclosure, Empty, HowTo, Kpi, KpiRow, ListRow, Note, Page, Panel, ROWS, Rank, ToolbarStrip, TopN, rich } from '@/components/kit'
 import { PARAMS, recomputeFarm, selectSpot, switchSpot, type Hotspot } from './logic'
 
-const GRID = grid('pet'), TILE = cn(KTILE, TILE_CLICK)
-
-const pct = (p: number) => (p * 100).toLocaleString(undefined, { maximumFractionDigits: p < 0.01 ? 2 : 1 }) + ' %'
+const pct = (p: number) => fmtPct(p * 100)
 const mins = (s: number) => Math.max(1, Math.round(s / 60))
+const more = (k: number) => t('common.moreN', { n: k })
 
-function label(r: Any) {
-  return r.kind === 'gather' ? `⛏ ${r.name} (${r.nodes})` : `☠ ${r.name} (${pct(r.best)})`
-}
+const icon = (r: Any) => (r.kind === 'gather' ? Pickaxe : Skull)
+const label = (r: Any) => `${r.name} (${r.kind === 'gather' ? fmt(r.nodes) : pct(r.best)})`
 
-/** Toolbar between map and list: resource picker, switch button, explanation toggle. */
+/** Toolbar between map and list: resource picker, switch button. */
 export function FarmToolbar() {
   useApp()
-  const opts = V.farmRes.map((r: Any) => ({ value: r.key, label: label(r) }))
+  const opts: Option[] = V.farmRes.map((r: Any) => ({ value: r.key, label: label(r), icon: icon(r) }))
+  if (!V.farmCur) opts.unshift({ value: U.farmRes || '', label: t('farm.pick') }) // nothing chosen (on this map) yet
   return (
     <ToolbarStrip>
       <AppSelect value={U.farmRes || ''} options={opts.length ? opts : [{ value: '', label: t('farm.pick') }]} tip={t('farm.pick.tip')}
         className="h-6 max-w-56 shrink text-xs" onChange={v => { U.farmRes = v; saveUi(['farmRes']); V.farmSpot = null; recomputeFarm().then(() => emit('fit')) }} />
-      <button disabled={V.farmSpots.length < 2} onClick={switchSpot} data-tip={t('farm.switch.tip')} className={cn(CHIP, 'disabled:opacity-40')}>
+      <Button size="xs" variant="outline" disabled={V.farmSpots.length < 2} onClick={switchSpot} data-tip={t('farm.switch.tip')}>
         <ArrowRightLeft />{t('farm.switch')}
-      </button>
+      </Button>
       <span data-drag className="h-5 min-w-2 flex-1 cursor-grab" />
-      <button onClick={() => { U.farmHelp = !U.farmHelp; saveUi(['farmHelp']); bump() }} data-tip={t('farm.how.tip')}
-        className={cn('flex min-w-0 items-center gap-1 rounded-sm px-1 hover:text-foreground', U.farmHelp && 'text-cyan hover:text-cyan')}>
-        <Info className="size-3.5 flex-none" /><span className="truncate">{t('farm.how')}</span>
-        <ChevronDown className={cn('size-3.5 flex-none transition-transform', U.farmHelp && 'rotate-180')} />
-      </button>
     </ToolbarStrip>
   )
 }
 
+const routeText = (s: Hotspot) => t('farm.spot.route', { n: s.route.length, len: fmt(Math.round(s.len)), min: mins(s.secs) })
+const spotName = (s: Hotspot) => s.name || t('farm.spot.n', { n: s.rank })
+
+function SpotRow({ s }: { s: Hotspot }) {
+  const sel = V.farmSpot === s.rank
+  return (
+    <ListRow data-farmspot={s.rank} selected={sel} onClick={() => selectSpot(sel ? null : s.rank)}
+      tip={t('farm.spot.tip', { n: s.route.length, len: fmt(Math.round(s.len)), min: mins(s.secs), round: fmt(s.perRound, 1) })}
+      icon={<Rank n={s.rank} />} title={<span className={cn(sel && 'font-semibold')}>{spotName(s)}</span>} sub={routeText(s)}
+      right={<span className={cn('text-right', s.rank === 1 ? 'text-gold' : 'text-muted-foreground')}>{t('farm.spot.rate', { n: fmt(s.per10, 1) })}</span>} />
+  )
+}
+
+/** What the chosen resource is: gathering grades / flying note, or the mobs that drop it (closed by default). */
+function ResInfo({ r }: { r: Any }) {
+  if (r.kind === 'gather') return (
+    <Panel className="pb-1.5">
+      <Disclosure id="farm.res" title={t('farm.res')} sub={t('farm.res.gather', { n: fmt(r.nodes) }) + (r.air ? ' · ' + t('farm.res.air') : '')}>
+        <Note className="pb-1">{rich(t('farm.info.gather', { n: fmt(r.nodes), mats: r.mats.join(', ') }))}</Note>
+        {r.air && <Note className="pt-0">{rich(t('farm.info.air'))}</Note>}
+      </Disclosure>
+    </Panel>
+  )
+  const mobs = [...r.mobs].sort((a: Any, b: Any) => b.p * b.spawns - a.p * a.spawns)
+  return (
+    <Panel className="pb-1.5">
+      <Disclosure id="farm.res" title={t('farm.res')} sub={t('farm.res.drop', { n: fmt(mobs.length) })}>
+        <div className={cn(ROWS, 'mt-1')}>
+          <TopN id="farm.res.mobs" items={mobs} n={4} more={more} render={(x: Any) => (
+            <ListRow key={x.id} icon={<Skull />} title={x.n} sub={t('farm.mob.sub', { lv: x.lv, n: fmt(x.spawns) })}
+              right={<span className="text-muted-foreground">{pct(x.p)}</span>} tip={t('farm.mob.tip')} />
+          )} />
+        </div>
+      </Disclosure>
+    </Panel>
+  )
+}
+
+function Kpis({ r, m }: { r: Any; m: Any }) {
+  const spots: Hotspot[] = V.farmSpots, top = spots[0], cur = spots.find(s => s.rank === V.farmSpot) || top
+  const bestMob = r.kind === 'drop' ? [...r.mobs].sort((a: Any, b: Any) => b.p - a.p)[0] : null
+  return (
+    <KpiRow>
+      <Kpi icon={Gauge} label={t('farm.kpi.rate')} value={`≈ ${fmt(top.per10, 1)}`} sub={spotName(top)}
+        tip={t('farm.kpi.rateTip')} onClick={() => { if (V.farmSpot !== 1) selectSpot(1) }} data-kpi="rate" />
+      <Kpi icon={Route} label={cur === top ? t('farm.kpi.route') : t('farm.kpi.routeSel', { n: cur.rank })} value={`~${mins(cur.secs)} min`}
+        sub={t('farm.kpi.routeSub', { n: cur.route.length, len: fmt(Math.round(cur.len)) })} data-kpi="route" />
+      <Kpi icon={MapPin} label={t('farm.kpi.spots')} value={fmt(spots.length)} sub={mapName(m.name)} data-kpi="spots" />
+      {r.kind === 'gather'
+        ? <Kpi icon={r.air ? Feather : Pickaxe} label={t('farm.kpi.nodes')} value={fmt(r.nodes)} sub={r.air ? t('farm.res.air') : r.name} tip={r.mats.join(', ')} data-kpi="res" />
+        : <Kpi icon={Skull} label={t('farm.kpi.drop')} value={pct(r.best)} sub={bestMob ? `${bestMob.n} · ${t('farm.mob.lv', { lv: bestMob.lv })}` : r.name} tip={bestMob?.n} data-kpi="res" />}
+    </KpiRow>
+  )
+}
+
 function HowRanked() {
-  if (!U.farmHelp) return null
   const g = PARAMS.gather, d = PARAMS.drop
   const lines = [
     t('farm.how.src'),
@@ -49,49 +100,32 @@ function HowRanked() {
     t('farm.how.time', { sg: g.speed, ag: g.act, sd: d.speed, ad: d.act, min: mins(PARAMS.minRound) }),
     t('farm.how.alt'),
   ]
-  return <Hint tone="cyan"><ul className="flex list-disc flex-col gap-1 pl-4 marker:text-dim">{lines.map((l, i) => <li key={i}>{rich(l)}</li>)}</ul></Hint>
-}
-
-/** What the chosen resource is: gathering grades / flying note, or the mobs that drop it. */
-function ResInfo({ r }: { r: Any }) {
-  if (r.kind === 'gather') return (
-    <Hint tone="gold">{rich(t('farm.info.gather', { n: r.nodes, mats: r.mats.join(', ') }))}{r.air && <> {rich(t('farm.info.air'))}</>}</Hint>
-  )
-  const mobs = [...r.mobs].sort((a: Any, b: Any) => b.p * b.spawns - a.p * a.spawns).slice(0, 4)
-  return <Hint tone="gold">{rich(t('farm.info.drop', { mobs: mobs.map((x: Any) => `${x.n} (Lv ${x.lv}, ${pct(x.p)})`).join(', ') }))}</Hint>
-}
-
-function Spot({ s }: { s: Hotspot }) {
-  const sel = V.farmSpot === s.rank
   return (
-    <div data-farmspot={s.rank} data-sel={sel || undefined} onClick={() => selectSpot(sel ? null : s.rank)}
-      data-tip={t('farm.spot.tip', { n: s.route.length, len: fmt(Math.round(s.len)), min: mins(s.secs), round: s.perRound.toFixed(1) })}
-      className={cn(TILE, 'gap-0.5', sel && TILE_SEL)}>
-      <div className={T_BODY}>
-        <div className="flex items-center gap-1.5">
-          <span className="grid size-4 flex-none place-items-center rounded-sm bg-gold/15 text-[10.5px] font-bold text-gold">{s.rank}</span>
-          <span className={T_TITLE}>{s.name}</span>
-        </div>
-        <div className="mt-0.5 truncate text-[11.5px] font-semibold">{t('farm.spot.rate', { n: s.per10.toFixed(1) })}</div>
-        <Bar frac={s.rel} tone="gold" />
-        <div className="truncate text-[11.5px] text-muted-foreground">{t('farm.spot.route', { n: s.route.length, len: fmt(Math.round(s.len)), min: mins(s.secs) })}</div>
-      </div>
-    </div>
+    <Panel className="pb-1.5">
+      <HowTo id="farm.how" title={t('farm.how')}>
+        <ul className="flex list-disc flex-col gap-1 pl-4 marker:text-dim">{lines.map((l, i) => <li key={i}>{rich(l)}</li>)}</ul>
+      </HowTo>
+    </Panel>
   )
 }
 
 export function FarmTab() {
   useApp()
-  const m = G.md[U.map], r = V.farmCur
-  return <Page>
-    <HowRanked />
+  const m = G.md[U.map], r = V.farmCur, spots: Hotspot[] = V.farmSpots
+  return <Page w="rows">
     {!m ? <Empty>{t('data.loading')}</Empty>
       : !V.farmRes.length ? <Empty>{t('farm.noData')}</Empty>
         : !r ? <Empty>{t('farm.pick.first')}</Empty>
-          : <>
-            <ResInfo r={r} />
-            {!V.farmSpots.length ? <Empty>{t('farm.empty')}</Empty>
-              : <div className={cn(GRID, LEAD)}>{V.farmSpots.map((s: Hotspot) => <Spot key={s.rank} s={s} />)}</div>}
-          </>}
+          : !spots.length ? <><Empty>{t('farm.empty')}</Empty><ResInfo r={r} /></>
+            : <>
+              <Kpis r={r} m={m} />
+              <Panel title={t('farm.spots')} sub={t('farm.spots.sub')} data-farmspots={String(spots.length)}>
+                <div className={ROWS}>
+                  <TopN id="farm.spots" items={spots} n={Math.max(5, V.farmSpot || 0)} more={more} render={s => <SpotRow key={s.rank} s={s} />} />
+                </div>
+              </Panel>
+              <ResInfo r={r} />
+            </>}
+    {m && V.farmRes.length > 0 && <HowRanked />}
   </Page>
 }
