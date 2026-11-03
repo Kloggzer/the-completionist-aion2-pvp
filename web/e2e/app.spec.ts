@@ -187,7 +187,7 @@ test('language switch de -> en', async ({ page }) => {
   await page.getByRole('combobox').filter({ hasText: /System/ }).click()
   await page.getByRole('option', { name: 'English' }).click()
   await expect(page.getByText('General', { exact: true }).first()).toBeVisible()
-  await page.locator('[data-tip="Close"]').click()
+  await page.locator('[data-settings-close]').click()
   await expect(tab(page, 'Übersicht')).toHaveText(/Overview/)
   await shot(page, 'english')
 })

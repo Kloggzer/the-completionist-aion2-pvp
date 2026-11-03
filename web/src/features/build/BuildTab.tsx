@@ -186,7 +186,7 @@ function GearPage() {
   const bar = <><BarInfo>{barCtx(char)}</BarInfo>{p && <BarRight><LoadBtn char={char} has={!!s0} /></BarRight>}</>
   if (!s0) return (
     <Page w="rows" bar={bar}>
-      <Empty icon={Shirt} title={t('build.noGearShort')} action={p && <LoadBtn char={char} has={false} />}>{t(p ? 'build.noGearSub' : 'build.noChar')}</Empty>
+      <Empty icon={Shirt} title={t('build.noGearShort')} action={p && <LoadBtn char={char} has={false} />}>{t(p ? 'build.noGearSub' : 'build.noProfile')}</Empty>
     </Page>
   )
   const ups = upgrades(md.state, s0, db), worth = ups.filter(u => u.gain > 0.005)

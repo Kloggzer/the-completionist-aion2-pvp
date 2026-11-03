@@ -53,7 +53,8 @@ function Goal({ cls }: { cls: string }) {
   return (
     <div className="px-2.5 pt-1.5 pb-2">
       <Seg size="sm" value={preset as 'dmg'} onChange={pick} item={k => ({ 'data-preset': k })}
-        options={[...(hasDef ? [{ value: 'class' as const, label: t('dae.preset.classShort'), tip: t('dae.preset.class') }] : []), ...PRESETS.map(([k]) => ({ value: k, label: t('dae.preset.' + k) }))]} />
+        options={[...(hasDef ? [{ value: 'class' as const, label: t('dae.preset.classShort'), tip: t('dae.preset.class') }] : []),
+          ...PRESETS.map(([k]) => ({ value: k, label: t('dae.preset.' + k + 'Short'), tip: t('dae.preset.' + k) }))]} />
       <div className="mt-2 flex items-center gap-2 text-[11.5px] text-muted-foreground">
         <span className="flex-none">{t('dae.def')}</span>
         <Slider data-goal min={0} max={100} step={5} value={[Math.round(v * 100)]} className="flex-1"
