@@ -123,7 +123,7 @@ function DayCol({ k, from, now, pop, onOpen }: { k: number; from: number; now: n
         </>}
         {[...resetAt].map(([ms, names]) => (
           <i key={ms} data-tip={`${hm(ms)} ${names.join(' · ')}`} className="absolute inset-x-0 border-t border-dashed border-dim/70" style={{ top: (ms - from) / 3600e3 * H }}>
-            <span className="absolute right-1 -top-[13px] max-w-[calc(100%-12px)] truncate text-[9.5px] text-dim not-italic">{names.join(' · ')}</span>
+            <span className="absolute right-1 -top-[15px] max-w-[calc(100%-12px)] truncate text-[11px] leading-[14px] text-dim not-italic">{names.join(' · ')}</span>
           </i>
         ))}
         {ticks.map(({ ev, ms }: Any) => (
@@ -246,7 +246,7 @@ export function TimerTab() {
           <div className="sticky top-(--bar-h) z-[3] h-7 border-b bg-card" />
           <div className="relative" style={{ height: 24 * H }}>
             {Array.from({ length: 24 }, (_, h) => (
-              <span key={h} className="absolute right-1 text-[10px] text-dim tabular-nums" style={{ top: h * H + 2 }}>{String(h).padStart(2, '0')}</span>
+              <span key={h} className="absolute right-1 text-[11px] leading-[13px] text-dim tabular-nums" style={{ top: h * H + 2 }}>{String(h).padStart(2, '0')}</span>
             ))}
           </div>
         </div>

@@ -222,7 +222,7 @@ export function GameIcon({ name, fallback: I, className, fallbackClass, stroke, 
 
 /** "A" badge: the value is counted / read automatically from the game. */
 export function AutoBadge({ tip }: { tip: string }) {
-  return <span data-tip={tip} className="flex-none rounded-[3px] border border-green/40 px-[3px] text-[9.5px] leading-[13px] font-bold text-green">A</span>
+  return <span data-tip={tip} className="flex-none rounded-[3px] border border-green/40 px-[3px] text-[11px] leading-[14px] font-bold text-green">A</span>
 }
 
 /** −/+ column at the right edge of a tile (+ above, − below), full tile height so both are easy to hit.
