@@ -26,6 +26,11 @@ const val = (k: Key, v: number) => (PCT_KEYS.includes(k) ? fmt(v, 1) + ' %' : fm
 const more = (k: number) => t('common.moreN', { n: k })
 const when = (iso: string) => new Date(iso).toLocaleString(locale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 const OLD = 3 * 86400e3 // gear older than this: the age tile turns gold
+/** Bar context: character · age of the gear from the page (or: no character data). */
+const barCtx = (char: string) => {
+  const s0 = snap(char), name = profile(char)?.name ?? (char !== 'Standard' ? char : '')
+  return [name, s0 ? t('build.bar.gear', { age: ago(s0.at) }) : t('build.kpi.noChar')].filter(Boolean).join(' · ')
+}
 
 /** "How is this computed": one closed panel with a short bullet list. */
 function How({ id, title, keys }: { id: string; title: string; keys: string[] }) {
@@ -88,7 +93,7 @@ function StatsPage() {
   const allMeas = RATE_ROWS.every(([, , , k]) => s.measured[k as 'crit']), noneMeas = RATE_ROWS.every(([, , , k]) => !s.measured[k as 'crit'])
   const setOver = (k: Key, v: number | null) => { const o = { ...b.over }; if (v == null) delete o[k]; else o[k] = v; setBuild({ over: o }) }
   const setA = (k: keyof Assume, v: number | null) => setBuild({ assume: v == null ? Object.fromEntries(Object.entries(b.assume).filter(([x]) => x !== k)) : { ...b.assume, [k]: v } })
-  const bar = <BarInfo>{t('build.statsInfo')}</BarInfo>
+  const bar = <BarInfo>{barCtx(char)}</BarInfo>
   return (
     <Page w="rows" bar={bar}>
       <KpiRow>
@@ -178,7 +183,7 @@ function bestSwap(md: Model, items: Items, faction?: string) {
 
 function GearPage() {
   const char = charKey(), md = model(char), s0 = snap(char), db = gearById(), b = bs(), p = profile(char)
-  const bar = <><BarInfo>{t('build.gearInfo')}</BarInfo>{p && <BarRight><LoadBtn char={char} has={!!s0} /></BarRight>}</>
+  const bar = <><BarInfo>{barCtx(char)}</BarInfo>{p && <BarRight><LoadBtn char={char} has={!!s0} /></BarRight>}</>
   if (!s0) return (
     <Page w="rows" bar={bar}>
       <Empty icon={Shirt} title={t('build.noGearShort')} action={p && <LoadBtn char={char} has={false} />}>{t(p ? 'build.noGearSub' : 'build.noChar')}</Empty>

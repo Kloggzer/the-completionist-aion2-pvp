@@ -1,7 +1,7 @@
 // Build tab (private build): stats & DPS, gear.
 export default {
   de: {
-    'build.statsInfo': 'Was jeder Stat dir an DPS bringt', 'build.gearInfo': 'Was deine Ausrüstung bringt und was als Nächstes lohnt',
+    'build.bar.gear': 'Ausrüstung {age}',
     'build.loadGear': 'Ausrüstung laden', 'build.reload': 'Neu laden', 'build.loading': 'Lade …', 'build.loadTip': 'Ausrüstung von der öffentlichen plaync-Charakterseite lesen',
     'build.sect.src': 'Quellen', 'build.src.plaync': 'Ausrüstung von plaync', 'build.noGearShort': 'Keine Ausrüstung geladen', 'build.noChar': 'Nicht eingeloggt – Ausrüstung nach dem Login', 'build.gearN': '{n} Teile', 'build.gearN1': '1 Teil',
     'build.kpi.dps': 'Gemessene DPS', 'build.kpi.noFight': 'kein Kampf gewählt', 'build.kpi.crit': 'Krit-Rate', 'build.kpi.critCap': 'fast am Cap ({cap} %)',
@@ -15,7 +15,7 @@ export default {
     'build.noAbyss': 'Keine Abyss-Logs-Historie gefunden', 'build.noAbyssTip': 'Gesucht in %USERPROFILE%\\.abyss-dps-meter (Abyss Logs DPS-Meter).', 'build.noFights': 'Keine Puppen- oder Bosskämpfe von {name} in der Historie.',
     'build.fightErr': 'Kampf nicht lesbar',
     'build.measuredAt': '{label}: {s} s, {hits} Treffer, {dps} DPS', 'build.alwaysCrit': 'immer Krit (nicht mitgezählt): {list}',
-    'build.sect.rates': 'Trefferarten', 'build.r.crit': 'Krit', 'build.r.double': 'Double', 'build.r.perfect': 'Perfect', 'build.r.multi': 'Mehrfachtreffer',
+    'build.sect.rates': 'Trefferarten', 'build.r.crit': 'Krit', 'build.r.double': 'Doppelt', 'build.r.perfect': 'Perfekt', 'build.r.multi': 'Mehrfachtreffer',
     'build.measured': 'gemessen', 'build.assumed': 'angenommen',
     'build.critCapped': '**Krit-Rate {r} % – fast am Cap (50 %).** Mehr Krit.-Wert bringt kaum noch etwas; Krit.-Schaden, Double und Kampftempo schon.',
     'build.sect.marg': 'Wert pro Stat', 'build.margSub': 'DPS-Zuwachs für +1 % bzw. +10',
@@ -53,7 +53,7 @@ export default {
     'build.how.stone': '**Manasteine ohne Wirkung:** gegen einen Angriffs-Stein tauschen.',
   },
   en: {
-    'build.statsInfo': 'What each stat adds to your DPS', 'build.gearInfo': 'What your gear gives and what to do next',
+    'build.bar.gear': 'gear {age}',
     'build.loadGear': 'Load gear', 'build.reload': 'Reload', 'build.loading': 'Loading …', 'build.loadTip': 'Read the gear from the public plaync character page',
     'build.sect.src': 'Sources', 'build.src.plaync': 'Gear from plaync', 'build.noGearShort': 'No gear loaded', 'build.noChar': 'Not logged in – gear after login', 'build.gearN': '{n} pieces', 'build.gearN1': '1 piece',
     'build.kpi.dps': 'Measured DPS', 'build.kpi.noFight': 'no fight chosen', 'build.kpi.crit': 'Crit rate', 'build.kpi.critCap': 'close to the cap ({cap} %)',

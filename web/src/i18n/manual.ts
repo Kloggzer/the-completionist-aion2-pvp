@@ -24,9 +24,9 @@ export default {
     'set.g.about': 'Über', 'set.version': 'Version',
 
     'man.soul.tip': '+1 Seele für {name}',
-    'man.edit': 'Stufe und Seelen von Hand setzen',
-    'man.level': 'Stufe', 'man.souls': 'Seelen', 'man.max': 'Lv 3 – komplett', 'man.zero': 'Auf 0',
-    'man.petsHint': '**Manueller Modus:** **+** auf einer Kachel zählt eine Seele, über den **Stift** setzt du Stufe und Seelen direkt. Fertige Pets siehst du mit „Lv 3 zeigen".',
+    'man.edit': 'Lv und Seelen von Hand setzen',
+    'man.level': 'Lv', 'man.souls': 'Seelen', 'man.max': 'Lv 3 – komplett', 'man.zero': 'Auf 0',
+    'man.petsHint': '**Manueller Modus:** **+** auf einer Kachel zählt eine Seele, über den **Stift** setzt du Lv und Seelen direkt. Fertige Pets siehst du mit „Lv 3 zeigen".',
     'pets.age.manual': 'Manuell gepflegt · zuletzt geändert {ago}',
     'pets.age.manualNone': 'Manuell – Seelen über + und Lv auf den Kacheln eintragen',
     'pets.age.manualTip': 'Manueller Modus: nichts wird aus dem Spiel gelesen.',

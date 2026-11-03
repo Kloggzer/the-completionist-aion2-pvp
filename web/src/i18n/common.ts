@@ -5,7 +5,7 @@ export default {
     'area.today': 'Heute', 'area.pets': 'Pets', 'area.farm': 'Farmen', 'area.char': 'Charakter', 'nav.dae': 'Daevanion', 'nav.stats': 'Werte', 'nav.gear': 'Ausrüstung', 'nav.collapse': 'Einklappen', 'nav.label': 'Seiten', 'nav.expand': 'Seitenleiste ausklappen',
     'tab.home': 'Übersicht',
     'tab.home.tip': 'Übersicht: als Nächstes, Pets, Checkliste, Erfolge', 'tab.targets.tip': 'Seelen-Pets, die dir auf dieser Karte fehlen',
-    'tab.spots.tip': 'Farmspots für deine fehlenden Pets', 'tab.ach.tip': 'Erfolge von leicht nach schwer', 'tab.check.tip': 'Tägliche und wöchentliche Checkliste', 'tab.dae.tip': 'Daevanion-Bretter, Werte & DPS, Ausrüstung',
+    'tab.spots.tip': 'Farmspots für deine fehlenden Pets', 'tab.ach.tip': 'Erfolge von leicht nach schwer', 'tab.check.tip': 'Tägliche und wöchentliche Checkliste', 'tab.dae.tip': 'Daevanion-Boards, Werte & DPS, Ausrüstung',
     'tab.arc.tip': 'Arkana-Karten: welcher Skill auf welcher Karte rollt', 'tab.boss.tip': 'Feldbosse und Respawn-Zeiten', 'tab.timer.tip': 'Event-Timer und Ansagen',
     'hdr.brandState': 'Seelen-Pets freigeschaltet: {have} von {total}\nAuf Lv 3 (komplett): {max}',
     'hdr.brandNone': 'Noch keine Pet-Daten – nach dem Start der App einloggen.',

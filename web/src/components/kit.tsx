@@ -22,7 +22,7 @@
 //   optional control columns (bell, −/+) at the right edge.
 // - Breakpoints: 520 (overlay wide), 900 (2 columns / bigger tiles), 1300 (3 columns / biggest tiles). The map tabs
 //   switch to map left / list right at 1100 px content width (App.tsx).
-import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, isValidElement, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { Bell, BellOff, Check, ChevronRight, Minus, Plus, type LucideIcon } from 'lucide-react'
 import { host } from '@/core/host'
 import { U, bump, saveUi, useApp } from '@/core/state'
@@ -67,11 +67,13 @@ export const grid = (size: TileSize = 'md') =>
 export const BAR = 'flex min-h-10 flex-none flex-wrap items-center gap-x-1.5 gap-y-1 border-b bg-card px-2.5 py-1.5 text-[12.5px] text-muted-foreground'
 
 /** Page frame of every tab: the container the responsive rules query, centred with a max width on big windows.
- *  `bar` = the tab's top bar (sticky, full width, its content aligned with the page). */
+ *  `bar` = the tab's top bar (sticky, full width, its content aligned with the page). A bar that is only context
+ *  (a lone BarInfo) is hidden below 520 px: there the SubNav row above already costs the height. */
 const PAGE_W = { tiles: 'max-w-[1680px]', rows: 'max-w-[1400px]', form: 'max-w-[760px]' }
 export function Page({ w = 'tiles', bar, children, className }: { w?: keyof typeof PAGE_W; bar?: ReactNode; children: ReactNode; className?: string }) {
+  const ctx = isValidElement(bar) && bar.type === BarInfo
   return <>
-    {bar && <div data-bar className="sticky top-0 z-10 border-b bg-card"><div className={cn(BAR, 'mx-auto w-full border-b-0', PAGE_W[w])}>{bar}</div></div>}
+    {bar && <div data-bar className={cn('sticky top-0 z-10 border-b bg-card', ctx && '@max-[520px]/main:hidden')}><div className={cn(BAR, 'mx-auto w-full border-b-0', PAGE_W[w])}>{bar}</div></div>}
     <div className={cn('@container mx-auto w-full min-w-0 pb-3', PAGE_W[w], className)}>{children}</div>
   </>
 }

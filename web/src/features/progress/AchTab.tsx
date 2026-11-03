@@ -59,7 +59,7 @@ function bossPortrait(a: Any): number | null {
 function AchIcon({ a }: { a: Any }) {
   const por = bossPortrait(a)
   if (por != null) return <Portrait por={por} size={null} className={T_PORTRAIT} />
-  return <TileIcon icon={TYPE_ICON[a.objective_type] || Trophy} tone={CAT[a.category_de]?.tone || 'gold'} />
+  return <TileIcon icon={TYPE_ICON[a.objective_type] || Trophy} tone={CAT[a.category_de]?.tone || 'dim'} />
 }
 
 /** One dot per tier: reached green, current cyan, open dim. */
@@ -88,7 +88,7 @@ function Tile({ r }: { r: AchRow }) {
           <div className={T_META}>
             <span>{x ? <><b className="font-semibold text-foreground">{fmt(r.val)}</b>/{fmt(x.goal)}</> : <Check className="size-3.5 text-green" aria-label={t('progress.band.done')} />}</span>
             <span className="flex min-w-0 items-center gap-1.5">
-              {title && <Award className="size-3.5 flex-none text-gold" aria-label={t('progress.titleReward')} />}
+              {title && <Award className="size-3.5 flex-none text-muted-foreground" aria-label={t('progress.titleReward')} data-tip={t('progress.titleReward')} />}
               {!!kina && <span className="flex flex-none items-center gap-0.5 whitespace-nowrap text-dim"><GameIcon name="kinah" fallback={Coins} className="size-3.5" />{kinahShort(kina)}</span>}
               <Pips n={a.tiers.length} reached={r.reached} />
             </span>
@@ -110,7 +110,7 @@ function Tile({ r }: { r: AchRow }) {
                     {I ? <I className="size-3.5" /> : y.tier}
                   </span>
                   {loc(y, 'objective')} <span className="text-foreground tabular-nums">{fmt(y.goal)}</span>
-                  {y.rewards?.title && <em className="flex items-center gap-1 text-gold not-italic"><Award className="size-3.5" /> {y.rewards.title.name}</em>}
+                  {y.rewards?.title && <em className="flex items-center gap-1 text-foreground not-italic"><Award className="size-3.5 text-muted-foreground" /> {y.rewards.title.name}</em>}
                   {y.rewards?.kina ? <span className="flex items-center gap-0.5 text-dim"><GameIcon name="kinah" fallback={Coins} className="size-3.5" />{t('ach.kinah', { n: fmt(y.rewards.kina) })}</span> : null}
                 </div>
               )
@@ -155,7 +155,7 @@ export function AchTab() {
   const doneRows = rows.filter(r => r.done)
   const cat: string = U.achCat || 'all'
   const bar = <>
-    <BarInfo>{t('progress.achSort')}</BarInfo>
+    <BarInfo>{[S.state.charName, t('progress.achSort')].filter(Boolean).join(' · ')}</BarInfo>
     <BarRight>
       {manual() && <AppSelect value={U.faction || achFaction() || 'all'} tip={t('ach.faction')} className="h-6 text-xs"
         options={['all', 'Elyos', 'Asmodian'].map(f => ({ value: f, label: t('ach.faction.' + f) }))}

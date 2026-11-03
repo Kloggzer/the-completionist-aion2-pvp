@@ -5,7 +5,7 @@ export default {
     'farm.pick': 'Ressource wählen', 'farm.pick.tip': 'Spitzhacke = Sammelgut (Anzahl Sammelstellen auf der Karte) · Totenkopf = Mob-Drop (beste Chance pro Kill)',
     'farm.pick.first': 'Oben eine Ressource wählen – Sammelgut oder Mob-Drop.',
     'farm.noData': 'Für diese Karte gibt es keine Sammel- oder Drop-Daten.',
-    'farm.empty': 'Keine Hotspots – mit deinen Filtern (Level, Named) bleibt hier nichts übrig.',
+    'farm.empty': 'Keine Hotspots – mit deinen Filtern (Lv, Named) bleibt hier nichts übrig.',
     'farm.switch': 'Ausweichen', 'farm.switch.tip': 'Zum nächsten Hotspot wechseln, z. B. wenn Bots oder andere Sammler deinen Spot belegen',
     'farm.how': 'Wie wird das berechnet?',
     'farm.how.src': 'Sammelstellen und Drop-Chancen stammen aus dem **Global-Client** (über aion2maps.com).',

@@ -92,7 +92,7 @@ function TargetTile({ x }: { x: Any }) {
         <div className={T_FOOT}>
           {x.done ? <Bar frac={1} /> : <Pbar lv={x.lv} frac={x.souls / x.need} />}
           <div className={T_META}>
-            <span>{x.done ? <Check data-done="" aria-label={t('pets.done')} className="size-3.5 text-green" /> : <><b className="font-semibold text-foreground">{x.souls}</b>/{x.need}</>}</span>
+            <span data-tip={x.done ? undefined : t('pets.soulsTip', { n: x.souls, need: x.need, lv: x.lv + 1 })}>{x.done ? <Check data-done="" aria-label={t('pets.done')} className="size-3.5 text-green" /> : <><b className="font-semibold text-foreground">{x.souls}</b>/{x.need} {t('pets.soulsUnit')}</>}</span>
             <span>{t('pets.lv', { lv: x.lv })}</span>
           </div>
         </div>

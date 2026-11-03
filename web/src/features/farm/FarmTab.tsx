@@ -28,9 +28,10 @@ export function FarmToolbar() {
     <ToolbarStrip>
       <AppSelect value={U.farmRes || ''} options={opts.length ? opts : [{ value: '', label: t('farm.pick') }]} tip={t('farm.pick.tip')}
         className="h-6 max-w-56 shrink text-xs" onChange={v => { U.farmRes = v; saveUi(['farmRes']); V.farmSpot = null; recomputeFarm().then(() => emit('fit')) }} />
-      <Button size="xs" variant="outline" disabled={V.farmSpots.length < 2} onClick={switchSpot} data-tip={t('farm.switch.tip')}>
+      {/* switching spots needs a resource first */}
+      {V.farmCur && <Button size="xs" variant="outline" disabled={V.farmSpots.length < 2} onClick={switchSpot} data-tip={t('farm.switch.tip')}>
         <ArrowRightLeft />{t('farm.switch')}
-      </Button>
+      </Button>}
       <span data-drag className="h-5 min-w-2 flex-1 cursor-grab" />
     </ToolbarStrip>
   )

@@ -208,7 +208,7 @@ export function TimerTab() {
   }
   const range = (ms: number) => new Date(ms).toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' })
   const bar = <>
-    <BarInfo tip={t('timer.leadTip')}>{t('timer.barInfo')}</BarInfo>
+    <BarInfo tip={t('timer.barInfo') + '\n' + t('timer.leadTip')}>{t('timer.barCtx', { n: G.timers.filter((e: Any) => e.kind !== 'reset' && timerOn(e)).length })}</BarInfo>
     <BarRight>
       {TIMER_KINDS.filter(k => G.timers.some((e: Any) => e.kind === k)).map(k => {
         const on = kindOn(k)

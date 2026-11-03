@@ -5,7 +5,7 @@ import { G, U, manual, useApp, type Any } from '@/core/state'
 import { mapName } from '@/core/data'
 import { hm, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
-import { BarInfo, BellBtn, Disclosure, Empty, Kpi, KpiRow, Page, Sect, T_BODY, T_FOOT, T_PORTRAIT, T_TITLE, TILE, TILE_P, grid } from '@/components/kit'
+import { BarInfo, BellBtn, Disclosure, Empty, Kpi, KpiRow, Page, Panel, T_BODY, T_FOOT, T_PORTRAIT, T_TITLE, TILE, TILE_P, grid } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
 import { ABYSS, abyssBosses, allBosses, bossShort, fbServer, fbStatus, fieldBosses, killBoss, lead, toggleBossBell, whenTxt } from './events'
 
@@ -86,16 +86,15 @@ export function BossTab() {
         <Kpi icon={BellRing} label={t('boss.kpi.bells')} value={bells} tone={bells ? 'warn' : undefined} sub={t('boss.kpi.lead', { n: lead() })} data-kpi="bells" />
         <NextKpi x={nextOf(as)} icon={Swords} label={t('boss.kpi.abyss')} none={t('home.kpi.noBoss')} data-kpi="abyss" />
       </KpiRow>
-      {field.length > 0 && <>
-        <Sect sub={t('boss.fieldSub')}>{m ? mapName(m.name) : ''}</Sect>
-        <div className={grid('boss')}>{fs.map(({ b, s }) => <BossCard key={b.key} b={b} s={s} />)}</div>
-      </>}
+      {field.length > 0 && <Panel title={m ? mapName(m.name) : ''} sub={t('boss.fieldSub')} className="pb-1" data-boss-field>
+        <div className={cn(grid('boss'), 'pt-0.5')}>{fs.map(({ b, s }) => <BossCard key={b.key} b={b} s={s} />)}</div>
+      </Panel>}
       {!field.length && U.map !== ABYSS && <Empty>{t('boss.none', { map: m ? mapName(m.name) : t('boss.thisMap') })}</Empty>}
-      {abyss.length > 0 && <div className="pt-1.5">
+      {abyss.length > 0 && <Panel className="pb-1">
         <Disclosure id="boss.abyss" defaultOpen={U.map === ABYSS} title={t('boss.abyss')} sub={mapName(G.md[ABYSS].name) + ' · ' + t('boss.abyssN', { n: abyss.length })}>
           <div className={cn(grid('boss'), 'pt-1')}>{as.map(({ b, s }) => <BossCard key={b.key} b={b} s={s} />)}</div>
         </Disclosure>
-      </div>}
+      </Panel>}
     </Page>
   )
 }
