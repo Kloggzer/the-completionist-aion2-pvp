@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CHECK, CHECK_GAME, CHECK_ICON, lastReset, CHECK_ICON_DEFAULT, TIER, TIER_TONE, resetIn, checkAuto, checkCount, checkSet, characters, nextReset, progressOf, removeChar, setAll, addChar, renameChar, selectChar, type Kind, type Per } from './checklist'
 import { AppSelect } from '@/components/AppSelect'
-import { ACCENT, AutoBadge, BOX, Bar, BarInfo, BarRight, Columns, HowTo, Kpi, KpiRow, META, Note, Page, Panel, ROW, ROW_CLICK, ROWS, SECT_BTN, SUB, Sect, StepCol, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_TITLE, TILE, TILE_P, TONE, TextEntry, TileIcon, TopN, grid } from '@/components/kit'
-import { alerts, ownerAlertsOf, ownerLevel } from './alerts'
+import { ACCENT, AutoBadge, BOX, Bar, BarInfo, BarRight, Columns, HowTo, Kpi, KpiRow, META, Note, Page, Panel, ROW, ROW_CLICK, ROWS, SECT_BTN, SUB, Sect, StepCol, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_TITLE, TILE, TILE_P, TONE, TextEntry, TileIcon, TopN, grid, DoneMark } from '@/components/kit'
+import { alertKey, alerts, ownerAlertsOf, ownerLevel } from './alerts'
 import { AlertList, AlertRow, Charges, LIGHT_DOT } from './ChargeRows'
 
 const pct = (f: number) => Math.round(f * 100) + ' %'
@@ -36,7 +36,7 @@ function Entry({ id, max, per, kind, char }: { id: string; max: number; per: Per
           <Bar frac={c / max} />
           <div className={T_META}>
             <span className="flex min-w-0 items-center gap-1.5">
-              <b className={cn('font-semibold', full ? TONE.ok : 'text-foreground')}>{full ? '✓ ' : ''}{c}/{max}</b>
+              <b className={cn('font-semibold', full ? TONE.ok : 'text-foreground')}>{full && <><DoneMark /> </>}{c}/{max}</b>
               {auto && <AutoBadge tip={t('progress.autoTip')} />}
               {!!bonus && <span className="text-cyan" data-tip={t('charge.bonusTip')}>+{bonus} {t('charge.bonus')}</span>}
               {wins !== null && <span className="text-muted-foreground" data-tip={t('chk.winsTip')}>{t('chk.wins', { n: winsNow })}</span>}
@@ -113,7 +113,7 @@ function OwnerBody({ name, live, level, per, char, right }: { name: string; live
         <Bar frac={progressOf(per, char)} />
         <div className={T_META}>
           <span className="truncate">{t('progress.sect.d')} {pct(d)} · {t('progress.sect.w')} {pct(w)}</span>
-          <span className={cn('flex-none', open.length ? TONE.warn : TONE.ok)}>{open.length ? t('chk.openN', { n: open.length }) : '✓ ' + t('chk.complete')}</span>
+          <span className={cn('flex-none', open.length ? TONE.warn : TONE.ok)}>{open.length ? t('chk.openN', { n: open.length }) : <><DoneMark /> {t('chk.complete')}</>}</span>
         </div>
       </div>
     </div>
@@ -143,7 +143,7 @@ function CharRow({ name, live }: { name: string; live: boolean }) {
         {lvl && <i className={cn('size-2 flex-none rounded-full', LIGHT_DOT[lvl])} data-tip={t('alert.' + lvl)} />}
       </span>
       <span className={cn(META, 'hidden flex-none @min-[480px]:inline')}>{t('progress.sect.d')} {pct(progressOf('char', name, 'd'))} · {t('progress.sect.w')} {pct(progressOf('char', name, 'w'))}</span>
-      <span className={cn('w-16 flex-none text-right text-[12px] tabular-nums', open.length ? TONE.warn : TONE.ok)}>{open.length ? t('chk.openN', { n: open.length }) : '✓'}</span>
+      <span className={cn('w-16 flex-none text-right text-[12px] tabular-nums', open.length ? TONE.warn : TONE.ok)}>{open.length ? t('chk.openN', { n: open.length }) : <DoneMark />}</span>
       <ChevronRight className="size-4 flex-none text-dim transition-colors group-hover:text-gold" />
     </button>
   )
@@ -178,7 +178,7 @@ function NameEntry({ init = '', onDone, onCancel }: { init?: string; onDone: (na
 function ManualCharActions({ name, live, onRename }: { name: string; live: boolean; onRename: () => void }) {
   return <>
     {!live && <Button size="xs" variant="outline" className="h-6 text-[11px]" data-tip={t('chk.selectTip')} onClick={() => selectChar(name)}><UserCheck />{t('chk.select')}</Button>}
-    <Button size="xs" variant="ghost" className="h-6 text-muted-foreground" data-tip={t('chk.rename')} onClick={onRename}><Pencil /></Button>
+    <Button size="xs" variant="ghost" className="h-6 text-muted-foreground" data-tip={t('chk.rename')} aria-label={t('chk.rename')} onClick={onRename}><Pencil /></Button>
   </>
 }
 
@@ -194,9 +194,9 @@ function CharPage({ name, live }: { name: string; live: boolean }) {
   const lights = chargesOf('char').map(c => chargeLight(c, name)), full = lights.filter(l => l === 'red').length, soon = lights.filter(l => l === 'yellow').length
   return <>
     <KpiRow>
-      <Kpi icon={Sun} label={t('chk.kpi.daily')} value={d || '✓'} tone={d ? undefined : 'ok'} sub={d ? t('chk.kpi.ofN', { n: nd }) : t('chk.kpi.allDone', { n: nd })} data-kpi="daily" />
-      <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={w || '✓'} tone={w ? undefined : 'ok'} sub={w ? t('chk.kpi.ofN', { n: nw }) : t('chk.kpi.allDone', { n: nw })} data-kpi="weekly" />
-      <Kpi icon={Zap} label={t('chk.kpi.charges')} value={full ? t('chk.kpi.full', { n: full }) : soon ? t('chk.kpi.soon', { n: soon }) : '✓'}
+      <Kpi icon={Sun} label={t('chk.kpi.daily')} value={d || <DoneMark />} tone={d ? undefined : 'ok'} sub={d ? t('chk.kpi.ofN', { n: nd }) : t('chk.kpi.allDone', { n: nd })} data-kpi="daily" />
+      <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={w || <DoneMark />} tone={w ? undefined : 'ok'} sub={w ? t('chk.kpi.ofN', { n: nw }) : t('chk.kpi.allDone', { n: nw })} data-kpi="weekly" />
+      <Kpi icon={Zap} label={t('chk.kpi.charges')} value={full ? t('chk.kpi.full', { n: full }) : soon ? t('chk.kpi.soon', { n: soon }) : <DoneMark />}
         tone={full ? 'bad' : soon ? 'warn' : 'ok'} sub={t('chk.kpi.chargesSub')} data-kpi="charges" />
       <ResetKpi />
     </KpiRow>
@@ -224,7 +224,7 @@ function ServerHead() {
     <Sect className="pt-4" sub={<>{t('chk.serverSub')} · {pct(progressOf('server'))}</>}
       right={<span data-tip={open.length ? `${t('chk.open')}: ${open.join(', ')}` : undefined} className={cn('flex items-center gap-1.5 text-[12px]', open.length ? TONE.warn : TONE.ok)}>
         {lvl && <i className={cn('size-2 flex-none rounded-full', LIGHT_DOT[lvl])} data-tip={t('alert.' + lvl)} />}
-        {open.length ? t('chk.openN', { n: open.length }) : '✓ ' + t('chk.complete')}
+        {open.length ? t('chk.openN', { n: open.length }) : <><DoneMark /> {t('chk.complete')}</>}
       </span>}>
       <span data-server className="flex items-center gap-1.5 text-[13px] text-foreground"><Server className="size-3.5 text-cyan" />{t('chk.server')}</span>
     </Sect>
@@ -237,34 +237,35 @@ export function CheckTab() {
   const chars = characters(), live = S.state.charName, man = manual()
   // default page (once per visit, so nothing jumps while the dashboard is in use): the logged-in character's own page;
   // the dashboard is one click away ("All characters"). null = the dashboard was chosen (back, links).
-  if (V.chkPage === undefined) V.chkPage = !man && live && chars.includes(live) ? live : null
+  // V.chkPage = the page chosen since (back, links, rename; undefined = none); a gone character shows the dashboard.
+  const [first] = useState<string | null>(() => (V.chkPage !== undefined ? V.chkPage : !man && live && chars.includes(live) ? live : null))
   useEffect(() => () => { V.chkPage = undefined }, [])
-  if (V.chkPage && !chars.includes(V.chkPage)) V.chkPage = null
+  const want: string | null = V.chkPage !== undefined ? V.chkPage : first, page = want && chars.includes(want) ? want : null
   const warn = alerts()
   const more = (k: number) => t('common.moreN', { n: k })
   const sumOpen = (kind: Kind) => chars.reduce((s, c) => s + openOf('char', kind, c), openOf('server', kind))
   const dOpen = sumOpen('d'), wOpen = sumOpen('w'), complete = chars.filter(c => progressOf('char', c) >= 1).length
   const bar = <>
-    {V.chkPage
+    {page
       ? <Button variant="ghost" size="xs" className="h-6 text-[12px] text-muted-foreground" onClick={() => { V.chkPage = null; bump() }}><ChevronLeft />{t('chk.back')}</Button>
       : <BarInfo>{t('chk.title')}</BarInfo>}
-    {V.chkPage && <span data-drag className="h-6 min-w-2 flex-1 cursor-grab" />}
+    {page && <span data-drag className="h-6 min-w-2 flex-1 cursor-grab" />}
     {man && chars.length > 0 && <BarRight><AppSelect value={live && chars.includes(live) ? live : ''} tip={t('chk.activeSel')} className="h-6 max-w-40 text-xs"
       options={[...(live && chars.includes(live) ? [] : [{ value: '', label: '–' }]), ...chars.map(c => ({ value: c, label: charName(c) }))]}
       onChange={c => c && selectChar(c)} /></BarRight>}
   </>
   return (
     <Page w="rows" bar={bar}>
-      {V.chkPage ? <CharPage name={V.chkPage} live={V.chkPage === live} /> : <>
+      {page ? <CharPage name={page} live={page === live} /> : <>
         <KpiRow>
-          <Kpi icon={Sun} label={t('chk.kpi.daily')} value={dOpen || '✓'} tone={dOpen ? undefined : 'ok'} sub={t('chk.kpi.openAll')} data-kpi="daily" />
-          <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={wOpen || '✓'} tone={wOpen ? undefined : 'ok'} sub={t('chk.kpi.openAll')} data-kpi="weekly" />
+          <Kpi icon={Sun} label={t('chk.kpi.daily')} value={dOpen || <DoneMark />} tone={dOpen ? undefined : 'ok'} sub={t('chk.kpi.openAll')} data-kpi="daily" />
+          <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={wOpen || <DoneMark />} tone={wOpen ? undefined : 'ok'} sub={t('chk.kpi.openAll')} data-kpi="weekly" />
           <Kpi icon={Users} label={t('chk.kpi.done')} value={chars.length ? `${complete}/${chars.length}` : '–'} tone={chars.length && complete === chars.length ? 'ok' : undefined} sub={t('chk.kpi.charsDone')} data-kpi="chars" />
           <ResetKpi />
         </KpiRow>
         {warn.length > 0 && (
           <Panel title={t('alert.title')} sub={t('alert.sub')} data-chk-alerts>
-            <div className={ROWS}><TopN id="chk.alerts" items={warn} n={3} more={more} render={(a, i) => <AlertRow key={i} a={a} flat />} /></div>
+            <div className={ROWS}><TopN id="chk.alerts" items={warn} n={3} more={more} render={a => <AlertRow key={alertKey(a)} a={a} flat />} /></div>
           </Panel>
         )}
         <Panel title={t('chk.chars')} right={man && !adding && <button data-add-char className={SECT_BTN} data-tip={t('chk.addTip')} onClick={() => setAdding(true)}><Plus />{t('chk.add')}</button>} data-chars>

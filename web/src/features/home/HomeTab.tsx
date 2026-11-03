@@ -8,7 +8,7 @@ import { goTab } from '@/core/nav'
 import { fmtDist } from '@/core/geo'
 import { hm, fmt, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
-import { Bar, BarInfo, BellBtn, Disclosure, GameIcon, Kpi, KpiRow, META, More, Note, Page, Panel, ROW, ROW_CLICK, ROW_ICON, ROWS, SUB, TONE, TopN } from '@/components/kit'
+import { Bar, BarInfo, BellBtn, Disclosure, GameIcon, Kpi, KpiRow, META, More, Note, Page, Panel, ROW, ROW_CLICK, ROW_ICON, ROWS, SUB, TONE, TopN, DoneMark } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
 import { soulPets } from '@/features/pets/logic'
 import { allBosses, fbStatus, occOn, occurrences, timerName, timerOn, timerWhere, toggleBossBell, toggleOnce } from '@/features/events/events'
@@ -87,7 +87,7 @@ function OpenToday({ all }: { all: ReturnType<typeof checkItems> }) {
   return (
     <Panel title={t('home.openToday')} sub={t('home.important')} right={<More onClick={() => goTab('check')}>{t('home.allN', { n: all.length })}</More>} data-home-open>
       <div className={ROWS}>
-        {!open.length && <Note className={TONE.ok}>✓ {t('chk.everything')}</Note>}
+        {!open.length && <Note className={TONE.ok}><DoneMark /> {t('chk.everything')}</Note>}
         <TopN id="home.open" items={open} n={5} more={more} render={o => {
           const I = CHECK_ICON[o.id] || CHECK_ICON_DEFAULT, tier = TIER[o.id] ?? 2
           return (
@@ -183,7 +183,7 @@ export function HomeTab() {
         <Kpi icon={Skull} label={t('home.kpi.boss')} value={boss ? (boss.s.k === 'due' ? t('home.due') : hm(boss.s.due!)) : '–'}
           tone={boss ? (boss.s.k === 'due' ? 'warn' : 'info') : undefined} sub={boss ? `${boss.s.k === 'due' ? hm(boss.s.due!) : leftTxt(boss.s.due!, now)} · ${boss.b.name}` : t('home.kpi.noBoss')}
           onClick={() => goTab('boss')} tip={tip('boss')} data-kpi="boss" />
-        <Kpi icon={ListChecks} label={t('home.kpi.today')} value={left ? t('chk.openN', { n: left }) : '✓'} tone={left ? undefined : 'ok'}
+        <Kpi icon={ListChecks} label={t('home.kpi.today')} value={left ? t('chk.openN', { n: left }) : <DoneMark />} tone={left ? undefined : 'ok'}
           sub={t('home.doneOf', { n: done, total: items.length })} onClick={() => goTab('check')} tip={tip('check')} data-kpi="check" />
       </KpiRow>
       {warn.length > 0 && (

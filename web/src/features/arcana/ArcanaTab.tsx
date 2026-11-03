@@ -5,7 +5,7 @@ import { fmt, lang, t } from '@/core/i18n'
 import { AppSelect } from '@/components/AppSelect'
 import { BADGE, BarInfo, BarRight, BAR_GAME_ICON, GameIcon, CHIP, CHIP_ON, Chip, Columns, Disclosure, Empty, Foot, Hint, Note, Page, Panel, ROW, ROWS, Sect, Seg, TopN, rich } from '@/components/kit'
 import { cn } from '@/lib/utils'
-import { charKey, classIcon, className, data as daeData } from '@/features/daevanion/daevanion'
+import { charKey, classIcon, className, data as daeData, live } from '@/features/daevanion/daevanion'
 import { advise, refetchCards } from './advise'
 import { GRADES, KINDS, arcClass, arcData, arcSave, arcSettings, arcSkills, classId, skillName, type ArcData, type ArcSkill, type Kind } from './arcana'
 
@@ -158,8 +158,9 @@ function Advice({ d, cls }: { d: ArcData; cls: string }) {
 
 export function ArcanaTab() {
   useApp()
-  const char = charKey()
-  useEffect(() => refetchCards(char), [char])
+  const char = charKey(), l = live(char), hasLive = !!l, hasCards = !!l?.gear?.arcana
+  // again when the live data arrives (the page is read after the tab opened) or its cards are gone
+  useEffect(() => refetchCards(char), [char, hasLive, hasCards])
   const d = arcData(), dae = daeData()
   if (d === null || dae === null) return <Empty>{t('arc.loading')}</Empty>
   if (!d || !dae) return <Empty>{t('arc.missing')}</Empty>

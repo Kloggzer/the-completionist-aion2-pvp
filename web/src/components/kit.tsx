@@ -23,7 +23,7 @@
 // - Breakpoints: 520 (overlay wide), 900 (2 columns / bigger tiles), 1300 (3 columns / biggest tiles). The map tabs
 //   switch to map left / list right at 1100 px content width (App.tsx).
 import { Fragment, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
-import { Bell, BellOff, ChevronRight, Minus, Plus, type LucideIcon } from 'lucide-react'
+import { Bell, BellOff, Check, ChevronRight, Minus, Plus, type LucideIcon } from 'lucide-react'
 import { host } from '@/core/host'
 import { U, bump, saveUi, useApp } from '@/core/state'
 import { cn } from '@/lib/utils'
@@ -497,6 +497,8 @@ export function Kpi({ label, value, sub, tone, icon: I, onClick, tip, className,
     </C>
   )
 }
+/** "Done" mark (the ✓ as an icon), sized to the text around it (Kpi values, status lines). */
+export const DoneMark = ({ className }: { className?: string }) => <Check strokeWidth={2.75} className={cn('inline-block size-[1em] flex-none align-[-0.125em]', className)} />
 /** The row of number tiles at the top of a page: 2 columns on the overlay, 4 from 640 px. */
 export function KpiRow({ children }: { children: ReactNode }) {
   return <div data-kpis className="grid grid-cols-2 gap-1.5 px-2.5 pt-2.5 @min-[640px]:grid-cols-4">{children}</div>
