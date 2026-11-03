@@ -228,3 +228,16 @@ describe('charges: the login list of entry limits (0x0b61)', async () => {
     expect(U.entryBonus['dailyDungeons|srv']).toBe(25)
   })
 })
+
+describe('checklist: battlefield wins from the PvP history', async () => {
+  const { S } = await import('@/core/state')
+  const { applyPvpHistory, checkCount, lastReset } = await import('@/features/progress/checklist')
+  it('counts own wins in battlefields (55) since the weekly reset, not arena or older matches', () => {
+    S.state = { levels: {}, souls: {}, charName: 'A' }
+    U.checklist = { srv: {}, chars: {} }
+    const now = lastReset('w').getTime() + 3600e3, old = lastReset('w').getTime() - 3600e3
+    const m = (start: number, cid: number, win: number, team: number) => ({ start, cid, win, members: [{ name: 'A', team }, { name: 'B', team: 3 - team }] })
+    applyPvpHistory([m(now, 55, 1, 1), m(now, 55, 2, 1), m(now, 44, 1, 1), m(old, 55, 1, 1), m(now + 1, 55, 2, 2)])
+    expect(checkCount('battlefieldWins', 'char', 'w', 'A')).toBe(2)
+  })
+})

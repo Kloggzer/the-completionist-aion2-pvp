@@ -2,10 +2,11 @@
 import { U, bump } from '@/core/state'
 import { onHost } from '@/core/host'
 import { on } from '@/core/bus'
-import { refreshBaselines } from './checklist'
+import { applyPvpHistory, refreshBaselines } from './checklist'
 import { onAchUpd } from './achievements'
 
 onHost('achUpd', m => onAchUpd(m.items))
+onHost('pvpHistory', m => applyPvpHistory(m.matches || []))
 on('state', refreshBaselines)
 on('init', refreshBaselines)
 setInterval(refreshBaselines, 60000)

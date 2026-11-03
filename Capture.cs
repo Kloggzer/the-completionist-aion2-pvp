@@ -42,6 +42,8 @@ abstract class PetSource : IDisposable
     public event Action<int, int>? OdyleReceived;
     // Entry charges (0x0c61 type 04): u32 content id, u8 charges left. Verified: 4 = Nightmare, 8 = Dimensional Invasion.
     public event Action<uint, int>? ChargeReceived;
+    // PvP match history when its window opens (0x2ce3): JSON per match (start, contents id, winning team, members).
+    public event Action<List<JsonElement>>? PvpHistoryReceived;
     // Every entry limit at login (0x0b61): content id, charges left, bonus entries.
     public event Action<List<(uint id, int left, int bonus)>>? EntryChargesReceived;
     // Black Cloud Merchant offer (0x9156) whenever its window/tab opens: tab id, offered items.
@@ -207,6 +209,8 @@ abstract class PetSource : IDisposable
         }
         else if (op == 0x9156 && PetFrames.ParseMerchant(body) is { } merch)
             MerchantReceived?.Invoke(merch.tab, merch.items);
+        else if (op == 0x2ce3 && body.Length > 100 && PvpHistory(body) is { Count: > 0 } matches)
+            PvpHistoryReceived?.Invoke(matches);
         else if (op == 0x0b61 && PetFrames.ParseEntryCharges(body) is { } entries)
             EntryChargesReceived?.Invoke(entries);
         else if (op == 0x0c61 && body.Length == 8 && body[1] == 0x04)
@@ -492,4 +496,30 @@ sealed class ReplayCapture(string dir, double speed) : PetSource
         }
         catch (Exception ex) { SetStatus("error", L.T("Replay fehlgeschlagen: ", "Replay failed: ") + ex.Message); }
     });
+
+    /// The match objects of a 0x2ce3 history frame: each is a JSON object starting with {"start_time" (length-prefixed,
+    /// so they are cut out by brace depth). Contents ids seen: 22 = arena, 44 = coop arena, 55 = battlefield.
+    static List<JsonElement> PvpHistory(byte[] b)
+    {
+        var list = new List<JsonElement>();
+        var key = "{\"start_time\""u8.ToArray();
+        for (int i = 0; i + key.Length < b.Length; i++)
+        {
+            if (!b.AsSpan(i).StartsWith(key)) continue;
+            int depth = 0, j = i;
+            bool str = false;
+            for (; j < b.Length; j++)
+            {
+                byte c = b[j];
+                if (str) { if (c == (byte)'\\') j++; else if (c == (byte)'"') str = false; continue; }
+                if (c == (byte)'"') str = true;
+                else if (c == (byte)'{') depth++;
+                else if (c == (byte)'}' && --depth == 0) break;
+            }
+            if (j >= b.Length) break;
+            try { using var doc = JsonDocument.Parse(b.AsMemory(i, j - i + 1)); list.Add(doc.RootElement.Clone()); } catch { }
+            i = j;
+        }
+        return list;
+    }
 }

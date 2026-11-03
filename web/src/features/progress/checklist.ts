@@ -207,3 +207,13 @@ export function renameChar(from: string, to: string): boolean {
   else bump()
   return true
 }
+
+// PvP match history (sent when its window opens, the newest matches per mode): battlefield wins since the weekly reset
+// count for the logged-in character. Contents ids: 22 arena, 44 coop arena, 55 battlefield.
+export type PvpMatch = { start: number; cid: number; win: number; members: { name: string; team: number }[] }
+export function applyPvpHistory(matches: PvpMatch[]) {
+  const me = S.state.charName, reset = lastReset('w').getTime()
+  if (!me || manual()) return
+  const wins = matches.filter(m => m.cid === 55 && m.start >= reset && m.members.find(x => x.name === me)?.team === m.win).length
+  if (wins > manualCount('battlefieldWins', 'char', 'w')) checkSet('battlefieldWins', 'char', 'w', 3, wins)
+}

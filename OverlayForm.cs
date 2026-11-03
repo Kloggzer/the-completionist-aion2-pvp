@@ -1016,6 +1016,18 @@ sealed class OverlayForm : Form
             Log($"Kartenwechsel: {id}");
             Post(new { type = "zone", id });
         });
+        source.PvpHistoryReceived += matches => BeginInvoke(() =>
+        {
+            // only what the checklist needs: start, contents id, winning team, the members' names and teams
+            Post(new { type = "pvpHistory", matches = matches.Select(m => new {
+                start = m.TryGetProperty("start_time", out var s) ? s.GetInt64() : 0,
+                cid = m.TryGetProperty("contents_id", out var c) ? c.GetInt32() : 0,
+                win = m.TryGetProperty("winning_team", out var w) ? w.GetInt32() : 0,
+                members = m.TryGetProperty("member", out var ms) && ms.ValueKind == JsonValueKind.Array
+                    ? ms.EnumerateArray().Select(x => new { name = x.TryGetProperty("name", out var n) ? n.GetString() : "", team = x.TryGetProperty("team", out var tm) ? tm.GetInt32() : 0 }).ToArray()
+                    : [],
+            }) });
+        });
         source.EntryChargesReceived += list => BeginInvoke(() =>
         {
             Log("Eintritte (Login): " + string.Join(", ", list.Where(x => x.left > 0 || x.bonus > 0).Select(x => $"{x.id}={x.left}+{x.bonus}")));
