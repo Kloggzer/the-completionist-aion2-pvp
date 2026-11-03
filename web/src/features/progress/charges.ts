@@ -12,11 +12,13 @@ export type ChargeDef = {
   regen: number; every: number | 'day'
   /** Step of the − / + buttons (Odyle: one cube costs 40). */
   step: number
+  /** Bonus entries may lift the value above the cap by this much (the refill still stops at the cap). */
+  over?: number
 }
 
 export const CHARGES: ChargeDef[] = [
   { id: 'odyle', per: 'char', tier: 1, cap: () => (U.member ? 840 : 560), regen: 15, every: 3 * 3600e3, step: 40 },
-  { id: 'nightmare', per: 'char', tier: 1, cap: () => 14, regen: 2, every: 'day', step: 1 },
+  { id: 'nightmare', per: 'char', tier: 1, cap: () => 14, regen: 2, every: 'day', step: 1, over: 30 }, // bonus entries from items
   { id: 'shugo', per: 'server', tier: 2, cap: () => (U.member ? 21 : 12), regen: 3, every: 'day', step: 1 },
   { id: 'invasion', per: 'server', tier: 3, cap: () => 7, regen: 1, every: 'day', step: 1 },
 ]
@@ -32,6 +34,9 @@ function resetsBetween(from: number, to: number) {
   return n
 }
 
+/** Highest value: the cap plus what bonus entries can add. */
+export const chargeMax = (d: ChargeDef) => d.cap() + (d.over ?? 0)
+
 /** Time of the last reading (game or by hand), null without one. */
 export const chargeReadAt = (d: ChargeDef, char?: string) => reading(d, char)?.at ?? null
 
@@ -40,7 +45,8 @@ export function chargeNow(d: ChargeDef, char?: string, now = Date.now()): number
   const r = reading(d, char)
   if (!r) return null
   const ticks = d.every === 'day' ? resetsBetween(r.at, now) : Math.floor((now - r.at) / d.every)
-  return Math.min(d.cap(), r.v + ticks * d.regen)
+  // above the cap (bonus entries): the refill stops, the value stays
+  return r.v >= d.cap() ? r.v : Math.min(d.cap(), r.v + ticks * d.regen)
 }
 
 /** Milliseconds until full (0 = full, null without a reading). */
@@ -63,7 +69,7 @@ export function chargeLight(d: ChargeDef, char?: string, now = Date.now()): Ligh
 }
 
 export function setCharge(d: ChargeDef, v: number, char?: string, extra?: { auto?: boolean; bonus?: number }) {
-  (U.charges ||= {})[key(d, char)] = { v: Math.max(0, Math.min(d.cap(), Math.round(v))), at: Date.now(), ...extra }
+  (U.charges ||= {})[key(d, char)] = { v: Math.max(0, Math.min(chargeMax(d), Math.round(v))), at: Date.now(), ...extra }
   saveUi(['charges']); bump()
 }
 /** Reading came from the game (not entered by hand), and the Odyle bonus pool sent with it. */

@@ -210,3 +210,14 @@ describe('checklist: counted progress is kept per character', async () => {
     expect(checkCount('supplyEmergency', 'char', 'd', 'B')).toBe(0)
   })
 })
+
+describe('charges: bonus entries above the cap', async () => {
+  const { CHARGES, chargeNow, setCharge } = await import('@/features/progress/charges')
+  it('Nightmare keeps 18 (14 + 4 bonus) and does not refill above it; Odyle stays capped', () => {
+    const nightmare = CHARGES.find(c => c.id === 'nightmare')!, odyle = CHARGES.find(c => c.id === 'odyle')!
+    setCharge(nightmare, 18, 'A')
+    expect(chargeNow(nightmare, 'A', Date.now() + 3 * 864e5)).toBe(18)
+    setCharge(odyle, 900, 'A')
+    expect(chargeNow(odyle, 'A')).toBe(odyle.cap())
+  })
+})

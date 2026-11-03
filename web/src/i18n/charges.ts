@@ -2,6 +2,7 @@
 export default {
   de: {
     'charge.title': 'Vorräte', 'charge.sub': 'laufen voll – was drüber geht, verfällt',
+    'charge.overTip': 'Bonus-Einträge über dem Maximum: sie verfallen nicht, die tägliche Aufladung pausiert aber, bis du unter das Maximum kommst.',
     'charge.old': 'geschätzt, gelesen vor {t}', 'charge.oldTip': 'Der Wert kommt aus dem Spiel nur beim Login oder wenn du das Fenster öffnest – seitdem hochgerechnet. Einloggen oder das Fenster öffnen aktualisiert ihn.',
     'charge.perDay': '+{n} pro Tag', 'charge.perH': '+{n} alle {h} h',
     'charge.enter': 'Wert eintragen', 'charge.bonus': 'Bonus', 'charge.bonusTip': 'Bonus-Energie aus benutzten Odyle-Items, zusätzlich zum normalen Vorrat',
@@ -19,6 +20,7 @@ export default {
   },
   en: {
     'charge.title': 'Charges', 'charge.sub': 'they fill up – anything above the cap is lost',
+    'charge.overTip': 'Bonus entries above the maximum: they do not expire, but the daily refill pauses until you are below the maximum.',
     'charge.old': 'estimated, read {t} ago', 'charge.oldTip': 'The game sends the value only at login or when you open the window – projected since then. Logging in or opening the window updates it.',
     'charge.perDay': '+{n} per day', 'charge.perH': '+{n} every {h} h',
     'charge.enter': 'enter value', 'charge.bonus': 'bonus', 'charge.bonusTip': 'Bonus energy from used Odyle items, on top of the regular energy',

@@ -6,7 +6,7 @@ import { Slider } from '@/components/ui/slider'
 import { ACCENT, AutoBadge, Bar, Chip, ROW, ROW_CLICK, Sect, StepCol, T_BODY, T_FOOT, T_META, T_SUB, T_TITLE, TILE, TILE_P, TONE, TileIcon, grid, type BoxTone } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { resetIn, type Per } from './checklist'
-import { chargeAuto, chargeBonus, chargeFullIn, chargeLight, chargeNow, chargeReadAt, chargesOf, setCharge, stepCharge, type ChargeDef, type Light } from './charges'
+import { chargeAuto, chargeBonus, chargeFullIn, chargeLight, chargeMax, chargeNow, chargeReadAt, chargesOf, setCharge, stepCharge, type ChargeDef, type Light } from './charges'
 import type { Alert } from './alerts'
 
 export const LIGHT_DOT: Record<Light | 'red' | 'yellow', string> = {
@@ -32,6 +32,7 @@ function ChargeTile({ d, char }: { d: ChargeDef; char?: string }) {
         <div className={cn(T_SUB, LIGHT_TXT[light])}>
           {status}
           {!!bonus && <span className="text-cyan" data-tip={t('charge.bonusTip')}> · +{bonus} {t('charge.bonus')}</span>}
+          {v != null && v > cap && <span className="text-cyan" data-tip={t('charge.overTip')}> · +{v - cap} {t('charge.bonus')}</span>}
           {old && <span className="text-dim" data-tip={t('charge.oldTip')} data-old> · {t('charge.old', { t: resetIn(new Date(Date.now() + age)) })}</span>}
         </div>
         <div className={T_FOOT}>
@@ -45,7 +46,7 @@ function ChargeTile({ d, char }: { d: ChargeDef; char?: string }) {
           </div>
         </div>
       </div>
-      <StepCol onStep={dir => stepCharge(d, dir, char)} minus={(v ?? 0) > 0} plus={v == null || v < cap} tips={[`−${d.step}`, `+${d.step}`]} />
+      <StepCol onStep={dir => stepCharge(d, dir, char)} minus={(v ?? 0) > 0} plus={v == null || v < chargeMax(d)} tips={[`−${d.step}`, `+${d.step}`]} />
     </div>
   )
 }
