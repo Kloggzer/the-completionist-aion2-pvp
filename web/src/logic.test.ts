@@ -218,11 +218,13 @@ describe('charges: the login list of entry limits (0x0b61)', async () => {
   it('Shugo 0+12, Nightmare 0+21, Ascension trial 0+13 as the game windows show them', () => {
     S.state = { levels: {}, souls: {}, charName: 'A' }
     U.checklist = { srv: {}, chars: {} }
-    applyEntryCharges([[1, 0, 12], [4, 0, 21], [80000001, 0, 13]])
+    applyEntryCharges([[1, 0, 12], [4, 0, 21], [80000001, 0, 13], [101, 0, 25]])
     const shugo = CHARGES.find(c => c.id === 'shugo')!, nightmare = CHARGES.find(c => c.id === 'nightmare')!
     expect([chargeNow(shugo), chargeBonus(shugo)]).toEqual([0, 12])
     expect([chargeNow(nightmare, 'A'), chargeBonus(nightmare, 'A')]).toEqual([0, 21])
     expect(checkCount('ascensionTrial', 'char', 'w', 'A')).toBe(3) // all 3 weekly entries used
-    expect(U.entryBonus['ascension|A']).toBe(13)
+    expect(U.entryBonus['ascensionTrial|A']).toBe(13)
+    expect(checkCount('dailyDungeons', 'server', 'w')).toBe(14) // daily dungeons 0+25: the 14 weekly entries used
+    expect(U.entryBonus['dailyDungeons|srv']).toBe(25)
   })
 })

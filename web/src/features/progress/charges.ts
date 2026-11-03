@@ -88,16 +88,19 @@ onHost('charge', m => {
 // (from items) sit on top of the charges and do not refill; checked against the game's windows (Shugo 0+12,
 // Nightmare 0+21, Ascension trial 0+13).
 const ENTRY_IDS: Record<number, string> = { 1: 'shugo', 4: 'nightmare', 8: 'invasion' }
-const ASCENSION = 80000001
+// checklist entries with a weekly entry limit: done = max − left; the bonus entries are shown next to them
+const ENTRY_CHECK: Record<number, string> = { 80000001: 'ascensionTrial', 101: 'dailyDungeons' }
+/** Key of an entry's bonus in U.entryBonus. */
+export const entryBonusKey = (item: string, per: Per, char?: string) => item + '|' + (per === 'server' ? 'srv' : char ?? charKey())
 export function applyEntryCharges(list: [number, number, number][]) {
   for (const [id, left, bonus] of list) {
     const d = CHARGES.find(x => x.id === ENTRY_IDS[id])
     if (d) setCharge(d, left, d.per === 'server' ? undefined : charKey(), { auto: true, bonus })
-    // Ascension trial: 3 entries a week, done = 3 − left; the bonus entries are kept for its tooltip
-    if (id === ASCENSION) {
-      const item = CHECK.flatMap(([, items]) => items).find(i => i[0] === 'ascensionTrial')
-      if (item) checkSet('ascensionTrial', 'char', 'w', item[1], item[1] - left)
-      U.entryBonus = { ...U.entryBonus, ['ascension|' + charKey()]: bonus }; saveUi(['entryBonus'])
+    const item = CHECK.flatMap(([, items]) => items).find(i => i[0] === ENTRY_CHECK[id])
+    if (item) {
+      const kind = CHECK.find(([, items]) => items.includes(item))![0]
+      checkSet(item[0], item[2], kind, item[1], item[1] - left)
+      U.entryBonus = { ...U.entryBonus, [entryBonusKey(item[0], item[2])]: bonus }; saveUi(['entryBonus'])
     }
   }
 }
