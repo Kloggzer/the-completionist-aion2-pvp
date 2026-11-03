@@ -4,7 +4,7 @@
 import { S, U, saveUi, bump, manual, type Any } from '@/core/state'
 import { t } from '@/core/i18n'
 import { host } from '@/core/host'
-import { Castle, ClipboardList, Crown, DoorOpen, FlaskConical, FlaskRound, Gem, Mountain, Package, PackageOpen, ScrollText, Store, Swords, type LucideIcon } from 'lucide-react'
+import { Trophy, Users, Castle, ClipboardList, Crown, DoorOpen, FlaskConical, FlaskRound, Gem, Mountain, Package, PackageOpen, ScrollText, Store, Swords, type LucideIcon } from 'lucide-react'
 
 export type Kind = 'd' | 'w'
 export type Per = 'server' | 'char'
@@ -25,6 +25,8 @@ export const CHECK: [Kind, CheckItem[]][] = [
     ['odyleCraft', 4, 'char'],
     ['ascensionTrial', 3, 'char'],
     ['battlefieldWins', 3, 'char'],
+    ['arena', 10, 'char'],              // match rewards; the wins (30) are shown next to it
+    ['coopArena', 10, 'char'],
     ['odyleCraftServer', 16, 'server'], // shared Substance Morph pool on top of the 4 per character
     ['windBreezeShop', 1, 'server'],    // Wind Breeze Merchant (membership)
     ['supplyWeekly', 1, 'char'],
@@ -34,12 +36,12 @@ export const CHECK: [Kind, CheckItem[]][] = [
 /** Priority: 1 = must do, 2 = should do, 3 = optional. */
 export const TIER: Record<string, 1 | 2 | 3> = {
   dutyMissions: 1, ludra: 1, dutyCommands: 1, dailyDungeons: 1, odyleCraft: 1, ascensionTrial: 1,
-  supplyEmergency: 2, battlefieldWins: 2, odyleCraftServer: 2, windBreezeShop: 2, supplyWeekly: 2, abyssShop: 3,
+  supplyEmergency: 2, battlefieldWins: 2, arena: 3, coopArena: 3, odyleCraftServer: 2, windBreezeShop: 2, supplyWeekly: 2, abyssShop: 3,
 }
 /** Icon per entry (tile icon column, overview rows). */
 export const CHECK_ICON: Record<string, LucideIcon> = {
   dutyMissions: ClipboardList, supplyEmergency: Package, ludra: Crown, dutyCommands: ScrollText, dailyDungeons: DoorOpen, odyleCraft: FlaskConical, odyleCraftServer: FlaskRound,
-  ascensionTrial: Mountain, battlefieldWins: Swords, windBreezeShop: Store, supplyWeekly: PackageOpen, abyssShop: Gem,
+  ascensionTrial: Mountain, battlefieldWins: Swords, arena: Trophy, coopArena: Users, windBreezeShop: Store, supplyWeekly: PackageOpen, abyssShop: Gem,
 }
 export const CHECK_ICON_DEFAULT = Castle
 /** Colour per priority tier: must = gold, should = cyan, optional = dim. */
@@ -214,6 +216,16 @@ export type PvpMatch = { start: number; cid: number; win: number; members: { nam
 export function applyPvpHistory(matches: PvpMatch[]) {
   const me = S.state.charName, reset = lastReset('w').getTime()
   if (!me || manual()) return
-  const wins = matches.filter(m => m.cid === 55 && m.start >= reset && m.members.find(x => x.name === me)?.team === m.win).length
+  const mine = (cid: number) => matches.filter(m => m.cid === cid && m.start >= reset && m.members.some(x => x.name === me))
+  const won = (m: PvpMatch) => m.members.find(x => x.name === me)?.team === m.win
+  const wins = mine(55).filter(won).length
   if (wins > manualCount('battlefieldWins', 'char', 'w')) checkSet('battlefieldWins', 'char', 'w', 3, wins)
+  // arena (22) and coop arena (44): the entry counts matches (10 rewards), the wins (30 rewards) are kept beside it.
+  // The history holds only the newest matches of a mode, so a count never goes down.
+  for (const [cid, id] of [[22, 'arena'], [44, 'coopArena']] as const) {
+    const ms = mine(cid), k = id + '|' + me, prev = U.pvpWins?.[k]
+    if (ms.length > manualCount(id, 'char', 'w')) checkSet(id, 'char', 'w', 10, ms.length)
+    const w = Math.max(ms.filter(won).length, prev && prev.r === reset ? prev.n : 0)
+    U.pvpWins = { ...U.pvpWins, [k]: { n: w, r: reset } }; saveUi(['pvpWins'])
+  }
 }

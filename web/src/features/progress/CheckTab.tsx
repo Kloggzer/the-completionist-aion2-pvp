@@ -9,7 +9,7 @@ import { S, U, V, bump, manual, useApp } from '@/core/state'
 import { t, hm } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CHECK, CHECK_ICON, CHECK_ICON_DEFAULT, TIER, TIER_TONE, resetIn, checkAuto, checkCount, checkSet, characters, nextReset, progressOf, removeChar, setAll, addChar, renameChar, selectChar, type Kind, type Per } from './checklist'
+import { CHECK, CHECK_ICON, lastReset, CHECK_ICON_DEFAULT, TIER, TIER_TONE, resetIn, checkAuto, checkCount, checkSet, characters, nextReset, progressOf, removeChar, setAll, addChar, renameChar, selectChar, type Kind, type Per } from './checklist'
 import { AppSelect } from '@/components/AppSelect'
 import { ACCENT, AutoBadge, BOX, Bar, BarInfo, BarRight, Columns, HowTo, Kpi, KpiRow, META, Note, Page, Panel, ROW, ROW_CLICK, ROWS, SECT_BTN, SUB, Sect, StepCol, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_TITLE, TILE, TILE_P, TONE, TextEntry, TileIcon, TopN, grid } from '@/components/kit'
 import { alerts, ownerAlertsOf, ownerLevel } from './alerts'
@@ -23,6 +23,9 @@ function Entry({ id, max, per, kind, char }: { id: string; max: number; per: Per
   const c = checkCount(id, per, kind, char), full = c >= max, auto = checkAuto(id, per, kind, char), tier = TIER[id] ?? 2
   // bonus entries from items (login list: Ascension trial, daily dungeons)
   const bonus = U.entryBonus?.[entryBonusKey(id, per, char)] ?? 0
+  // arena modes: the wins this week beside the matches
+  const wins = id === 'arena' || id === 'coopArena' ? U.pvpWins?.[id + '|' + (char ?? S.state.charName)] : null
+  const winsNow = wins && wins.r === lastReset('w').getTime() ? wins.n : 0
   const tip = t('progress.item.' + id) + ' – ' + t('progress.tip.' + id) + (per === 'server' ? t('progress.perServer') : '') + (auto ? t('progress.isAuto') : '')
   return (
     <div data-check={id} data-done={full || undefined} data-tip={tip} className={cn(TILE, TILE_P, 'pr-0', full && 'border-green/30')}>
@@ -36,6 +39,7 @@ function Entry({ id, max, per, kind, char }: { id: string; max: number; per: Per
               <b className={cn('font-semibold', full ? TONE.ok : 'text-foreground')}>{full ? '✓ ' : ''}{c}/{max}</b>
               {auto && <AutoBadge tip={t('progress.autoTip')} />}
               {!!bonus && <span className="text-cyan" data-tip={t('charge.bonusTip')}>+{bonus} {t('charge.bonus')}</span>}
+              {wins !== null && <span className="text-muted-foreground" data-tip={t('chk.winsTip')}>{t('chk.wins', { n: winsNow })}</span>}
             </span>
             <span className={cn('truncate', full ? TONE.off : tier === 1 ? TONE.warn : tier === 2 ? TONE.info : TONE.off)}>{t('chk.tier.' + tier)}</span>
           </div>

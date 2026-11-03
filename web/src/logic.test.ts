@@ -239,5 +239,7 @@ describe('checklist: battlefield wins from the PvP history', async () => {
     const m = (start: number, cid: number, win: number, team: number) => ({ start, cid, win, members: [{ name: 'A', team }, { name: 'B', team: 3 - team }] })
     applyPvpHistory([m(now, 55, 1, 1), m(now, 55, 2, 1), m(now, 44, 1, 1), m(old, 55, 1, 1), m(now + 1, 55, 2, 2)])
     expect(checkCount('battlefieldWins', 'char', 'w', 'A')).toBe(2)
+    expect(checkCount('coopArena', 'char', 'w', 'A')).toBe(1)
+    expect(U.pvpWins['coopArena|A'].n).toBe(1)
   })
 })
