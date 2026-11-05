@@ -385,6 +385,38 @@ static class PetFrames
         return false;
     }
 
+    // Skill casts (boss mod, verified on the dungeon bosses of captures/20261027-170912 against Abyss Logs, see
+    // tools/boss_timeline.py):
+    //  0x0238  cast start: caster varint, 00, u32 skill, u8 cast counter, u8, target varint, f32 angle, x, y, z, ...
+    //          (one frame per target: the same skill and counter several times)
+    //  0x0638  cast end:   caster varint, u32 skill, u8 cast counter, 00
+    public static (uint ent, uint skill, byte seq, uint target)? CastStart(byte[] b)
+    {
+        if (VarintLen(b, 0) is not (> 0 and var k) || k + 7 > b.Length || b[k] != 0) return null;
+        int o = 0;
+        uint ent = (uint)Varint(b, ref o);
+        uint tgt = 0;
+        if (VarintLen(b, k + 7) > 0) { int t = k + 7; tgt = (uint)Varint(b, ref t); }
+        return (ent, BitConverter.ToUInt32(b, k + 1), b[k + 5], tgt);
+    }
+
+    // 0x008d (HP, many subtypes): entity varint, 02 01 00, u64 HP (the boss's matched Abyss Logs' HP on Atiel).
+    public static (uint ent, long hp)? NpcHp(byte[] b)
+    {
+        if (VarintLen(b, 0) is not (> 0 and var k) || b.Length != k + 11 || b[k] != 2 || b[k + 1] != 1 || b[k + 2] != 0) return null;
+        int o = 0;
+        uint ent = (uint)Varint(b, ref o);
+        return (ent, BitConverter.ToInt64(b, k + 3));
+    }
+
+    public static (uint ent, uint skill, byte seq)? CastEnd(byte[] b)
+    {
+        if (VarintLen(b, 0) is not (> 0 and var k) || k + 5 > b.Length) return null;
+        int o = 0;
+        uint ent = (uint)Varint(b, ref o);
+        return (ent, BitConverter.ToUInt32(b, k), b[k + 4]);
+    }
+
     // 0x4136 (npc spawn) / 0x4536 (player spawn): entity varint, a few header bytes, then x, y, z as float32 cm.
     public static (float x, float y, float z)? SpawnPosition(byte[] b)
     {

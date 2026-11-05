@@ -17,6 +17,7 @@ import { applyTheme } from '@/core/theme'
 import { nextRange, MIN_RANGE, MAX_RANGE, radarCfg, setRadarCfg, toggleMiniRadar, toggleRadarLock, centerRadar } from '@/features/map/miniRadar'
 import { pvpCfg, setPvpCfg, togglePvp, toggleWinEdit } from '@/features/pvp'
 import { cn } from '@/lib/utils'
+import { BossRecRow } from '@/features/bossmod/SettingsRow'
 
 const pct = (v: number) => Math.round(v * 100) + ' %'
 
@@ -28,7 +29,7 @@ function stepVal(cur: number, d: number, step: number, min: number, max: number)
 
 const close = () => { V.settingsOpen = false; bump() }
 // autoMap/soundCube/soundTimer default to on (undefined = on).
-const DEF_ON = ['autoMap', 'soundCube', 'soundTimer', 'startChime']
+const DEF_ON = ['autoMap', 'soundCube', 'soundTimer', 'startChime', 'bossRec']
 const isOn = (k: string) => (DEF_ON.includes(k) ? U[k] !== false : !!U[k])
 function flip(k: string) {
   U[k] = DEF_ON.includes(k) ? U[k] === false : !U[k]
@@ -290,6 +291,11 @@ export function Notify() {
         ))}
       </Group>
     )}
+    <Group title={t('set.g.bossMod')}>
+      <UToggle k="bossMod" />
+      <UToggle k="bossRec" sub={t('set.bossRec.sub', { key: hkText('bossMark') || '–' })} />
+      <BossRecRow />
+    </Group>
     <Group title={t('set.g.timer')}>
       <Stepper label={t('set.timerLead')} sub={t('set.timerLead.sub')} value={lead + ' min'} minus={lead > 1} plus={lead < 30}
         onStep={d => { U.timerLead = Math.min(30, Math.max(1, lead + d)); saveUi(['timerLead']); bump() }} />

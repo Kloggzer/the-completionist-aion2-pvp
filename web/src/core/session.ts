@@ -68,7 +68,7 @@ onHost('siteMode', m => { S.site = m.on; bump(); if (!m.on) requestAnimationFram
 
 // ---------------------------------------------------------------- hotkeys (display text)
 
-export const HK_IDS = ['toggle', 'click', 'radar', 'site', 'opaUp', 'opaDown', 'zoomIn', 'zoomOut', 'radarLock', 'pvp', 'winEdit'] as const
+export const HK_IDS = ['toggle', 'click', 'radar', 'site', 'opaUp', 'opaDown', 'zoomIn', 'zoomOut', 'radarLock', 'pvp', 'winEdit', 'bossMark'] as const
 const KEY_DE: Record<string, string> = { PageUp: 'Bild ↑', PageDown: 'Bild ↓', Home: 'Pos1', End: 'Ende', Insert: 'Einfg', Delete: 'Entf', Oemplus: '+', OemMinus: '−' }
 const KEY_EN: Record<string, string> = { PageUp: 'PgUp', PageDown: 'PgDn', Home: 'Home', End: 'End', Insert: 'Ins', Delete: 'Del', Oemplus: '+', OemMinus: '−' }
 const MOD_DE: Record<string, string> = { Ctrl: 'Strg', 'Ctrl+Alt': 'Strg+Alt', 'Ctrl+Shift': 'Strg+Shift' }

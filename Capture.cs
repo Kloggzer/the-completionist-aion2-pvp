@@ -96,6 +96,18 @@ abstract class PetSource : IDisposable
     byte[]? lastBossTable;
     public HashSet<uint> TrackedNpcs { get; set; } = new();
     readonly Dictionary<uint, uint> bossEntities = new();
+    // Boss mod (web/src/features/bossmod): the npcs it has timelines for (ids given by the UI); BossModAll = every npc
+    // (learning: boss-casts.log). Entity -> npc from the 0x4136 spawn (NpcData id after the entity varint + 3 bytes),
+    // skills from 0x0238 / 0x0638 (PetFrames.CastStart / CastEnd), gone / died from 0x4236.
+    public HashSet<uint> BossModNpcs { get; set; } = new();
+    public bool BossModAll { get; set; }
+    public event Action<uint, uint, uint, byte, uint, DateTime>? NpcCast; // npc, entity, skill, cast counter, target
+    public event Action<uint, uint, uint, byte, DateTime>? NpcCastEnd; // npc, entity, skill, cast counter
+    public event Action<uint, uint, bool, DateTime>? NpcGone; // npc, entity, died
+    public event Action<uint, uint, DateTime>? NpcSpawned; // npc, entity
+    readonly Dictionary<uint, uint> modEntities = new();
+    /// Fight recordings for the boss mod (BossRecorder.cs), null = off.
+    public BossRecorder? Recorder { get; set; }
     readonly HashSet<uint> objects = new();
     readonly PositionTracker tracker;
     readonly Queue<(DateTime ts, float x, float y, float z)> spawns = new();
@@ -188,6 +200,8 @@ abstract class PetSource : IDisposable
         }
         if (OwnId != null) tracker.Feed(op, body, ts, OwnId); // own position: exact fixes (its estimate is not used)
         PlayerFrame(op, body);
+        NpcFrame(op, body, ts);
+        Recorder?.Frame(op, body, ts);
         if (op == Frames.OpPetList && PetFrames.ParseList(body) is { } list)
             PetListReceived?.Invoke(list, ts);
         else if (op == 0x0191 && (lastBossTable == null || !body.AsSpan().SequenceEqual(lastBossTable)))
@@ -283,6 +297,33 @@ abstract class PetSource : IDisposable
             int o = 0;
             uint ent = (uint)PetFrames.Varint(body, ref o);
             if (o < body.Length && objects.Remove(ent)) ObjectRemoved?.Invoke(ent, body[o]);
+        }
+    }
+
+    void NpcFrame(int op, byte[] body, DateTime ts)
+    {
+        if (op == 0x0140) { modEntities.Clear(); return; }
+        if (op is not (0x4136 or 0x0238 or 0x0638 or 0x4236) || BossModNpcs.Count == 0 && !BossModAll) return;
+        if (op == 0x4136)
+        {
+            int o = 0;
+            uint ent = (uint)PetFrames.Varint(body, ref o);
+            if (o + 7 > body.Length) return;
+            uint id = BitConverter.ToUInt32(body, o + 3);
+            if (!BossModAll && !BossModNpcs.Contains(id)) return;
+            modEntities[ent] = id;
+            NpcSpawned?.Invoke(id, ent, ts);
+        }
+        else if (modEntities.Count == 0) return;
+        else if (op == 0x0238 && PetFrames.CastStart(body) is { } c && modEntities.TryGetValue(c.ent, out var npc))
+            NpcCast?.Invoke(npc, c.ent, c.skill, c.seq, c.target, ts);
+        else if (op == 0x0638 && PetFrames.CastEnd(body) is { } e && modEntities.TryGetValue(e.ent, out npc))
+            NpcCastEnd?.Invoke(npc, e.ent, e.skill, e.seq, ts);
+        else if (op == 0x4236 && body.Length >= 3)
+        {
+            int o = 0;
+            uint ent = (uint)PetFrames.Varint(body, ref o);
+            if (o + 1 < body.Length && modEntities.Remove(ent, out npc)) NpcGone?.Invoke(npc, ent, body[o + 1] == 3, ts);
         }
     }
 

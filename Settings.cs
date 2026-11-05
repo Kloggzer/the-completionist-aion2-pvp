@@ -93,7 +93,7 @@ sealed class Settings
         // Ctrl+Alt: plain Alt+letter combos are partly game shortcuts (Alt+C wings, Alt+V, Alt+H, ...).
         ["toggle"] = "Ctrl+Alt+M", ["click"] = "Ctrl+Alt+C", ["radar"] = "Ctrl+Alt+R", ["site"] = "Ctrl+Alt+W",
         ["opaUp"] = "Ctrl+Alt+PageUp", ["opaDown"] = "Ctrl+Alt+PageDown", ["zoomIn"] = "Ctrl+Alt+Oemplus", ["zoomOut"] = "Ctrl+Alt+OemMinus",
-        ["radarLock"] = "Ctrl+Alt+E", ["pvp"] = "Ctrl+Alt+P", ["winEdit"] = "Ctrl+Alt+L",
+        ["radarLock"] = "Ctrl+Alt+E", ["pvp"] = "Ctrl+Alt+P", ["winEdit"] = "Ctrl+Alt+L", ["bossMark"] = "Ctrl+Alt+B",
     };
 
     public static string DataDir { get; } = Path.Combine(
