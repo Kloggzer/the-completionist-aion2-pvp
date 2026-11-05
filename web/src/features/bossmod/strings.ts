@@ -1,6 +1,15 @@
 // Strings of the boss mod (registered via addStrings, so the folder stays self-contained).
 export default {
   de: {
+    'boss.soonTitle': '{skill} kommt', 'boss.onYou': 'AUF DICH', 'boss.sayOnYou': '{skill} auf dich', 'boss.targetYou': 'Boss zielt auf DICH', 'boss.sayTarget': 'Ziel auf dir',
+    'boss.blameLive': 'Petze: {list}',
+    'boss.b.dodge': 'WEG', 'boss.b.out': 'RAUS', 'boss.b.in': 'REIN', 'boss.b.stack': 'ZUSAMMEN', 'boss.b.spread': 'VERTEILEN',
+    'boss.b.interrupt': 'STOPPEN', 'boss.b.tank': 'TANK', 'boss.b.info': 'INFO',
+    'set.bossCount': 'Countdown 3, 2, 1', 'set.bossCount.sub': 'Zählt vor angesagten Angriffen laut herunter',
+    'set.bossTargetMe': '„Du bist Ziel“', 'set.bossTargetMe.sub': 'Ansage, wenn der Boss dich anvisiert oder ein großer Angriff auf dich geht',
+    'set.bossSound': 'Töne', 'set.bossSound.sub': 'Ton pro Mechanik: Alarm bei Ausweichen / Raus / Rein, Gong bei Zusammen / Verteilen',
+    'bm.guide': 'Phasen & Mechaniken', 'bm.todo': 'Werte folgen', 'bm.frenzy': 'Frenzy nach {t}', 'bm.noGuide': 'Noch kein Guide für diesen Boss',
+    'bm.mechSkills': 'Skills: {ids}', 'bm.mechNoSkills': 'Skill-ID noch unbekannt',
     'tab.bossmod': 'Boss-Helfer', 'tab.bossmod.tip': 'Dungeon-Bosse: Ansagen, Timer-Balken, wer die Mechanik nicht gespielt hat',
     'set.g.bossMod': 'Boss-Helfer',
     'set.bossMod': 'Boss-Helfer', 'set.bossMod.sub': 'Dungeon-Bosse: Banner und Ansage, wenn ein großer Angriff startet, und eine Vorwarnung, wenn er wieder fällig ist',
@@ -35,6 +44,15 @@ export default {
     'bm.back': 'Alle Bosse',
   },
   en: {
+    'boss.soonTitle': '{skill} incoming', 'boss.onYou': 'ON YOU', 'boss.sayOnYou': '{skill} on you', 'boss.targetYou': 'Boss targets YOU', 'boss.sayTarget': 'Target on you',
+    'boss.blameLive': 'Blame: {list}',
+    'boss.b.dodge': 'DODGE', 'boss.b.out': 'OUT', 'boss.b.in': 'IN', 'boss.b.stack': 'STACK', 'boss.b.spread': 'SPREAD',
+    'boss.b.interrupt': 'STOP', 'boss.b.tank': 'TANK', 'boss.b.info': 'INFO',
+    'set.bossCount': 'Countdown 3, 2, 1', 'set.bossCount.sub': 'Counts down out loud before announced attacks',
+    'set.bossTargetMe': '"You are the target"', 'set.bossTargetMe.sub': 'Callout when the boss targets you or a big attack goes on you',
+    'set.bossSound': 'Sounds', 'set.bossSound.sub': 'Sound per mechanic: alarm for dodge / out / in, gong for stack / spread',
+    'bm.guide': 'Phases & mechanics', 'bm.todo': 'values follow', 'bm.frenzy': 'Frenzy after {t}', 'bm.noGuide': 'No guide for this boss yet',
+    'bm.mechSkills': 'Skills: {ids}', 'bm.mechNoSkills': 'skill id not known yet',
     'tab.bossmod': 'Boss helper', 'tab.bossmod.tip': 'Dungeon bosses: callouts, timer bars, who did not play the mechanic',
     'set.g.bossMod': 'Boss helper',
     'set.bossMod': 'Boss helper', 'set.bossMod.sub': 'Dungeon bosses: banner and voice when a big attack starts, and a warning when it is due again',

@@ -108,7 +108,7 @@ abstract class PetSource : IDisposable
     // HP (0x008d, at most every 250 ms per entity), aggro target (0x3538), hits of its skills (0x0438: who got hit).
     public event Action<uint, uint, long, DateTime>? NpcHp; // npc, entity, hp
     public event Action<uint, uint, uint, DateTime>? NpcTarget; // npc, entity, target entity
-    public event Action<uint, uint, uint, uint, byte, DateTime>? NpcHit; // npc, entity, skill, target entity, flags
+    public event Action<uint, uint, uint, byte, uint, byte, DateTime>? NpcHit; // npc, entity, skill, cast counter, target entity, flags
     readonly Dictionary<uint, uint> modEntities = new();
     readonly Dictionary<uint, DateTime> hpSent = new();
     int BossErrors;
@@ -325,7 +325,7 @@ abstract class PetSource : IDisposable
         else if (op == 0x0638 && PetFrames.CastEnd(body) is { } e && modEntities.TryGetValue(e.ent, out npc))
             NpcCastEnd?.Invoke(npc, e.ent, e.skill, e.seq, ts);
         else if (op == 0x0438 && PetFrames.Hit(body) is { } h && modEntities.TryGetValue(h.caster, out npc) && !modEntities.ContainsKey(h.target))
-            NpcHit?.Invoke(npc, h.caster, h.skill, h.target, h.flags, ts);
+            NpcHit?.Invoke(npc, h.caster, h.skill, h.seq, h.target, h.flags, ts);
         else if (op == 0x008d && PetFrames.NpcHp(body) is { } hp && modEntities.TryGetValue(hp.ent, out npc)
                  && (!hpSent.TryGetValue(hp.ent, out var last) || ts - last >= TimeSpan.FromMilliseconds(250)))
         {

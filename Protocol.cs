@@ -412,14 +412,14 @@ static class PetFrames
 
     // 0x0438 hit (verified: 4769 boss hits on players in 15 dungeon fights, the skill always one the boss cast):
     // target varint, u8 flags, u8, caster varint, u32 skill, u8 cast counter, ... (the damage layout is not decoded).
-    public static (uint target, byte flags, uint caster, uint skill)? Hit(byte[] b)
+    public static (uint target, byte flags, uint caster, uint skill, byte seq)? Hit(byte[] b)
     {
-        if (VarintLen(b, 0) is not (> 0 and var k) || VarintLen(b, k + 2) is not (> 0 and var c) || k + 2 + c + 4 > b.Length) return null;
+        if (VarintLen(b, 0) is not (> 0 and var k) || VarintLen(b, k + 2) is not (> 0 and var c) || k + 2 + c + 5 > b.Length) return null;
         int o = 0;
         uint tgt = (uint)Varint(b, ref o);
         o = k + 2;
         uint caster = (uint)Varint(b, ref o);
-        return (tgt, b[k], caster, BitConverter.ToUInt32(b, o));
+        return (tgt, b[k], caster, BitConverter.ToUInt32(b, o), b[o + 4]);
     }
 
     // 0x3538 npc target (aggro): entity varint, 00, target varint.

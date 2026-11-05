@@ -24,7 +24,7 @@ export const KIND_COL: Record<Kind, string> = {
 /** Player settings for one skill (all optional, defaults from the timeline):
  *  name, kind, own callout text, banner on cast start (default: big casts), warning seconds before the predicted next
  *  use (0 = none, default WARN for predictable big casts), bar (default: predictable), voice (default on), avoidable
- *  for the Petze (default: by kind, without a kind the big casts). */
+ *  for the Petze (default: by kind; unmarked skills do not count). */
 export type SkillCfg = { name?: string; kind?: Kind; text?: string; alert?: boolean; warn?: number; bar?: boolean; voice?: boolean; avoid?: boolean }
 export type Cfgs = Record<string, SkillCfg>
 
@@ -34,10 +34,13 @@ export const BIG_CAST = 3, BIG_MAX = 3
 export const WARN = 5, HP_LEAD = 5
 
 export type Cast = { skill: number; at: number; end?: number }
-export type Hit = { skill: number; tgt: number; name: string; me: boolean; at: number }
+/** seq: the boss's cast counter (0x0438): all hits of one cast share it. */
+export type Hit = { skill: number; tgt: number; name: string; me: boolean; at: number; seq?: number }
 export type Fight = {
   npc: number; ent: number; pull: number; casts: Cast[]; warned: Set<string>
   hp?: number; maxHp?: number; target?: { ent: number; name: string; me: boolean }; hits: Hit[]; end?: number; died?: boolean; marks?: number[]; minHp?: number
+  /** ms the boss held each target (aggro), and since when the current one: who tanks (mainTarget). */
+  held?: Record<number, number>; heldAt?: number
 }
 
 export const newFight = (npc: number, ent: number, at: number): Fight => ({ npc, ent, pull: at, casts: [], warned: new Set(), hits: [] })
@@ -62,7 +65,9 @@ export const alertOn = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.alert 
 export const warnLead = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.warn ?? (isBig(s) && predictable(s) ? WARN : 0)
 export const barOn = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.bar ?? predictable(s)
 export const voiceOn = (cfg?: SkillCfg) => cfg?.voice ?? true
-export const avoidable = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.avoid ?? (cfg?.kind ? AVOIDABLE.includes(cfg.kind) : isBig(s))
+/** Counts for the Petze: set by hand, else by kind (guide / own setting). Unmarked skills never count: hits of 3 of 5
+ *  players can be a missed mechanic or plain raid damage – blaming the wrong people is worse than saying nothing. */
+export const avoidable = (_s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.avoid ?? (cfg?.kind ? AVOIDABLE.includes(cfg.kind) : false)
 export const kindCol = (cfg?: SkillCfg) => KIND_COL[cfg?.kind || 'info']
 
 /** Record a cast start; a cast of the same skill within 0.4 s is the same cast on another target. */
@@ -84,6 +89,21 @@ export function setHp(f: Fight, hp: number) {
   f.maxHp = Math.max(f.maxHp ?? 0, hp)
   f.minHp = Math.min(f.minHp ?? hp, hp)
 }
+/** A new aggro target: the time the previous one was held is added up. */
+export function trackTarget(f: Fight, at: number) {
+  const prev = f.target?.ent
+  if (prev !== undefined && f.heldAt !== undefined) (f.held ||= {})[prev] = (f.held[prev] || 0) + Math.max(0, at - f.heldAt)
+  f.heldAt = at
+}
+/** The entity that held the boss most of the time (≥ 50 % of at least 10 s): the tank; targets on it are no news. */
+export function mainTarget(f: Fight, now: number): number | undefined {
+  const held = { ...f.held }
+  if (f.target && f.heldAt !== undefined) held[f.target.ent] = (held[f.target.ent] || 0) + Math.max(0, now - f.heldAt)
+  const total = Object.values(held).reduce((s, x) => s + x, 0)
+  const [ent, ms] = Object.entries(held).sort((a, b) => b[1] - a[1])[0] || []
+  return ent !== undefined && total >= 10_000 && ms >= total / 2 ? +ent : undefined
+}
+
 /** The boss is back at full HP after having lost some: a wipe / reset (the next pull is a new fight). */
 export const wasReset = (f: Fight) => !!f.maxHp && f.minHp !== undefined && f.minHp < 0.95 * f.maxHp && (f.hp ?? 0) >= 0.99 * f.maxHp
 export const hpPct = (f: Fight) => (f.maxHp ? Math.round((100 * (f.hp ?? f.maxHp)) / f.maxHp) : 100)
@@ -91,7 +111,7 @@ export const hpPct = (f: Fight) => (f.maxHp ? Math.round((100 * (f.hp ?? f.maxHp
 /** Record a hit of the boss's skill on a player; several frames of the same skill on the same player within 1 s are one
  *  hit (multi-hit skills, damage over time). Returns the hit if it is new. */
 export function addHit(f: Fight, h: Hit): Hit | null {
-  if (f.hits.some(x => x.skill === h.skill && x.tgt === h.tgt && h.at - x.at < 1000)) return null
+  if (f.hits.some(x => x.skill === h.skill && x.tgt === h.tgt && (h.seq !== undefined && x.seq === h.seq || h.at - x.at < 1000))) return null
   f.hits.push(h)
   return h
 }
@@ -156,25 +176,34 @@ export function bars(f: Fight, boss: BossStat | undefined, cfgs: Cfgs, now: numb
 
 export type Blame = { name: string; me: boolean; hits: number; skills: { skill: number; name: string; n: number }[] }
 
-/** Hits of one cast of a skill (within 3 s of its first hit) on most of the group (≥ 75 %, at least 3 players) were
- *  not avoidable: raid damage. Only for skills without an own setting (a skill set to a kind / Petze by hand counts).
- *  The group = targets hit at least 3 times in the fight (adds / summons hit once do not count). */
-function raidWide(f: Fight, cfgs: Cfgs): Set<Hit> {
-  const n = new Map<number, number>()
-  for (const h of f.hits) n.set(h.tgt, (n.get(h.tgt) || 0) + 1)
-  const players = [...n.values()].filter(c => c >= 3).length || n.size, out = new Set<Hit>()
-  if (players < 3) return out
-  const bySkill = new Map<number, Hit[]>()
-  for (const h of f.hits) if (cfgs[h.skill]?.kind === undefined && cfgs[h.skill]?.avoid === undefined) bySkill.set(h.skill, [...(bySkill.get(h.skill) || []), h])
+/** The hits of a fight per cast: same skill and cast counter (0x0438), else within 3 s of the cast's first hit. */
+function perCast(hits: Hit[]): Hit[][] {
+  const bySkill = new Map<number, Hit[]>(), out: Hit[][] = []
+  for (const h of hits) bySkill.set(h.skill, [...(bySkill.get(h.skill) || []), h])
   for (const hs of bySkill.values()) {
-    for (let i = 0; i < hs.length;) {
-      let j = i
-      while (j < hs.length && hs[j].at - hs[i].at < 3000) j++
-      const cast = hs.slice(i, j)
-      if (new Set(cast.map(h => h.tgt)).size >= 0.75 * players) cast.forEach(h => out.add(h))
-      i = j
+    const open = new Map<string, Hit[]>()
+    for (const h of hs) {
+      const key = h.seq !== undefined ? `s${h.seq}` : ''
+      let cast = open.get(key)
+      if (!cast || h.at - cast[0].at > (key ? 30_000 : 3000)) {
+        cast = []
+        open.set(key, cast)
+        out.push(cast)
+      }
+      cast.push(h)
     }
   }
+  return out
+}
+
+/** Hits of one cast that struck most of the group (≥ 75 % of the most players any cast hit, at least 3) were not
+ *  avoidable: raid damage. Only for skills without an own setting (a skill set to a kind / Petze by hand counts). */
+function raidWide(f: Fight, cfgs: Cfgs): Set<Hit> {
+  const casts = perCast(f.hits), size = (c: Hit[]) => new Set(c.map(h => h.tgt)).size
+  const group = Math.max(0, ...casts.map(size)), out = new Set<Hit>()
+  if (group < 3) return out
+  for (const c of casts)
+    if (cfgs[c[0].skill]?.kind === undefined && cfgs[c[0].skill]?.avoid === undefined && size(c) >= 0.75 * group) c.forEach(h => out.add(h))
   return out
 }
 
@@ -203,3 +232,60 @@ export const findBoss = (d: BossMods | undefined, npc: number): BossStat | undef
 
 /** Npc ids the host should watch: the known ones and their other modes. */
 export const npcIds = (d?: BossMods): number[] => [...Object.keys(d?.bosses || {}), ...Object.keys(d?.aliases || {})].map(Number)
+
+// ---------------------------------------------------------------- guide (web/public/bossguide.json, tools/boss_guide.py)
+
+/** Hand-made boss guide: Frenzy time, phases (HP %, name, the skill that starts it) and mechanics (kind, callout,
+ *  hint, the boss's skill ids). `todo`: placeholder, real values follow from recordings. */
+export type GuidePhase = { hp: number; name: string; skill?: number; todo?: boolean }
+export type GuideMech = { name: string; kind?: Kind; text?: string; hint?: string; cast?: number; skills: number[]; todo?: boolean }
+export type GuideBoss = { name: string; dungeon?: string; frenzy?: number; phases: GuidePhase[]; mechanics: GuideMech[] }
+export type Guide = { bosses: Record<string, GuideBoss> }
+
+/** Guide entry of a boss (exact id, else the id its alias points to). */
+export function findGuide(g: Guide | undefined, d: BossMods | undefined, npc: number): GuideBoss | undefined {
+  if (!g) return undefined
+  return g.bosses[npc] ?? (d?.aliases?.[npc] ? g.bosses[d.aliases[npc]] : undefined)
+}
+
+/** Skill settings the guide gives (name, kind, callout of the mechanic a skill belongs to); the player's own settings
+ *  go on top (mergeCfgs). Placeholder mechanics (todo) without skills give nothing. */
+export function guideCfgs(g: Guide | undefined): Cfgs {
+  const out: Cfgs = {}
+  for (const b of Object.values(g?.bosses || {}))
+    for (const m of b.mechanics)
+      for (const id of m.skills) out[id] = { name: m.name, ...(m.kind ? { kind: m.kind } : {}), ...(m.text ? { text: m.text } : {}) }
+  return out
+}
+
+/** Effective settings per skill: the guide's, overridden field by field by the player's. */
+export function mergeCfgs(base: Cfgs, own: Cfgs): Cfgs {
+  const out: Cfgs = { ...base }
+  for (const [id, c] of Object.entries(own)) out[id] = { ...base[id], ...c }
+  return out
+}
+
+/** The phase the boss is in by its HP (the guide's phases, highest first; "" before the first one). */
+export function phaseName(gb: GuideBoss | undefined, hp: number): string {
+  let cur = ''
+  for (const p of [...(gb?.phases || [])].sort((a, b) => b.hp - a.hp)) if (hp <= p.hp) cur = p.name
+  return cur
+}
+
+/** Guide phases about to come: the boss's HP within HP_LEAD % above it; each once (also skipped when its skill came). */
+export function dueGuidePhases(f: Fight, gb: GuideBoss | undefined): GuidePhase[] {
+  if (!gb || f.maxHp === undefined) return []
+  const now = hpPct(f), due: GuidePhase[] = []
+  for (const p of gb.phases) {
+    const key = p.skill ? `phase ${p.skill}` : `phase@${p.hp}`
+    if (f.warned.has(key) || (p.skill && f.casts.some(c => c.skill === p.skill)) || now > p.hp + HP_LEAD) continue
+    f.warned.add(key)
+    due.push(p)
+  }
+  return due
+}
+
+/** Sound per kind (OverlayForm.BossSound): avoid = alarm, group positions = timer chime, interrupt = urgent, else a pling. */
+export const kindSound = (k?: Kind) => (k === 'dodge' || k === 'out' || k === 'in' ? 'alarm' : k === 'stack' || k === 'spread' ? 'timer' : k === 'interrupt' ? 'close' : 'pling')
+/** Danger kinds: the centre callout pulses and a plain one cannot replace it. */
+export const isDanger = (k?: Kind) => k === 'dodge' || k === 'out' || k === 'in'

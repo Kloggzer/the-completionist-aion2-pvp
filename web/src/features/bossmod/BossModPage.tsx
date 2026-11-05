@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { AppSelect } from '@/components/AppSelect'
 import { CHIP, CHIP_ON, Empty, META, Page, Panel, ROW, ROW_CLICK, SUB, TITLE } from '@/components/kit'
 import { KINDS, alertOn, avoidable, barOn, findBoss, isBig, kindCol, phaseHp, predictable, skillName, voiceOn, warnLead, type BossMods, type BossStat, type Kind, type SkillCfg, type SkillStat } from './logic'
-import { cfgs, testPull, type FightLog } from './index'
+import { cfgs, guide, ownCfgs, testPull, type FightLog } from './index'
 
 const mods = () => G.bossMods as BossMods | undefined
 const dur = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
@@ -17,8 +17,9 @@ const dungeon = (zone?: number) => (zone && G.instances?.get(zone)?.name) || (zo
 /** Skills worth showing first: big, predictable, phase skills and the ones with own settings. */
 const important = (id: string, s: SkillStat) => isBig(s) || predictable(s) || phaseHp(s) !== null || !!cfgs()[id]
 
+/** Change the player's own settings of a skill (the guide's stay underneath, index.ts cfgs). */
 function setCfg(id: string, patch: Partial<SkillCfg>) {
-  const all = { ...cfgs() }, next: SkillCfg = { ...all[id], ...patch }
+  const all = { ...ownCfgs() }, next: SkillCfg = { ...all[id], ...patch }
   for (const k of Object.keys(next) as (keyof SkillCfg)[]) if (next[k] === undefined || next[k] === '') delete next[k]
   if (Object.keys(next).length) all[id] = next
   else delete all[id]
@@ -125,7 +126,7 @@ function Timeline({ b, fight }: { b: BossStat; fight?: FightLog }) {
 }
 
 function SkillRow({ id, s, nearMark }: { id: string; s: SkillStat; nearMark: boolean }) {
-  const cfg = cfgs()[id], ph = phaseHp(s)
+  const cfg = cfgs()[id], own = ownCfgs()[id], ph = phaseHp(s)
   const facts = [t('bm.stat', { n: s.n, first: Math.round(s.first) }), s.gap && t('bm.gap', { gap: Math.round(s.gap[1]) }),
     s.cast && t('bm.cast', { s: s.cast }), s.hp && t('bm.hp', { a: s.hp[0], b: s.hp[1] }), ph !== null && t('bm.phase', { hp: ph }),
     predictable(s) && t('bm.pred')].filter(Boolean).join(' · ')
@@ -135,14 +136,14 @@ function SkillRow({ id, s, nearMark }: { id: string; s: SkillStat; nearMark: boo
     <div data-bm-skill={id} className={cn('flex flex-col gap-1.5 border-b border-border/50 px-3 py-2', nearMark && 'bg-gold/[0.05]')}>
       <div className="flex min-w-0 items-center gap-2">
         <span className="h-3 w-1.5 flex-none rounded-sm" style={{ background: kindCol(cfg) }} />
-        <input value={cfg?.name ?? ''} placeholder={`Skill ${id}`} aria-label={t('bm.name')} data-bm-name={id}
+        <input value={own?.name ?? ''} placeholder={cfg?.name || `Skill ${id}`} aria-label={t('bm.name')} data-bm-name={id}
           onChange={e => setCfg(id, { name: e.target.value })}
           className="h-7 min-w-0 flex-[1_1_10rem] rounded-md border bg-background px-2 text-[13px] font-semibold outline-none focus:border-gold/60" />
         <AppSelect value={cfg?.kind ?? ''} options={kinds} className="w-32 flex-none" onChange={v => setCfg(id, { kind: (v || undefined) as Kind | undefined })} />
       </div>
       <div className={cn(SUB, 'text-[11.5px]')}>{nearMark && '⚑ '}{facts} · <span className="tabular-nums">#{id}</span></div>
       <div className="flex flex-wrap items-center gap-1">
-        <input value={cfg?.text ?? ''} placeholder={t('bm.textPh')} aria-label={t('bm.text')} onChange={e => setCfg(id, { text: e.target.value })}
+        <input value={own?.text ?? ''} placeholder={cfg?.text || t('bm.textPh')} aria-label={t('bm.text')} onChange={e => setCfg(id, { text: e.target.value })}
           className="h-6 min-w-0 flex-[1_1_12rem] rounded-md border bg-background px-2 text-[12px] outline-none focus:border-gold/60" />
         <Chip on={alertOn(s, cfg)} onClick={() => setCfg(id, { alert: !alertOn(s, cfg) })}>{t('bm.alert')}</Chip>
         <Chip on={voiceOn(cfg)} onClick={() => setCfg(id, { voice: !voiceOn(cfg) })}>{t('bm.voice')}</Chip>
@@ -151,6 +152,36 @@ function SkillRow({ id, s, nearMark }: { id: string; s: SkillStat; nearMark: boo
         <Chip on={avoidable(s, cfg)} onClick={() => setCfg(id, { avoid: !avoidable(s, cfg) })}>{t('bm.avoid')}</Chip>
       </div>
     </div>
+  )
+}
+
+/** The guide (bossguide.json): Frenzy, phases, mechanics with what to do and their skill ids; placeholders marked. */
+function GuidePanel({ npc }: { npc: number }) {
+  const g = guide(npc)
+  const todo = <span className="ml-1.5 rounded-sm bg-gold/15 px-1 text-[10.5px] font-semibold text-gold">{t('bm.todo')}</span>
+  if (!g) return <Panel title={t('bm.guide')}><Empty>{t('bm.noGuide')}</Empty></Panel>
+  return (
+    <Panel title={t('bm.guide')} sub={g.frenzy ? t('bm.frenzy', { t: dur(g.frenzy) }) : undefined} data-bm-guide="">
+      {g.phases.map(p => (
+        <div key={p.name + p.hp} className={cn(ROW, 'min-h-8')}>
+          <span className="w-12 flex-none text-right font-semibold tabular-nums text-gold">{p.hp} %</span>
+          <span className="min-w-0 flex-1 truncate">{p.name}{p.todo && todo}</span>
+        </div>
+      ))}
+      {/* mechanics as compact chips: colour = what to do, the hint / cast / skill ids in the tooltip, dot = values follow */}
+      <div className="flex flex-wrap gap-1.5 px-3 py-2.5" data-bm-mechs="">
+        {g.mechanics.map(m => (
+          <span key={m.name} data-bm-mech={m.name}
+            data-tip={[m.hint, m.cast ? t('bm.cast', { s: m.cast }) : '', m.skills.length ? t('bm.mechSkills', { ids: m.skills.join(', ') }) : t('bm.mechNoSkills'), m.todo ? t('bm.todo') : ''].filter(Boolean).join('\n')}
+            className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-[12px]">
+            <span className="size-2 flex-none rounded-full" style={{ background: kindCol({ kind: m.kind }) }} />
+            <span className="truncate">{m.name}</span>
+            {m.kind && <span className="flex-none text-[10.5px] font-semibold text-muted-foreground uppercase">{t('boss.k.' + m.kind)}</span>}
+            {m.todo && <span className="size-1.5 flex-none rounded-full bg-gold" aria-label={t('bm.todo')} />}
+          </span>
+        ))}
+      </div>
+    </Panel>
   )
 }
 
@@ -176,6 +207,7 @@ function Detail({ npc }: { npc: number }) {
         </div>
       )}
     </Panel>
+    <GuidePanel npc={npc} />
     <Panel title={t('bm.skills')} right={<Button size="sm" variant="ghost" onClick={() => { V.bmAll = !all; bump() }}>
       {all ? t('bm.showMain') : t('bm.showAll', { n: Object.keys(b.skills).length })}</Button>}>
       {list.map(([id, s]) => <SkillRow key={id} id={id} s={s} nearMark={near.has(id)} />)}

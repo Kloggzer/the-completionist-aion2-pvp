@@ -1,0 +1,489 @@
+{
+ "_info": "Boss helper guide (tools/boss_guide.py, then by hand). kind: dodge|out|in|stack|spread|interrupt|tank|info; skills: the boss's skill ids (Boss-Helfer page / recordings); todo: placeholder, real values follow.",
+ "bosses": {
+  "2300310": {
+   "name": "Silver Blade Rotan",
+   "phases": [],
+   "mechanics": []
+  },
+  "2300311": {
+   "name": "Red Spark Ignus",
+   "dungeon": "Fire Temple",
+   "phases": [],
+   "mechanics": [
+    {
+     "name": "Flame Bomb",
+     "skills": [],
+     "todo": true,
+     "cast": 1.2
+    }
+   ]
+  },
+  "2300312": {
+   "name": "Black Smoke Murute",
+   "phases": [
+    {
+     "hp": 68,
+     "name": "Phase 2",
+     "skill": 1600670,
+     "todo": true
+    },
+    {
+     "hp": 20,
+     "name": "Phase 3",
+     "skill": 1600720,
+     "todo": true
+    }
+   ],
+   "mechanics": []
+  },
+  "2300401": {
+   "name": "Phantasmal Lakshmi",
+   "dungeon": "Draupnir",
+   "phases": [],
+   "mechanics": [
+    {
+     "name": "Lakshmi's Handmaiden has been summoned! …",
+     "skills": [],
+     "todo": true,
+     "cast": 1.07,
+     "hint": "Lakshmi's Handmaiden has been summoned! Take her down first before she heals Lakshmi"
+    },
+    {
+     "name": "Lakshmi's shield reflects damage back at…",
+     "skills": [],
+     "todo": true,
+     "cast": 0.73,
+     "hint": "Lakshmi's shield reflects damage back at you!"
+    }
+   ]
+  },
+  "2300403": {
+   "name": "Transcendent Bakarma",
+   "dungeon": "Draupnir",
+   "frenzy": 300,
+   "phases": [],
+   "mechanics": [
+    {
+     "name": "Wave of Death",
+     "skills": [],
+     "todo": true,
+     "cast": 18,
+     "hint": "Be careful! Jump over the waves while maneuvering Use Stagger skills on Bakarma"
+    },
+    {
+     "name": "Jump the wave rings",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "High ping",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Dash in the black screen",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Stagger check",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Healer timing",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Run-at-you attack can be interrupted",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  },
+  "2300471": {
+   "name": "Transcendent Bakarma",
+   "dungeon": "Draupnir",
+   "frenzy": 300,
+   "phases": [],
+   "mechanics": [
+    {
+     "name": "Wave of Death",
+     "skills": [],
+     "todo": true,
+     "cast": 18,
+     "hint": "Be careful! Jump over the waves while maneuvering Use Stagger skills on Bakarma"
+    },
+    {
+     "name": "Jump the wave rings",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "High ping",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Dash in the black screen",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Stagger check",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Healer timing",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Run-at-you attack can be interrupted",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  },
+  "2310104": {
+   "name": "Enhanced Harcon",
+   "phases": [],
+   "mechanics": []
+  },
+  "2310206": {
+   "name": "Guardian Captain Raur",
+   "dungeon": "Urugugu Canyon",
+   "phases": [],
+   "mechanics": [
+    {
+     "name": "Counterstrike Stance",
+     "skills": [],
+     "todo": true,
+     "cast": 3,
+     "hint": "Raur can reflect your damage, stop attacking!"
+    }
+   ]
+  },
+  "2310218": {
+   "name": "Divine Auldor",
+   "dungeon": "Urugugu Canyon",
+   "frenzy": 300,
+   "phases": [],
+   "mechanics": [
+    {
+     "name": "Tempest Strike",
+     "skills": [],
+     "todo": true,
+     "kind": "stack",
+     "cast": 9.57,
+     "hint": "Get close to the party member that Auldor is watching and take the hit together"
+    }
+   ]
+  },
+  "2343601": {
+   "name": "Atiel",
+   "dungeon": "Deus Research Base",
+   "frenzy": 300,
+   "phases": [
+    {
+     "hp": 74,
+     "name": "Phase 2",
+     "skill": 1801510,
+     "todo": true
+    }
+   ],
+   "mechanics": [
+    {
+     "name": "Separate them to sever the chains",
+     "skills": [],
+     "todo": true,
+     "kind": "spread",
+     "hint": "Separate them to sever the chains"
+    },
+    {
+     "name": "Morphic World",
+     "skills": [],
+     "todo": true,
+     "kind": "interrupt",
+     "cast": 10,
+     "hint": "Use a special skill that staggers Atiel before he jumps"
+    },
+    {
+     "name": "Go through the center so you don't fall …",
+     "skills": [],
+     "todo": true,
+     "kind": "in",
+     "cast": 5,
+     "hint": "Go through the center so you don't fall off"
+    },
+    {
+     "name": "Take the hits together to receive less d…",
+     "skills": [],
+     "todo": true,
+     "kind": "stack",
+     "cast": 1.7,
+     "hint": "Take the hits together to receive less damage"
+    },
+    {
+     "name": "Chains and shackles",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Stay near him to avoid plus patterns",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Shrinking arena",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Phantom dashes and knockback",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Boss tether",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Morphic World stagger check",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Three-line push",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Camera zoom-out",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Grab then cone",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  },
+  "2343615": {
+   "name": "Nazmun",
+   "dungeon": "Deus Research Base",
+   "phases": [
+    {
+     "hp": 81,
+     "name": "Phase 2",
+     "skill": 1605670,
+     "todo": true
+    }
+   ],
+   "mechanics": [
+    {
+     "name": "Trap Install",
+     "skills": [],
+     "todo": true,
+     "cast": 1,
+     "hint": "Jump to avoid the lasers"
+    },
+    {
+     "name": "Pull him to the edge first",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Counter-clockwise lasers",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Bombs on the tank",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Two targets",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Tank line beam",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Hard-hitting second boss",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  },
+  "2343616": {
+   "name": "Gelcos",
+   "dungeon": "Deus Research Base",
+   "phases": [
+    {
+     "hp": 64,
+     "name": "Phase 2",
+     "skill": 1603350,
+     "todo": true
+    },
+    {
+     "hp": 60,
+     "name": "Phase 3",
+     "skill": 1603355,
+     "todo": true
+    }
+   ],
+   "mechanics": [
+    {
+     "name": "Charge rush and whip field",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Pull and whip barrage",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Static zone",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Nine-line strike",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Expanding electric fields",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  },
+  "2353707": {
+   "name": "Siliator of Deceit",
+   "dungeon": "Shattered Arkanis",
+   "phases": [
+    {
+     "hp": 4,
+     "name": "Phase 2",
+     "skill": 1606116,
+     "todo": true
+    }
+   ],
+   "mechanics": [
+    {
+     "name": "Tracking chakrams",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Point the blades at each other",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Three sawblades at the start",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Chakram Sun",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  },
+  "2353708": {
+   "name": "Ruthilis of Pain",
+   "dungeon": "Shattered Arkanis",
+   "phases": [
+    {
+     "hp": 58,
+     "name": "Phase 2",
+     "skill": 1606430,
+     "todo": true
+    }
+   ],
+   "mechanics": [
+    {
+     "name": "Electrified quarters",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Lightning pillars and rings",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Leap and donut",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Ignores the tank",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  },
+  "2353709": {
+   "name": "Talisra of the Void",
+   "dungeon": "Shattered Arkanis",
+   "frenzy": 300,
+   "phases": [
+    {
+     "hp": 62,
+     "name": "Phase 2",
+     "skill": 1801690,
+     "todo": true
+    },
+    {
+     "hp": 60,
+     "name": "Phase 3",
+     "skill": 1801759,
+     "todo": true
+    },
+    {
+     "hp": 28,
+     "name": "Phase 4",
+     "skill": 1801696,
+     "todo": true
+    }
+   ],
+   "mechanics": [
+    {
+     "name": "Cast fall",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Light and dark orbs",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Colour domes",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Crystal prison",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  }
+ }
+}

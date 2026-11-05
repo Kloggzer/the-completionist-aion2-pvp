@@ -150,10 +150,10 @@ export async function openApp(page: Page, o: HostOpts = {}) {
 /** Page keys by their German label (the sidebar's pages, components/Sidebar.tsx). */
 export const PAGE_KEY: Record<string, string> = {
   'Übersicht': 'home', Ziele: 'targets', Spots: 'spots', 'Händler': 'merchant', Farmen: 'farm', Erfolge: 'ach', Checkliste: 'check',
-  Build: 'dae', Daevanion: 'dae', Werte: 'dae.stats', 'Ausrüstung': 'dae.gear', Arkana: 'arc', Bosse: 'boss', Timer: 'timer',
+  Build: 'dae', Daevanion: 'dae', Werte: 'dae.stats', 'Ausrüstung': 'dae.gear', Arkana: 'arc', Bosse: 'boss', 'Boss-Helfer': 'bossmod', Timer: 'timer',
 }
 const AREA_OF: Record<string, string> = {
-  home: 'today', check: 'today', boss: 'today', timer: 'today', targets: 'pets', spots: 'pets', merchant: 'pets', farm: 'farm',
+  home: 'today', check: 'today', boss: 'today', bossmod: 'today', timer: 'today', targets: 'pets', spots: 'pets', merchant: 'pets', farm: 'farm',
   dae: 'char', 'dae.stats': 'char', 'dae.gear': 'char', arc: 'char', ach: 'char',
 }
 /** The visible button of a page: in the sidebar (wide windows) or in the area's page switch (narrow windows). */

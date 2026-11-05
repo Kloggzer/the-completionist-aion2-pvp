@@ -82,9 +82,14 @@ sealed class Settings
     public int FeedY { get; set; } = int.MinValue;
     public double FeedScale { get; set; } = 1.0;
     public int FeedLimit { get; set; } = 5;
-    // Boss helper timer bars (BossBarsForm): top-left corner, int.MinValue = default spot.
+    // Boss helper: timer panel (BossBarsForm) and centre callout (BossCallForm): top-left corner (int.MinValue = default
+    // spot) and size (mouse wheel in the edit mode).
     public int BossBarsX { get; set; } = int.MinValue;
     public int BossBarsY { get; set; } = int.MinValue;
+    public double BossBarsScale { get; set; } = 1.0;
+    public int BossCallX { get; set; } = int.MinValue;
+    public int BossCallY { get; set; } = int.MinValue;
+    public double BossCallScale { get; set; } = 1.0;
     public string ProcessName { get; set; } = "AION2.exe";
     public string StatePath { get; set; } = "";
     public Dictionary<string, string> Hotkeys { get; set; } = new();

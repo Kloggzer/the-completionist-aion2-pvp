@@ -4,33 +4,39 @@ using System.Drawing.Text;
 
 namespace PetOverlay;
 
-// Boss helper timer bars (like DBM): a head line with the boss, its HP bar with the phase marks and the aggro target,
-// then the next attacks as countdown bars (colour = what to do). The page computes everything ('bossBars', 4 times a
-// second, web/src/features/bossmod); the bars count down locally between updates so they run smoothly; under 5 s a bar
-// pulses. Hidden without a fight. Always click-through; in the edit mode of the small overlay windows
-// (OverlayForm.SetWinEdit) a sample shows and it can be dragged (WM_NCHITTEST -> HTCAPTION); position in Settings.
-// Per-pixel alpha (UpdateLayeredWindow) like the enemy feed; never activated.
+// Boss helper panel (like DBM's timer bars, styled like the PvP list): header with the boss, its phase and the Frenzy
+// countdown, the HP bar with the phase marks, then the next attacks as tinted countdown bars (badge = what to do, colour
+// of the mechanic, pulsing under 5 s), footer with the aggro target and the live Petze (who got hit how often).
+// The page computes everything ('bossBars', 4 times a second, web/src/features/bossmod); bars and Frenzy count down
+// locally between updates. Hidden without a fight. Always click-through; in the edit mode of the small overlay windows
+// (OverlayForm.SetWinEdit) a sample shows, it can be dragged (WM_NCHITTEST -> HTCAPTION) and sized with the mouse wheel.
+// Per-pixel alpha (UpdateLayeredWindow) like the PvP list; never activated.
 sealed class BossBarsForm : Form
 {
-    public sealed record Bar(string Name, double Left, double Total, Color Col);
+    /// One timer: name, seconds left / full gap, mechanic colour, badge (short "what to do", e.g. "RAUS").
+    public sealed record Bar(string Name, double Left, double Total, Color Col, string Badge);
 
-    static readonly Color Back = Color.FromArgb(210, 14, 16, 22), Fg = Color.FromArgb(240, 242, 248), Muted = Color.FromArgb(160, 168, 186),
-                          Track = Color.FromArgb(150, 40, 44, 56), HpCol = Color.FromArgb(220, 205, 70, 60), Me = Color.FromArgb(255, 255, 120, 110);
+    static readonly Color Panel = Color.FromArgb(232, 20, 23, 31), Fg = Color.FromArgb(236, 238, 244), Muted = Color.FromArgb(150, 158, 176),
+                          Track = Color.FromArgb(255, 38, 42, 54), HpCol = Color.FromArgb(255, 205, 70, 60), Red = Color.FromArgb(255, 255, 110, 100),
+                          Gold = Color.FromArgb(232, 200, 114);
     readonly Settings s;
     readonly System.Windows.Forms.Timer tick = new() { Interval = 50 };
-    string title = "", target = "";
+    string title = "", phase = "", target = "";
     bool me, edit;
     int hp = 100;
+    double frenzy = -1; // seconds left, -1 = none
     int[] phases = [];
     Bar[] bars = [];
-    DateTime at = DateTime.UtcNow; // when the bars came
+    PvpForm.Line[] foot = [];
+    DateTime at = DateTime.UtcNow; // when the data came
     public event Action? Moved;
 
-    float K => DeviceDpi / 96f;
-    float W => 260 * K;
-    float HeadH => 30 * K;
-    float RowH => 20 * K;
+    float K => DeviceDpi / 96f * (float)s.BossBarsScale;
+    float W => 270 * K;
+    float HeadH => 44 * K;
+    float RowH => 22 * K;
     float Gap => 3 * K;
+    float FootH => foot.Length * 15 * K + (target.Length > 0 ? 15 * K : 0);
 
     public BossBarsForm(Settings settings)
     {
@@ -44,7 +50,7 @@ sealed class BossBarsForm : Form
         // first show: left of the middle of the game's screen
         var game = Native.WindowRect(Native.MainWindowOf(s.ProcessName));
         var wa = (game.IsEmpty ? Screen.PrimaryScreen! : Screen.FromRectangle(game)).WorkingArea;
-        Location = Placement.Restore(s.BossBarsX, s.BossBarsY, Size, new Point(wa.Left + wa.Width * 18 / 100, wa.Top + wa.Height * 35 / 100),
+        Location = Placement.Restore(s.BossBarsX, s.BossBarsY, Size, new Point(wa.Left + wa.Width * 16 / 100, wa.Top + wa.Height * 32 / 100),
             Screen.AllScreens.Select(sc => sc.WorkingArea).ToList());
         tick.Tick += (_, _) => { if (Visible) Render(); };
     }
@@ -68,10 +74,11 @@ sealed class BossBarsForm : Form
         }
     }
 
-    /// New state from the page; no bars and no title = no fight (hidden).
-    public void SetData(string title, int hp, int[] phases, string target, bool me, Bar[] bars)
+    /// New state from the page; an empty title = no fight (hidden).
+    public void SetData(string title, string phase, int hp, int[] phases, double frenzy, string target, bool me, Bar[] bars, PvpForm.Line[] foot)
     {
-        (this.title, this.hp, this.phases, this.target, this.me, this.bars) = (title, Math.Clamp(hp, 0, 100), phases, target, me, bars);
+        (this.title, this.phase, this.hp, this.phases, this.frenzy, this.target, this.me, this.bars, this.foot) =
+            (title, phase, Math.Clamp(hp, 0, 100), phases, frenzy, target, me, bars, foot);
         at = DateTime.UtcNow;
         Apply();
     }
@@ -86,12 +93,11 @@ sealed class BossBarsForm : Form
 
     void Apply()
     {
-        bool want = title.Length > 0 || edit;
-        if (want)
+        if (title.Length > 0 || edit)
         {
             Render();
             if (!Visible) { Show(); Native.KeepOnTop(Handle); }
-            tick.Enabled = bars.Length > 0;
+            tick.Enabled = bars.Length > 0 || frenzy > 0;
         }
         else
         {
@@ -100,77 +106,138 @@ sealed class BossBarsForm : Form
         }
     }
 
-    Bar[] Shown() => title.Length == 0 && edit
-        ? [new("Skill 1801450", 4.2, 66.6, Color.FromArgb(255, 106, 92)), new("Skill 1801460", 12.5, 66.6, Color.FromArgb(255, 159, 67)), new("Skill 1605630", 25, 33, Color.FromArgb(76, 195, 255))]
+    bool Sample => title.Length == 0 && edit;
+    Bar[] Shown() => Sample
+        ? [new(L.T("Sprung", "Leap"), 3.4, 66.6, Color.FromArgb(255, 106, 92), L.T("WEG", "DODGE")),
+           new(L.T("Ketten", "Chains"), 12.5, 44, Color.FromArgb(197, 139, 255), L.T("VERTEILEN", "SPREAD")),
+           new(L.T("Flächenschlag", "Slam"), 25, 33, Color.FromArgb(92, 224, 138), L.T("ZUSAMMEN", "STACK"))]
         : bars;
+    PvpForm.Line[] Foot() => Sample ? [new(L.T("Petze: Testdaeva 2× · Testdaevi 1×", "Blame: Testdaeva 2× · Testdaevi 1×"), Gold)] : foot;
 
-    Size Measure() => new((int)W, (int)Math.Ceiling(HeadH + Shown().Length * (RowH + Gap) + 4 * K));
+    Size Measure()
+    {
+        float foot = Sample ? 30 * K : FootH;
+        return new((int)W, (int)Math.Ceiling(HeadH + Shown().Length * (RowH + Gap) + (foot > 0 ? foot + 6 * K : 0) + 8 * K));
+    }
 
     void Render()
     {
         var size = Measure();
         if (Size != size) Size = size;
         using var bmp = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppArgb);
-        using (var g = Graphics.FromImage(bmp)) Draw(g, size.Width);
+        using (var g = Graphics.FromImage(bmp)) Draw(g, size.Width, size.Height);
         Native.SetLayeredBitmap(Handle, bmp, Location);
     }
 
-    void Draw(Graphics g, float w)
+    void Draw(Graphics g, float w, float h)
     {
         float k = K;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-        using var fh = new Font("Segoe UI Semibold", 12.5f * k, GraphicsUnit.Pixel);
-        using var fs = new Font("Segoe UI", 10.5f * k, GraphicsUnit.Pixel);
-        using var fb = new Font("Segoe UI Semibold", 11.5f * k, GraphicsUnit.Pixel);
+        using var fh = new Font("Segoe UI Semibold", 13f * k, GraphicsUnit.Pixel);
+        using var fs = new Font("Segoe UI", 11f * k, GraphicsUnit.Pixel);
+        using var fb = new Font("Segoe UI Semibold", 12f * k, GraphicsUnit.Pixel);
+        using var fbadge = new Font("Segoe UI", 8.5f * k, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var fnum = new Font("Segoe UI", 12f * k, FontStyle.Bold, GraphicsUnit.Pixel);
         using var left = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         using var right = new StringFormat(left) { Alignment = StringAlignment.Far };
+        using var center = new StringFormat(left) { Alignment = StringAlignment.Center };
         using var fg = new SolidBrush(Fg);
         using var muted = new SolidBrush(Muted);
-        bool sample = title.Length == 0;
-        var rows = Shown();
-
-        // head: boss name, target, HP bar with phase marks
-        var head = new RectangleF(1, 1, w - 2, HeadH - 2);
-        using (var hp0 = PvpForm.Rounded(head, 6 * k))
-        using (var hb = new SolidBrush(Back)) g.FillPath(hb, hp0);
-        float hx = 8 * k, hw = w - 16 * k;
-        g.DrawString(sample ? L.T("Boss-Helfer – ziehen", "Boss helper – drag") : title, fh, fg, new RectangleF(hx, 2 * k, hw * 0.62f, 16 * k), left);
-        if (target.Length > 0)
-            using (var tb = new SolidBrush(me ? Me : Muted))
-                g.DrawString("→ " + (me ? L.T("DU", "YOU") : target), fs, tb, new RectangleF(hx + hw * 0.62f, 2 * k, hw * 0.38f, 16 * k), right);
-        var hpR = new RectangleF(hx, 20 * k, hw, 5 * k);
-        using (var tr = new SolidBrush(Track)) g.FillRectangle(tr, hpR);
-        using (var hc = new SolidBrush(HpCol)) g.FillRectangle(hc, hpR.X, hpR.Y, hpR.Width * (sample ? 0.72f : hp / 100f), hpR.Height);
-        using (var pm = new Pen(Color.FromArgb(230, 255, 255, 255), 1.5f * k))
-            foreach (var p in sample ? new[] { 70, 30 } : phases) g.DrawLine(pm, hpR.X + hpR.Width * p / 100f, hpR.Y - 2 * k, hpR.X + hpR.Width * p / 100f, hpR.Bottom + 2 * k);
-
-        // bars: countdown since the last update
+        bool sample = Sample;
         double gone = sample ? 0 : (DateTime.UtcNow - at).TotalSeconds;
-        float y = HeadH + 2 * k;
-        foreach (var b in rows)
+
+        // panel
+        using (var p = PvpForm.Rounded(new RectangleF(0.5f, 0.5f, w - 1, h - 1), 8 * k))
         {
-            double leftS = Math.Max(0, b.Left - gone);
-            var r = new RectangleF(1, y, w - 2, RowH);
-            using (var back = new SolidBrush(Back)) g.FillRectangle(back, r);
-            float frac = b.Total > 0 ? (float)Math.Clamp(1 - leftS / b.Total, 0, 1) : 1;
-            bool soon = leftS < 5;
-            int a = soon && Environment.TickCount64 / 250 % 2 == 0 ? 255 : 190;
-            using (var fill = new SolidBrush(Color.FromArgb(a, b.Col))) g.FillRectangle(fill, r.X, r.Y, r.Width * frac, r.Height);
-            var tr2 = new RectangleF(r.X + 6 * k, r.Y, r.Width - 12 * k, r.Height);
-            g.DrawString(b.Name, fb, fg, new RectangleF(tr2.X, tr2.Y, tr2.Width - 44 * k, tr2.Height), left);
-            g.DrawString(leftS >= 10 ? $"{leftS:0}" : $"{leftS:0.0}", fb, fg, tr2, right);
+            using (var pb = new SolidBrush(Panel)) g.FillPath(pb, p);
+            if (edit)
+                using (var pe = new Pen(Color.FromArgb(220, 240, 240, 255), 1f) { DashPattern = [4, 3] }) g.DrawPath(pe, p);
+        }
+        float x0 = 10 * k, x1 = w - 10 * k;
+
+        // header: boss · phase, Frenzy right
+        string head = sample ? "Atiel" : title, ph = sample ? L.T("Phase 2", "Phase 2") : phase;
+        double fz = sample ? 184 : frenzy >= 0 ? Math.Max(0, frenzy - gone) : -1;
+        float fzW = fz >= 0 ? 74 * k : 0;
+        g.DrawString(head, fh, fg, new RectangleF(x0, 4 * k, (x1 - x0 - fzW) * 0.62f, 18 * k), left);
+        if (ph.Length > 0)
+            using (var pbr = new SolidBrush(Gold)) g.DrawString(ph, fs, pbr, new RectangleF(x0 + (x1 - x0 - fzW) * 0.62f, 4 * k, (x1 - x0 - fzW) * 0.38f, 18 * k), right);
+        if (fz >= 0)
+            using (var zb = new SolidBrush(fz < 30 ? Red : Muted))
+                g.DrawString($"Frenzy {(int)fz / 60}:{(int)fz % 60:00}", fs, zb, new RectangleF(x1 - fzW, 4 * k, fzW, 18 * k), right);
+        // HP bar with phase marks and the percentage
+        var hpR = new RectangleF(x0, 25 * k, x1 - x0 - 34 * k, 8 * k);
+        using (var tr = new SolidBrush(Track)) g.FillRectangle(tr, hpR);
+        int hpv = sample ? 72 : hp;
+        using (var hc = new SolidBrush(HpCol)) g.FillRectangle(hc, hpR.X, hpR.Y, hpR.Width * hpv / 100f, hpR.Height);
+        using (var pm = new Pen(Color.FromArgb(240, 255, 255, 255), 1.5f * k))
+            foreach (var p in sample ? new[] { 70, 30 } : phases)
+                g.DrawLine(pm, hpR.X + hpR.Width * p / 100f, hpR.Y - 2 * k, hpR.X + hpR.Width * p / 100f, hpR.Bottom + 2 * k);
+        g.DrawString($"{hpv} %", fs, fg, new RectangleF(hpR.Right, 20 * k, x1 - hpR.Right, 18 * k), right);
+
+        // timer bars
+        float y = HeadH;
+        foreach (var b in Shown())
+        {
+            double l = Math.Max(0, b.Left - gone);
+            var r = new RectangleF(x0 - 4 * k, y, x1 - x0 + 8 * k, RowH);
+            using (var rp = PvpForm.Rounded(r, 4 * k))
+            {
+                using (var rb = new SolidBrush(Track)) g.FillPath(rb, rp);
+                float frac = b.Total > 0 ? (float)Math.Clamp(1 - l / b.Total, 0, 1) : 1;
+                bool soon = l < 5;
+                int a = soon ? (Environment.TickCount64 / 250 % 2 == 0 ? 235 : 150) : 120;
+                g.SetClip(new RectangleF(r.X, r.Y, r.Width * frac, r.Height));
+                using (var fill = new SolidBrush(Color.FromArgb(a, b.Col))) g.FillPath(fill, rp);
+                g.ResetClip();
+            }
+            // badge = what to do
+            float bx = r.X + 4 * k, bw = 0;
+            if (b.Badge.Length > 0)
+            {
+                bw = Math.Max(30 * k, g.MeasureString(b.Badge, fbadge).Width + 8 * k);
+                var br = new RectangleF(bx, y + 4 * k, bw, RowH - 8 * k);
+                using var bp = PvpForm.Rounded(br, 3 * k);
+                using (var bb = new SolidBrush(b.Col)) g.FillPath(bb, bp);
+                using (var bt = new SolidBrush(Color.FromArgb(20, 22, 28))) g.DrawString(b.Badge, fbadge, bt, br, center);
+            }
+            g.DrawString(b.Name, fb, fg, new RectangleF(bx + bw + 6 * k, y, r.Right - bx - bw - 54 * k, RowH), left);
+            using (var nb = new SolidBrush(l < 5 ? Color.FromArgb(255, 255, 230, 140) : Fg))
+                g.DrawString(l >= 10 ? $"{l:0}" : $"{l:0.0}", fnum, nb, new RectangleF(r.Right - 46 * k, y, 40 * k, RowH), right);
             y += RowH + Gap;
         }
-        if (edit)
-            using (var dash = new Pen(Color.FromArgb(220, 240, 240, 255), 1f) { DashPattern = [4, 3] })
-                g.DrawRectangle(dash, 0, 0, w - 1, Height - 1);
+
+        // footer: target, Petze
+        float fy = y + 3 * k;
+        if (!sample && target.Length > 0)
+        {
+            using (var tb = new SolidBrush(me ? Red : Muted))
+                g.DrawString((me ? L.T("Ziel: DU", "Target: YOU") : L.T("Ziel: ", "Target: ") + target), fs, tb, new RectangleF(x0, fy, x1 - x0, 15 * k), left);
+            fy += 15 * k;
+        }
+        foreach (var line in Foot())
+        {
+            using (var lb = new SolidBrush(line.Col)) g.DrawString(line.Text, fs, lb, new RectangleF(x0, fy, x1 - x0, 15 * k), left);
+            fy += 15 * k;
+        }
+        if (sample)
+            g.DrawString(L.T("ziehen · Mausrad = Größe", "drag · wheel = size"), fs, muted, new RectangleF(x0, fy, x1 - x0, 15 * k), left);
     }
 
     protected override void WndProc(ref Message m)
     {
         if (m.Msg == Native.WM_NCHITTEST && edit) { m.Result = Native.HTCAPTION; return; }
         base.WndProc(ref m);
+    }
+
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        base.OnMouseWheel(e);
+        if (!edit || e.Delta == 0) return;
+        s.BossBarsScale = Math.Clamp(s.BossBarsScale + 0.05 * Math.Sign(e.Delta), 0.6, 2.0);
+        Render();
+        Moved?.Invoke();
     }
 
     protected override void OnResizeEnd(EventArgs e)

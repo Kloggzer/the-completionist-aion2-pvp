@@ -29,7 +29,7 @@ function stepVal(cur: number, d: number, step: number, min: number, max: number)
 
 const close = () => { V.settingsOpen = false; bump() }
 // autoMap/soundCube/soundTimer default to on (undefined = on).
-const DEF_ON = ['autoMap', 'soundCube', 'soundTimer', 'startChime', 'bossRec', 'bossBars', 'bossBlame']
+const DEF_ON = ['autoMap', 'soundCube', 'soundTimer', 'startChime', 'bossRec', 'bossBars', 'bossBlame', 'bossCount', 'bossTargetMe', 'bossSound']
 const isOn = (k: string) => (DEF_ON.includes(k) ? U[k] !== false : !!U[k])
 function flip(k: string) {
   U[k] = DEF_ON.includes(k) ? U[k] === false : !U[k]
@@ -293,7 +293,10 @@ export function Notify() {
     )}
     <Group title={t('set.g.bossMod')}>
       <UToggle k="bossMod" />
-      {U.bossMod && <><UToggle k="bossBars" /><UToggle k="bossBlame" /><UToggle k="bossBlameLive" /></>}
+      {U.bossMod && <>
+        <UToggle k="bossBars" /><UToggle k="bossCount" /><UToggle k="bossTargetMe" /><UToggle k="bossSound" />
+        <UToggle k="bossBlame" /><UToggle k="bossBlameLive" />
+      </>}
       <UToggle k="bossRec" sub={t('set.bossRec.sub', { key: hkText('bossMark') || '–' })} />
       <BossRecRow />
     </Group>
