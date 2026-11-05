@@ -3,7 +3,7 @@
 // current area as a segmented control above the content (SubNav). Page keys are the tab keys (U.tab) plus the build
 // pages (dae.stats, dae.gear); an area remembers its last page (U.lastPage), however the page was reached.
 import { useEffect } from 'react'
-import { BarChart3, Clock, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
+import { BarChart3, Clock, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Swords, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
 import { U, V, saveUi, bump } from '@/core/state'
 import { goTab } from '@/core/nav'
 import { t } from '@/core/i18n'
@@ -24,7 +24,7 @@ const merchBuy = () => (U.merch ? buyCount(freshOffers(U.merch, Date.now())) : 0
 // Badges count what is open and worth acting on now (missing pets, spots, merchant offers to buy); the achievements'
 // open count is always large and was noise.
 export const AREAS: Area[] = [
-  { key: 'today', icon: Sun, pages: [tabPage('home', LayoutDashboard), tabPage('check', ListChecks), tabPage('boss', Skull), tabPage('timer', Clock)] },
+  { key: 'today', icon: Sun, pages: [tabPage('home', LayoutDashboard), tabPage('check', ListChecks), tabPage('boss', Skull), tabPage('bossmod', Swords), tabPage('timer', Clock)] },
   { key: 'pets', icon: PawPrint, pages: [
     tabPage('targets', Target, () => V.targets.filter((x: { done: boolean }) => !x.done).length), tabPage('spots', MapPin, () => V.spots.length), tabPage('merchant', Store, merchBuy)] },
   { key: 'farm', icon: Pickaxe, pages: [tabPage('farm', Pickaxe)] },

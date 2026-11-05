@@ -43,6 +43,8 @@ sealed class OverlayForm : Form
     HashSet<uint> bossModNpcs = new();
     bool bossLearn; // boss mod: every npc's casts into boss-casts.log
     readonly BossRecorder recorder = new();
+    BossBarsForm? bossBars;
+    string? bossBarsLog; // replay: the bars' boss, logged once per boss
     bool autoShown; // overlay was shown by a cube alert and hides again afterwards
     bool instHidden; // overlay hidden because the player is in an instance
     readonly NotifyIcon tray = new();
@@ -421,8 +423,17 @@ sealed class OverlayForm : Form
         Announcer().SetEdit(on, screen);
         Alert().SetEdit(on, screen);
         if (settings.FeedOn || !on) Feed().SetEdit(on);
+        if (bossBars != null || on) BossBars().SetEdit(on);
         if (!on) SaveSoon();
         PostPvpWin();
+    }
+
+    BossBarsForm BossBars()
+    {
+        if (bossBars != null) return bossBars;
+        bossBars = new BossBarsForm(settings);
+        bossBars.Moved += SaveSoon;
+        return bossBars;
     }
 
     EnemyFeedForm Feed()
@@ -561,6 +572,21 @@ sealed class OverlayForm : Form
         {
             if (bossLearn) BossLog($"{T(ts)} end npc {npc} ent {ent} skill {skill} seq {seq}");
             if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossCastEnd", npc, ent, skill, seq, at = Ms(ts) }));
+        };
+        // players by entity: the PvP list's (spawns in range, the party in a dungeon) and oneself
+        uint Own() => src.OwnId is { } id ? PetFrames.VarintValue(id) : 0;
+        string Who(uint ent) => ent == Own() ? pvpOwn?.Name ?? "" : pvpPlayers.TryGetValue(ent, out var p) ? p.P.Name : "";
+        src.NpcHp += (npc, ent, hp, ts) =>
+        {
+            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossHp", npc, ent, hp, at = Ms(ts) }));
+        };
+        src.NpcTarget += (npc, ent, tgt, ts) =>
+        {
+            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossTarget", npc, ent, tgt, me = tgt == Own(), name = Who(tgt), at = Ms(ts) }));
+        };
+        src.NpcHit += (npc, ent, skill, tgt, flags, ts) =>
+        {
+            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossHit", npc, ent, skill, tgt, flags, me = tgt == Own(), name = Who(tgt), at = Ms(ts) }));
         };
         src.NpcGone += (npc, ent, died, ts) =>
         {
@@ -859,9 +885,20 @@ sealed class OverlayForm : Form
                 if (!recorder.On) recorder.Stop();
                 PostBossRecs();
                 break;
+            case "bossBars":
+                {
+                    var rows = (m["rows"] as JsonArray ?? []).OfType<JsonArray>().Take(8).Select(r => new BossBarsForm.Bar(
+                        (string?)r[0] ?? "", (double?)r[1] ?? 0, (double?)r[2] ?? 0, HexColor((string?)r[3]))).ToArray();
+                    if (rows.Length == 0 && m["title"] == null && bossBars == null) break; // nothing shown yet: no window needed
+                    if (replayDir != null && (string?)m["title"] is { } bt && bt != bossBarsLog)
+                        Log($"Boss-Balken: {bossBarsLog = bt} · HP {(int?)m["hp"]} % · {string.Join(", ", rows.Select(r => $"{r.Name} {r.Left:0}/{r.Total:0} s"))}");
+                    BossBars().SetData((string?)m["title"] ?? "", (int?)m["hp"] ?? 100,
+                        (m["phases"] as JsonArray ?? []).Select(v => (int?)v ?? 0).ToArray(), (string?)m["target"] ?? "", (bool?)m["me"] == true, rows);
+                    break;
+                }
             case "bossExport":
-                var zip = recorder.Export();
-                if (zip != null) System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{zip}\"");
+                var zip = await recorder.Export();
+                if (zip != null) try { System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{zip}\""); } catch { }
                 Post(new { type = "bossExported", path = zip });
                 break;
             case "chime":

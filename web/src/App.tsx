@@ -10,6 +10,7 @@ import { TargetsTab } from '@/features/pets/TargetsTab'
 import { SpotsTab } from '@/features/pets/SpotsTab'
 import { FarmTab, FarmToolbar } from '@/features/farm/FarmTab'
 import { MerchantTab } from '@/features/merchant/MerchantTab'
+import { BossModTab } from '@/features/bossmod/BossModPage'
 import { Footer } from '@/features/pets/Footer'
 import { Toolbar } from '@/features/pets/parts'
 import { TimerTab } from '@/features/events/TimerTab'
@@ -70,6 +71,7 @@ function List() {
     case 'arc': return <ArcanaTab />
     case 'dae': return <BuildTab />
     case 'boss': return <BossTab />
+    case 'bossmod': return <BossModTab />
     case 'timer': return <TimerTab />
     case 'home': return <HomeTab />
     default: return <TargetsTab />

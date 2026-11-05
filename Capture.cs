@@ -105,7 +105,13 @@ abstract class PetSource : IDisposable
     public event Action<uint, uint, uint, byte, DateTime>? NpcCastEnd; // npc, entity, skill, cast counter
     public event Action<uint, uint, bool, DateTime>? NpcGone; // npc, entity, died
     public event Action<uint, uint, DateTime>? NpcSpawned; // npc, entity
+    // HP (0x008d, at most every 250 ms per entity), aggro target (0x3538), hits of its skills (0x0438: who got hit).
+    public event Action<uint, uint, long, DateTime>? NpcHp; // npc, entity, hp
+    public event Action<uint, uint, uint, DateTime>? NpcTarget; // npc, entity, target entity
+    public event Action<uint, uint, uint, uint, byte, DateTime>? NpcHit; // npc, entity, skill, target entity, flags
     readonly Dictionary<uint, uint> modEntities = new();
+    readonly Dictionary<uint, DateTime> hpSent = new();
+    int BossErrors;
     /// Fight recordings for the boss mod (BossRecorder.cs), null = off.
     public BossRecorder? Recorder { get; set; }
     readonly HashSet<uint> objects = new();
@@ -200,8 +206,9 @@ abstract class PetSource : IDisposable
         }
         if (OwnId != null) tracker.Feed(op, body, ts, OwnId); // own position: exact fixes (its estimate is not used)
         PlayerFrame(op, body);
-        NpcFrame(op, body, ts);
-        Recorder?.Frame(op, body, ts);
+        // boss helper: a malformed frame must never stop the packet processing
+        try { NpcFrame(op, body, ts); Recorder?.Frame(op, body, ts); }
+        catch (Exception ex) { BossErrors++; if (BossErrors <= 5) OverlayForm.Log($"Boss-Helfer: Frame 0x{op:x4} ({body.Length} B): {ex.Message}"); }
         if (op == Frames.OpPetList && PetFrames.ParseList(body) is { } list)
             PetListReceived?.Invoke(list, ts);
         else if (op == 0x0191 && (lastBossTable == null || !body.AsSpan().SequenceEqual(lastBossTable)))
@@ -302,14 +309,12 @@ abstract class PetSource : IDisposable
 
     void NpcFrame(int op, byte[] body, DateTime ts)
     {
-        if (op == 0x0140) { modEntities.Clear(); return; }
-        if (op is not (0x4136 or 0x0238 or 0x0638 or 0x4236) || BossModNpcs.Count == 0 && !BossModAll) return;
+        if (op == 0x0140) { modEntities.Clear(); hpSent.Clear(); return; }
+        if (op is not (0x4136 or 0x0238 or 0x0638 or 0x4236 or 0x0438 or 0x008d or 0x3538) || BossModNpcs.Count == 0 && !BossModAll) return;
         if (op == 0x4136)
         {
-            int o = 0;
-            uint ent = (uint)PetFrames.Varint(body, ref o);
-            if (o + 7 > body.Length) return;
-            uint id = BitConverter.ToUInt32(body, o + 3);
+            if (PetFrames.NpcSpawn(body) is not { } sp) return;
+            var (ent, id) = sp;
             if (!BossModAll && !BossModNpcs.Contains(id)) return;
             modEntities[ent] = id;
             NpcSpawned?.Invoke(id, ent, ts);
@@ -319,10 +324,21 @@ abstract class PetSource : IDisposable
             NpcCast?.Invoke(npc, c.ent, c.skill, c.seq, c.target, ts);
         else if (op == 0x0638 && PetFrames.CastEnd(body) is { } e && modEntities.TryGetValue(e.ent, out npc))
             NpcCastEnd?.Invoke(npc, e.ent, e.skill, e.seq, ts);
-        else if (op == 0x4236 && body.Length >= 3)
+        else if (op == 0x0438 && PetFrames.Hit(body) is { } h && modEntities.TryGetValue(h.caster, out npc) && !modEntities.ContainsKey(h.target))
+            NpcHit?.Invoke(npc, h.caster, h.skill, h.target, h.flags, ts);
+        else if (op == 0x008d && PetFrames.NpcHp(body) is { } hp && modEntities.TryGetValue(hp.ent, out npc)
+                 && (!hpSent.TryGetValue(hp.ent, out var last) || ts - last >= TimeSpan.FromMilliseconds(250)))
+        {
+            hpSent[hp.ent] = ts;
+            NpcHp?.Invoke(npc, hp.ent, hp.hp, ts);
+        }
+        else if (op == 0x3538 && PetFrames.Target(body) is { } tg && modEntities.TryGetValue(tg.ent, out npc))
+            NpcTarget?.Invoke(npc, tg.ent, tg.target, ts);
+        else if (op == 0x4236 && PetFrames.VarintLen(body, 0) is > 0 and var k && k + 1 < body.Length)
         {
             int o = 0;
             uint ent = (uint)PetFrames.Varint(body, ref o);
+            hpSent.Remove(ent);
             if (o + 1 < body.Length && modEntities.Remove(ent, out npc)) NpcGone?.Invoke(npc, ent, body[o + 1] == 3, ts);
         }
     }

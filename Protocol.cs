@@ -400,6 +400,38 @@ static class PetFrames
         return (ent, BitConverter.ToUInt32(b, k + 1), b[k + 5], tgt);
     }
 
+    // 0x4136 npc spawn: entity varint, 3 bytes, u32 NpcData id (7 digits; other layouts carry a name there instead).
+    public static (uint ent, uint npc)? NpcSpawn(byte[] b)
+    {
+        if (VarintLen(b, 0) is not (> 0 and var k) || k + 7 > b.Length) return null;
+        uint id = BitConverter.ToUInt32(b, k + 3);
+        if (id is < 1_000_000 or > 9_999_999) return null;
+        int o = 0;
+        return ((uint)Varint(b, ref o), id);
+    }
+
+    // 0x0438 hit (verified: 4769 boss hits on players in 15 dungeon fights, the skill always one the boss cast):
+    // target varint, u8 flags, u8, caster varint, u32 skill, u8 cast counter, ... (the damage layout is not decoded).
+    public static (uint target, byte flags, uint caster, uint skill)? Hit(byte[] b)
+    {
+        if (VarintLen(b, 0) is not (> 0 and var k) || VarintLen(b, k + 2) is not (> 0 and var c) || k + 2 + c + 4 > b.Length) return null;
+        int o = 0;
+        uint tgt = (uint)Varint(b, ref o);
+        o = k + 2;
+        uint caster = (uint)Varint(b, ref o);
+        return (tgt, b[k], caster, BitConverter.ToUInt32(b, o));
+    }
+
+    // 0x3538 npc target (aggro): entity varint, 00, target varint.
+    public static (uint ent, uint target)? Target(byte[] b)
+    {
+        if (VarintLen(b, 0) is not (> 0 and var k) || k + 1 >= b.Length || b[k] != 0 || VarintLen(b, k + 1) == 0) return null;
+        int o = 0;
+        uint ent = (uint)Varint(b, ref o);
+        o = k + 1;
+        return (ent, (uint)Varint(b, ref o));
+    }
+
     // 0x008d (HP, many subtypes): entity varint, 02 01 00, u64 HP (the boss's matched Abyss Logs' HP on Atiel).
     public static (uint ent, long hp)? NpcHp(byte[] b)
     {

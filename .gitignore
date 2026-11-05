@@ -19,3 +19,10 @@ gear.json
 bosses.json
 itemnames.json
 dist-share/
+
+# boss helper: fight recordings, their export and the tool cache (players and entity ids, local only)
+*.enc.gz
+*.enc.gz.part
+encounters/
+boss-aufnahmen-*.zip
+tools/boss_fights.cache.json

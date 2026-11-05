@@ -11,8 +11,9 @@ namespace PetOverlay;
 //
 // File encounters\<yyyyMMdd-HHmmss>_<npc>.enc.gz (gzip): "ABENC1\n", a JSON header line, then records
 // { u8 kind (0 frame, 1 marker), u32 ms since start, u16 op, varint length, body } (marker: op 0, body = UTF-8 note).
-// Main npc = the casting npc with the most HP (0x008d). encounters\index.jsonl gets one line per fight. No player
-// names are written by the recorder itself (frames carry entity ids; a frame may contain names, files stay local).
+// Main npc = the casting npc with the most HP (0x008d). encounters\index.jsonl gets one line per fight.
+// Privacy: the frames that carry character names (player spawn, own character, party, arena roster / history) are left
+// out (Personal); the rest has entity ids only. Recordings stay local (never commit them).
 sealed class BossRecorder
 {
     public string Dir { get; set; } = Path.Combine(Settings.DataDir, "encounters");
@@ -24,6 +25,7 @@ sealed class BossRecorder
     /// A fight was saved: index line as JSON.
     public event Action<string>? Saved;
 
+    static bool Personal(int op) => op is 0x4536 or 0x3336 or 0x92 or 0xd92 or 0x2292 or 0x19e3 or 0x2ce3;
     static readonly TimeSpan Quiet = TimeSpan.FromSeconds(20), Pre = TimeSpan.FromSeconds(5), Longest = TimeSpan.FromMinutes(15);
     const long MaxTotal = 2L << 30; // oldest files go above 2 GB
 
@@ -32,11 +34,12 @@ sealed class BossRecorder
     readonly Dictionary<uint, (byte[] body, DateTime ts)> spawned = new(); // entity -> its 0x4136, written at the pull
     readonly Dictionary<uint, long> maxHp = new(); // entity -> highest HP seen
     readonly Dictionary<uint, int> casts = new(); // npc id -> casts in this fight
+    readonly Dictionary<uint, uint> fighters = new(); // entity -> npc id of the npcs that cast in this fight
     readonly Queue<(int op, byte[] body, DateTime ts)> pre = new();
     uint map;
     string? path;
     GZipStream? gz;
-    DateTime start, lastCast;
+    DateTime start, lastCast, lastTs; // lastTs: packet time of the latest frame (markers)
     int frames, markers;
 
     public bool Recording { get { lock (sync) return gz != null; } }
@@ -45,10 +48,12 @@ sealed class BossRecorder
     {
         lock (sync)
         {
-            if (op == 0x0036) return; // server tick, 20/s
+            if (op == 0x0036 || Personal(op)) return; // server tick (20/s), names
+            lastTs = ts;
             if (op == 0x0140)
             {
                 End();
+                On = All = false; // until the page says what this map is (dungeon or not)
                 npcs.Clear();
                 spawned.Clear();
                 if (body.Length >= 4) map = BitConverter.ToUInt32(body, 0);
@@ -56,15 +61,13 @@ sealed class BossRecorder
             }
             if (op == 0x4136)
             {
-                int o = 0;
-                uint ent = (uint)PetFrames.Varint(body, ref o);
-                if (o + 7 <= body.Length) { npcs[ent] = BitConverter.ToUInt32(body, o + 3); spawned[ent] = (body, ts); }
+                if (PetFrames.NpcSpawn(body) is { } sp) { npcs[sp.ent] = sp.npc; spawned[sp.ent] = (body, ts); }
             }
-            else if (op == 0x4236 && gz == null && body.Length >= 2)
+            else if (op == 0x4236 && PetFrames.VarintLen(body, 0) > 0)
             {
                 int o = 0;
                 uint ent = (uint)PetFrames.Varint(body, ref o);
-                npcs.Remove(ent); // during a fight entities stay known (the boss's death frame comes after it)
+                npcs.Remove(ent); // the fight keeps its casters in `fighters`
                 spawned.Remove(ent);
             }
             else if (op == 0x0238 && On && PetFrames.CastStart(body) is { } c && npcs.TryGetValue(c.ent, out var npc)
@@ -72,9 +75,9 @@ sealed class BossRecorder
             {
                 if (gz == null) Begin(ts);
                 lastCast = ts;
-                casts[npc] = casts.GetValueOrDefault(npc) + 1;
+                if (gz != null) { casts[npc] = casts.GetValueOrDefault(npc) + 1; fighters[c.ent] = npc; }
             }
-            else if (op == 0x008d && PetFrames.NpcHp(body) is { } hp && npcs.ContainsKey(hp.ent))
+            else if (op == 0x008d && PetFrames.NpcHp(body) is { } hp && (npcs.ContainsKey(hp.ent) || fighters.ContainsKey(hp.ent)))
                 maxHp[hp.ent] = Math.Max(maxHp.GetValueOrDefault(hp.ent), hp.hp);
 
             if (gz == null)
@@ -95,7 +98,7 @@ sealed class BossRecorder
         lock (sync)
         {
             if (gz == null) return false;
-            Write(1, 0, Encoding.UTF8.GetBytes(note), DateTime.UtcNow);
+            Write(1, 0, Encoding.UTF8.GetBytes(note), lastTs);
             markers++;
             return true;
         }
@@ -110,14 +113,19 @@ sealed class BossRecorder
         {
             Directory.CreateDirectory(Dir);
             Prune();
+            // a crash / kill leaves an unfinished file (no gzip end): such files are of no use
+            foreach (var part in Directory.GetFiles(Dir, "*.part")) try { File.Delete(part); } catch { }
             start = pre.Count > 0 ? pre.Peek().ts : ts;
             path = Path.Combine(Dir, $"{start.ToLocalTime():yyyyMMdd-HHmmss}.enc.gz.part");
-            gz = new GZipStream(File.Create(path), CompressionLevel.Fastest);
+            var fs = File.Create(path);
+            try { gz = new GZipStream(fs, CompressionLevel.Fastest); }
+            catch { fs.Dispose(); throw; }
             var head = JsonSerializer.Serialize(new { v = 1, start = start.ToString("O"), map, app = Version });
             gz.Write(Encoding.ASCII.GetBytes("ABENC1\n"));
             gz.Write(Encoding.UTF8.GetBytes(head + "\n"));
             frames = markers = 0;
             casts.Clear();
+            fighters.Clear();
             maxHp.Clear();
             // the npcs around (the boss spawned long before the pull), then the last seconds
             foreach (var (body, t) in spawned.Values) if (t < start) Write(0, 0x4136, body, start);
@@ -127,6 +135,7 @@ sealed class BossRecorder
         catch (Exception ex)
         {
             OverlayForm.Log("Boss-Aufnahme: " + ex.Message);
+            try { gz?.Dispose(); } catch { }
             gz = null;
         }
     }
@@ -158,7 +167,8 @@ sealed class BossRecorder
         try { gz.Dispose(); } catch { }
         gz = null;
         // main npc: the casting npc with the most HP (the boss among its adds), else the one casting most
-        uint main = casts.Keys.MaxBy(n => (npcs.Where(e => e.Value == n).Select(e => maxHp.GetValueOrDefault(e.Key)).DefaultIfEmpty(0).Max(), casts[n]));
+        long Hp(uint n) => fighters.Where(e => e.Value == n).Select(e => maxHp.GetValueOrDefault(e.Key)).DefaultIfEmpty(0).Max();
+        uint main = casts.Count == 0 ? 0 : casts.Keys.MaxBy(n => (Hp(n), casts[n]));
         var dur = (lastCast - start).TotalSeconds;
         var final = Path.Combine(Dir, $"{start.ToLocalTime():yyyyMMdd-HHmmss}_{main}.enc.gz");
         try
@@ -167,7 +177,7 @@ sealed class BossRecorder
             var line = JsonSerializer.Serialize(new
             {
                 file = Path.GetFileName(final), start = start.ToString("O"), dur = Math.Round(dur, 1), map, npc = main,
-                hp = npcs.Where(e => e.Value == main).Select(e => maxHp.GetValueOrDefault(e.Key)).DefaultIfEmpty(0).Max(),
+                hp = Hp(main),
                 casts, frames, markers,
             });
             File.AppendAllText(Path.Combine(Dir, "index.jsonl"), line + "\n");
@@ -189,19 +199,28 @@ sealed class BossRecorder
         }
     }
 
-    /// All recordings (and the index) as a ZIP on the desktop; null if there are none.
-    public string? Export()
+    /// All finished recordings (and the index) as a ZIP on the desktop, off the UI thread and without the lock (finished
+    /// files never change); null if there are none or it failed (logged).
+    public Task<string?> Export() => Task.Run(() =>
     {
-        lock (sync)
+        try
         {
-            if (!Directory.Exists(Dir) || Directory.GetFiles(Dir, "*.enc.gz").Length == 0) return null;
-            var zip = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), $"boss-aufnahmen-{DateTime.Now:yyyyMMdd-HHmm}.zip");
+            if (!Directory.Exists(Dir)) return null;
+            var files = Directory.GetFiles(Dir).Where(f => f.EndsWith(".enc.gz") || f.EndsWith("index.jsonl")).ToList();
+            if (!files.Any(f => f.EndsWith(".enc.gz"))) return null;
+            var desk = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var zip = Path.Combine(desk, $"boss-aufnahmen-{DateTime.Now:yyyyMMdd-HHmmss}.zip");
+            for (int i = 2; File.Exists(zip); i++) zip = Path.Combine(desk, $"boss-aufnahmen-{DateTime.Now:yyyyMMdd-HHmmss}-{i}.zip");
             using var z = ZipFile.Open(zip, ZipArchiveMode.Create);
-            foreach (var f in Directory.GetFiles(Dir).Where(f => f.EndsWith(".enc.gz") || f.EndsWith("index.jsonl")))
-                z.CreateEntryFromFile(f, Path.GetFileName(f), CompressionLevel.NoCompression);
+            foreach (var f in files) z.CreateEntryFromFile(f, Path.GetFileName(f), CompressionLevel.NoCompression);
             return zip;
         }
-    }
+        catch (Exception ex)
+        {
+            OverlayForm.Log("Boss-Export: " + ex.Message);
+            return null;
+        }
+    });
 
     /// Count and size of the recordings.
     public (int n, long bytes) Stats()
