@@ -47,10 +47,12 @@ describe('difficulty', () => {
     expect(difficulty(pet(), MAPS, DATA, null).score).toBe(100)
   })
 
-  it('treats spawns only in the other faction\'s territory as not farmable', () => {
+  it('treats spawns only in the other faction\'s territory as a time window, not as hard', () => {
     const asmo = difficulty(pet(3), MAPS, DATA, 'Asmodian'), ely = difficulty(pet(3), MAPS, DATA, 'Elyos'), none = difficulty(pet(3), MAPS, DATA, null)
-    expect(asmo.reasons[0]).toMatchObject({ k: 'enemy', v: { fac: 'Elyos' } })
-    expect(asmo.score).toBeGreaterThanOrEqual(HARD)
+    // only in its time window: a note (+5), the rarity decides whether it is hard
+    expect(asmo.reasons[0]).toMatchObject({ k: 'enemy', v: { fac: 'Elyos' }, tone: 'cyan' })
+    expect(asmo.score).toBe(ely.score + 5)
+    expect(asmo.score).toBeLessThan(HARD)
     expect(ely.score).toBeLessThan(HARD)
     expect(none.score).toBe(ely.score)
     // a pet that also spawns on own maps: the best place is on an own map

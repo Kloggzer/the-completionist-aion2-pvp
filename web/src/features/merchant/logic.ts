@@ -23,7 +23,8 @@ const ENEMY: Record<Faction, string> = { Asmodian: 'Elyos', Elyos: 'Asmodian' }
 /** Farm difficulty of a pet ("Farmaufwand") over the loaded maps.
  *  - no spawn of its mobs on any open map: 100 (event, dungeon or not in the game data)
  *  - rarity: 60 / (1 + spawns / 8) – 1 spawn ≈ 53, 8 ≈ 30, 50 ≈ 8
- *  - spawns only in the other faction's territory: +45 (not farmable for you); only in the Abyss: +15 (PvP)
+ *  - spawns only in the other faction's territory: +5 – not harder to farm, only in its time window (a note);
+ *    only in the Abyss: +15 (PvP)
  *  - only named / field boss mobs: +15, only elite/hero mobs: +8
  *  - only on one map: +8; lowest mob level 40+: +5 */
 export function difficulty(p: Any, maps: MapInfo[], md: Record<string, Any>, faction: Faction | null): Diff {
@@ -50,7 +51,7 @@ export function difficulty(p: Any, maps: MapInfo[], md: Record<string, Any>, fac
   reasons.push({ k: 'spawns', v: { n: spawns }, tone: rare >= 30 ? 'red' : rare >= 15 ? 'gold' : 'dim' })
   const enemy = faction ? ENEMY[faction] : null
   const own = per.filter(x => x.m.faction !== enemy)
-  if (enemy && !own.length) { score += 45; reasons.unshift({ k: 'enemy', v: { fac: enemy }, tone: 'red' }) }
+  if (enemy && !own.length) { score += 5; reasons.unshift({ k: 'enemy', v: { fac: enemy }, tone: 'cyan' }) }
   else if (own.every(x => x.m.faction === 'Abyss')) { score += 15; reasons.push({ k: 'abyss', tone: 'gold' }) }
   if (mobs.every(s => s.fb)) { score += 15; reasons.push({ k: 'boss', tone: 'gold' }) }
   else if (mobs.every(s => s.named || s.fb)) { score += 15; reasons.push({ k: 'named', tone: 'gold' }) }
