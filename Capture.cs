@@ -418,13 +418,23 @@ sealed class LiveCapture(string processName) : PetSource
     string? lastStatus;
     static readonly TimeSpan Silence = TimeSpan.FromSeconds(30);
 
+    // last failed open: retried every few seconds (adapter gets its address late, Npcap driver starts after the app)
+    DateTime retryAt;
+    string? lastMiss;
+    static readonly TimeSpan Retry = TimeSpan.FromSeconds(5);
+
     public override void Start()
     {
-        System.Net.IPAddress? local = null;
-        try { local = LocalAddress(); }
-        catch (Exception ex) { OverlayForm.Log("Capture: keine Standard-Route – " + ex.Message); }
-        if (local != null && !Open(local, out var err)) { Status("error", err); return; }
+        System.Net.IPAddress? local = DefaultAddress();
+        if (local != null && !Open(local, out var err)) { Status("error", err); retryAt = DateTime.UtcNow + Retry; }
+        // poll also after a failed open: it retries and follows the game's own adapter
         poll = new System.Threading.Timer(_ => Poll(), null, 0, 1000);
+    }
+
+    static System.Net.IPAddress? DefaultAddress()
+    {
+        try { return LocalAddress(); }
+        catch (Exception ex) { OverlayForm.Log("Capture: keine Standard-Route – " + ex.Message); return null; }
     }
 
     /// Opens the Npcap adapter with this address in place of the current one; false + reason if it cannot.
@@ -434,7 +444,9 @@ sealed class LiveCapture(string processName) : PetSource
         lock (open)
         {
             LibPcapLiveDevice? next;
-            try { next = LibPcapLiveDeviceList.Instance.FirstOrDefault(d => d.Addresses.Any(a => Equals(a.Addr?.ipAddress, ip))); }
+            LibPcapLiveDeviceList all;
+            // a fresh list each time: Instance is read once and misses addresses that came later (DHCP, Wi-Fi after start)
+            try { all = LibPcapLiveDeviceList.New(); next = all.FirstOrDefault(d => d.Addresses.Any(a => Equals(a.Addr?.ipAddress, ip))); }
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
                 err = ex is DllNotFoundException || ex.InnerException is DllNotFoundException
@@ -444,9 +456,15 @@ sealed class LiveCapture(string processName) : PetSource
             }
             if (next == null)
             {
-                err = L.T($"Kein Npcap-Adapter mit IP {ip} – VPN oder virtueller Adapter?", $"No Npcap adapter with IP {ip} – VPN or virtual adapter?");
-                OverlayForm.Log($"Capture: kein Adapter mit {ip}; vorhanden: " + string.Join(" | ", LibPcapLiveDeviceList.Instance
-                    .Select(d => $"{d.Description} [{string.Join(", ", d.Addresses.Select(a => a.Addr?.ipAddress).Where(a => a != null))}]")));
+                // no adapters at all: Npcap's driver is not running or admin-only; else it is not bound to this adapter
+                err = all.Count == 0
+                    ? L.T("Npcap sieht keine Netzwerkadapter – PC neu starten oder Npcap neu installieren (ohne „nur Administratoren“). Neuer Versuch läuft …",
+                          "Npcap sees no network adapters – restart the PC or reinstall Npcap (without \"administrators only\"). Retrying …")
+                    : L.T($"Npcap sieht den Netzwerkadapter mit IP {ip} nicht. Neuer Versuch läuft … Bleibt es so: Npcap neu installieren. Details in log.txt.",
+                          $"Npcap does not see the network adapter with IP {ip}. Retrying … If it stays: reinstall Npcap. Details in log.txt.");
+                var have = $"Capture: kein Adapter mit {ip}; vorhanden: " + string.Join(" | ", all
+                    .Select(d => $"{d.Description} [{string.Join(", ", d.Addresses.Select(a => a.Addr?.ipAddress).Where(a => a != null))}]"));
+                if (have != lastMiss) OverlayForm.Log(lastMiss = have); // the retries log only what changed
                 return false;
             }
             try
@@ -486,12 +504,20 @@ sealed class LiveCapture(string processName) : PetSource
         catch (Exception ex) { Status("error", L.T("Verbindungen des Spiels nicht lesbar: ", "Cannot read the game's connections: ") + ex.Message); return; }
         lock (Sync) SetPorts(now);
 
+        // no adapter open yet (the first open failed): retry with the game's address, else the default route's
+        if (device == null && DateTime.UtcNow >= retryAt)
+        {
+            var ip = local.FirstOrDefault() ?? DefaultAddress();
+            if (ip != null && !Open(ip, out var err)) { Status("error", err); retryAt = DateTime.UtcNow + Retry; return; }
+        }
+        if (device == null && retryAt != default) return; // still failing: keep its message
+
         // the game's traffic runs over another adapter than the default route (VPN, second network card): follow it
         if (local.Count > 0 && !local.Any(OnDevice))
         {
             var ip = local.First();
             OverlayForm.Log($"Capture: Spiel nutzt {ip}, aktueller Adapter {device?.Description ?? "keiner"} – wechsle");
-            if (!Open(ip, out var err)) { Status("error", err); return; }
+            if (!Open(ip, out var err)) { Status("error", err); retryAt = DateTime.UtcNow + Retry; return; }
         }
 
         if (!run) { connAt = default; Status("waiting", L.T("Warte auf Aion 2 …", "Waiting for Aion 2 …")); return; }
