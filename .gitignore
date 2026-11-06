@@ -2,6 +2,7 @@
 bin/
 obj/
 publish/
+publish-next/
 # personal network captures (contain your own game traffic)
 captures/
 # downloaded aion2.app pages (regenerable with tools/fetch_achievements.py)
