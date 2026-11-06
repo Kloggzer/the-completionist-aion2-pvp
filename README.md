@@ -45,6 +45,8 @@ uninstall via Windows settings) or the portable `TheCompletionist.exe` (no insta
 - **Checklist** – dailies and weeklies per character and per server, partly counted automatically; charges (Odyle energy, Nightmare attempts, Invasion keys) with a traffic light before they overflow.
 - **Bosses** – field and Abyss bosses with the exact respawn times the server sends.
 - **Timers** – calendar of world bosses, rifts and events with announcer window, chimes and text-to-speech ("Gartua spawns in 5 minutes").
+- **Boss helper** (off by default) – like DBM / WeakAuras for dungeon bosses: a callout in the middle of the screen and by voice when a big attack starts ("Raus!", "auf dich"), timer bars with phase, Frenzy and HP, countdown, phase warnings, and after the fight who did not play the mechanic. Skills are named and set up on the "Boss-Helfer" page (role, per boss on / bars / off, profile strings to share). Every dungeon visit is recorded locally (no names) so the timelines can grow – export as ZIP for the developer.
+- **Market** – the skins you can buy on the market, cheapest first, the ones in your wardrobe hidden (read from the game), with their collection points; prices from aion2.exchange.
 
 ## Requirements
 
@@ -79,6 +81,7 @@ you can read it and build the exe yourself.
 | Ctrl+Alt+R | Radar |
 | Ctrl+Alt+W | aion2maps view |
 | Ctrl+Alt+E | Mini radar: unlock (move / resize / range) and lock again (click-through) |
+| Ctrl+Alt+B | Boss marker: mark a moment in a dungeon fight (for naming the boss's skills later) |
 | Ctrl+Alt+PageUp / PageDown | Opacity (also mouse wheel over the header) |
 | Ctrl+Alt+Plus / Minus | Scale |
 

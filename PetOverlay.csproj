@@ -9,7 +9,7 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <AssemblyName>TheCompletionist</AssemblyName>
     <RootNamespace>PetOverlay</RootNamespace>
-    <Version>1.1.3</Version>
+    <Version>1.2.0</Version>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
