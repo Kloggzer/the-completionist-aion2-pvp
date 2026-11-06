@@ -35,7 +35,9 @@ export function settings(ui: Any = {}, extra: Any = {}): Any {
   }
 }
 
-export type HostOpts = { ui?: Any; state?: Any; status?: Any; replay?: boolean; settings?: Any; art?: boolean }
+/** `dropPets`: pet ids left out of the served pets.json – the cached game data grows (e.g. Kernon got its mobs), the
+ *  merchant / event pet cases need pets that only the merchant tables know. */
+export type HostOpts = { ui?: Any; state?: Any; status?: Any; replay?: boolean; settings?: Any; art?: boolean; dropPets?: number[] }
 
 /** Install the mock host and open the app. Returns helpers to send host messages and read what the page posted. */
 export async function openApp(page: Page, o: HostOpts = {}) {
@@ -49,6 +51,11 @@ export async function openApp(page: Page, o: HostOpts = {}) {
     // pet portraits (GameData.EnsurePetIcon downloads them on demand): the test's own route (merchant.spec petIcons)
     if (rel.startsWith('peticons/')) return route.fallback()
     if (!f.startsWith(CACHE) || !fs.existsSync(f)) return route.fulfill({ status: 404, body: 'missing' })
+    if (rel === 'pets.json' && o.dropPets?.length) {
+      const d = JSON.parse(fs.readFileSync(f, 'utf8'))
+      d.pets = d.pets.filter((p: Any) => !o.dropPets!.includes(p.id))
+      return route.fulfill({ status: 200, body: JSON.stringify(d), contentType: 'application/json' })
+    }
     return route.fulfill({ status: 200, body: fs.readFileSync(f), contentType: f.endsWith('.json') ? 'application/json' : f.endsWith('.png') ? 'image/png' : f.endsWith('.webp') ? 'image/webp' : f.endsWith('.jpg') ? 'image/jpeg' : 'application/octet-stream' })
   })
   // coloured maps the app has rendered into the cache (GameData.EnsureTerrain): key -> newest terrain-v*.jpg

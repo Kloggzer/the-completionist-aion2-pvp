@@ -142,7 +142,7 @@ test('offer read from the game fills the list with verdicts and prices', async (
   state.levels[1084] = 3; state.souls[1084] = 0 // Kalgolem: Lv 3 done
   state.levels[1095] = 2; state.souls[1095] = 10 // Superior Wind Spirit: 65 souls missing
   delete state.levels[1132]; state.souls[1132] = 0 // Ashen Lupyllini: 105 missing
-  const { send, posted } = await openApp(page, { state, ui: { tab: 'merchant', merchFac: 'Asmodian', toasts: true } })
+  const { send, posted } = await openApp(page, { state, dropPets: [1009], ui: { tab: 'merchant', merchFac: 'Asmodian', toasts: true } })
   await expect(page.getByText('Kartendaten werden noch geladen')).toHaveCount(0, { timeout: 20000 })
 
   // a hand-added pet that the game offers too becomes a game entry
@@ -363,7 +363,7 @@ test('merchant / event pets with a game id: wish list with progress, purchase ma
   state.levels[1146] = 3; state.souls[1146] = 0 // Gatekeeper Pinopi: Lv 3 done
   state.levels[1999] = 1; state.souls[1999] = 0 // not in any table (1299 has a name in the German list now)
   state.levels[1001] = 1; state.souls[1001] = 0 // Black Dragon: owned, not in the item table
-  const { send } = await openApp(page, { state, ui: { tab: 'merchant', merchFac: 'Asmodian', open: { ...ALL, 'merch.bought': true } } })
+  const { send } = await openApp(page, { state, dropPets: [1009], ui: { tab: 'merchant', merchFac: 'Asmodian', open: { ...ALL, 'merch.bought': true } } })
   await expect(page.getByText('Kartendaten werden noch geladen')).toHaveCount(0, { timeout: 20000 })
 
   const none = page.locator('[data-wishgroup="none"]')
