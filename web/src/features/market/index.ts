@@ -2,13 +2,14 @@
 // from aion2.exchange via the host (MarketLookup.cs: allowed paths only, one request per second, cached on disk 10 min
 // / 1 h). Loaded when the page opens (then every 10 min while it is shown) and every 30 min in the background, which
 // toasts new deals on skins not owned (U.marketAlert). The server is the own character's (P.own.srv, kept in
-// U.marketSrv), else chosen on the page.
+// U.marketSrv), else chosen on the page. Owned: the game's wardrobe list (host 'skins' = 0x5b8d at login, map changes
+// and Alt+O; U.skinIds, skin ids) plus the ones marked by hand (U.skinOwned, unlock item ids).
 import { host, onHost } from '@/core/host'
 import { addStrings, t } from '@/core/i18n'
 import { U, bump, saveUi, type Any } from '@/core/state'
 import { toast } from '@/core/toast'
 import { P } from '@/features/pvp'
-import { histOf, rows, serverId, type Hist, type Listing, type Point, type Row, type SkinData } from './logic'
+import { histOf, rows, serverId, type Hist, type Listing, type Point, type Row, type Skin, type SkinData } from './logic'
 import strings from './strings'
 
 addStrings(strings)
@@ -37,9 +38,30 @@ export function gameServer(): number {
   if (own > 0 && own !== U.marketSrv) { U.marketSrv = own; saveUi(['marketSrv']) }
   return own > 0 ? own : U.marketSrv || 0
 }
-export const owned = (): Record<number, boolean> => U.skinOwned || {}
+// the game's wardrobe: kept only when it changed (it comes with every map change)
+onHost('skins', m => {
+  const ids: number[] = m.ids || [], old: number[] = U.skinIds || []
+  if (ids.length === old.length && ids.every((v, i) => v === old[i])) return
+  U.skinIds = ids
+  saveUi(['skinIds'])
+  bump()
+})
+let wardrobe: { src: unknown; set: Set<number> } = { src: null, set: new Set() }
+/** The skin is in the game's wardrobe list. */
+export function inGame(s: Skin): boolean {
+  if (wardrobe.src !== U.skinIds) wardrobe = { src: U.skinIds, set: new Set(U.skinIds || []) }
+  return wardrobe.set.has(s.skin)
+}
+/** Skins in the wardrobe (null: the game has not sent the list yet). */
+export const wardrobeSize = (): number | null => (U.skinIds ? U.skinIds.length : null)
+/** Owned unlock items: the wardrobe's and the ones marked by hand. */
+export function owned(): Record<number, boolean> {
+  const o: Record<number, boolean> = { ...(U.skinOwned || {}) }
+  for (const s of M.data?.items || []) if (inGame(s)) o[s.item] = true
+  return o
+}
 export function setOwned(item: number, on: boolean) {
-  const o = { ...owned() }
+  const o = { ...(U.skinOwned || {}) }
   if (on) o[item] = true
   else delete o[item]
   U.skinOwned = o

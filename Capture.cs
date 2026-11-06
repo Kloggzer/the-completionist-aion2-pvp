@@ -52,6 +52,8 @@ abstract class PetSource : IDisposable
     public event Action<int, List<MerchantItem>>? MerchantReceived;
     /// Own Daevanion boards (0x26e2 at login): board id -> open node ids.
     public event Action<Dictionary<int, uint[]>>? DaevanionReceived;
+    /// Own wardrobe: the ids of all unlocked skins (0x5b8d, PetFrames.Skins).
+    public event Action<uint[]>? SkinsReceived;
     /// Own Daevanion nodes bought (0x03e5, 0x28e2) or reset (0x2be2; 0x29e2 = a whole board, as its Start node id)
     /// while playing: (bought, reset).
     public event Action<uint[], uint[]>? DaevanionChanged;
@@ -238,6 +240,8 @@ abstract class PetSource : IDisposable
             daeBoardIds = dae.Keys.ToHashSet();
             DaevanionReceived?.Invoke(dae);
         }
+        else if (op == 0x5b8d && PetFrames.Skins(body) is { } skins)
+            SkinsReceived?.Invoke(skins);
         else if (op == 0x9156 && PetFrames.ParseMerchant(body) is { } merch)
             MerchantReceived?.Invoke(merch.tab, merch.items);
         else if (op == 0x2ce3 && body.Length > 100 && PetFrames.PvpHistory(body) is { Count: > 0 } matches)

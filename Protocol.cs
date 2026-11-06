@@ -400,6 +400,22 @@ static class PetFrames
         return (ent, BitConverter.ToUInt32(b, k + 1), b[k + 5], tgt);
     }
 
+    // 0x5b8d own wardrobe (all unlocked skins; at login, on map changes and when the wardrobe opens, Alt+O): varint n,
+    // n x {u32 skin id (aion2data skins, 8 digits), u32 ? (1, sometimes 2)}. Verified on 499 of 562 entries: all known ids.
+    public static uint[]? Skins(byte[] b)
+    {
+        if (VarintLen(b, 0) is not (> 0 and var k)) return null;
+        int o = 0, n = Varint(b, ref o);
+        if (n <= 0 || n > 20_000 || k + 8L * n > b.Length) return null;
+        var ids = new uint[n];
+        for (int i = 0; i < n; i++)
+        {
+            ids[i] = BitConverter.ToUInt32(b, k + 8 * i);
+            if (ids[i] is < 10_000_000 or > 99_999_999) return null; // not the list we know
+        }
+        return ids;
+    }
+
     // 0x4136 npc spawn: entity varint, 3 bytes, u32 NpcData id (7 digits; other layouts carry a name there instead).
     public static (uint ent, uint npc)? NpcSpawn(byte[] b)
     {

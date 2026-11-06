@@ -25,7 +25,7 @@ async function mock(page: Page, list: Record<number, { price: number | null; lis
 }
 
 test('skins to buy: bargain first, fair price, too dear, owned', async ({ page }) => {
-  const data = await (await fetch('http://localhost:4173/skins.json')).json() as { items: { item: number; cat: string }[] }
+  const data = await (await fetch('http://localhost:4173/skins.json')).json() as { items: { item: number; skin: number; cat: string }[] }
   const jewel = data.items.find(s => s.cat === 'Earrings')!.item
   const dear = data.items.find(s => s.cat === 'Gloves')!.item
   usual[jewel] = 800_000
@@ -44,6 +44,13 @@ test('skins to buy: bargain first, fair price, too dear, owned', async ({ page }
   await buy.locator(`[data-have="${APPLE}"]`).click()
   await expect(buy.locator(`[data-skin="${APPLE}"]`)).toHaveCount(0)
   expect((await h.posted('ui')).some((m: { patch: { skinOwned?: Record<string, boolean> } }) => m.patch.skinOwned?.[APPLE])).toBe(true)
+  // the game's wardrobe (0x5b8d): the jewellery skin is owned -> out of "buy now", marked as in the wardrobe
+  const jewelSkin = data.items.find(s => s.item === jewel)!.skin
+  await h.send({ type: 'skins', ids: [10001101, jewelSkin] })
+  await expect(buy.locator(`[data-skin="${jewel}"]`)).toHaveCount(0)
+  await expect(page.locator('[data-kpi="fashion"]')).toContainText('2')
+  await page.locator('[data-disclosure="mkt.have"] button').first().click()
+  await expect(page.locator(`[data-ingame="${jewel}"]`)).toBeVisible()
   // the requests went through the host proxy with the server id and the skins section
   const paths = (await h.posted('market')).map((m: { path: string }) => m.path)
   expect(paths[0]).toBe('/api/items?server=12306&section=skins&limit=100')

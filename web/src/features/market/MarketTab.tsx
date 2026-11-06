@@ -1,6 +1,6 @@
 // "Markt" page (like the merchant page, for the auction house): which skins are worth buying now on the own server –
 // KPI row (to buy, cheapest per point, Fashionista, data age), "Buy now" tiles (deals first), "Too dear" and "Not
-// listed" behind disclosures, owned ones last; "have" switch per skin (the game's wardrobe list is not read yet).
+// listed" behind disclosures, owned ones last; owned = the game's wardrobe list, plus a "have" switch per skin.
 import { useEffect } from 'react'
 import { Clock, Gem, RefreshCw, ShoppingCart, Shirt } from 'lucide-react'
 import { S, U, bump, saveUi, useApp } from '@/core/state'
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { AppSelect } from '@/components/AppSelect'
 import { BarInfo, BarRight, Disclosure, Empty, Hint, HowTo, Kpi, KpiRow, Page, Panel, SUB, Seg, TILE, TILE_P, T_BODY, T_TITLE, grid } from '@/components/kit'
 import { ACCESSORY, FASHIONISTA, fashion, serverId, type Kind, type Row } from './logic'
-import { M, gameServer, listAge, loadServers, marketRows, refresh, setOwned } from './index'
+import { M, gameServer, inGame, listAge, loadServers, marketRows, refresh, setOwned, wardrobeSize } from './index'
 
 const fmt = (n: number) => Math.round(n).toLocaleString(locale())
 const short = (n: number) => (n >= 1e6 ? (n / 1e6).toLocaleString(locale(), { maximumFractionDigits: 2 }) + ' Mio.' : fmt(n))
@@ -45,10 +45,12 @@ function SkinTile({ r }: { r: Row }) {
           {r.price === null && r.med !== null && <span>{t('mkt.usualShort', { p: short(r.med) })}</span>}
           {r.gone > 0 && <span>{t('mkt.flowShort', { n: r.gone.toLocaleString(locale(), { maximumFractionDigits: 1 }) })}</span>}
           {r.listings > 0 && <span>{t('mkt.listings', { n: r.listings })}</span>}
-          <button data-have={r.item} onClick={() => setOwned(r.item, r.kind !== 'have')}
-            className={cn('ml-auto rounded-sm border px-1.5 leading-[18px] hover:bg-foreground/5', r.kind === 'have' ? 'border-green/40 text-green' : 'border-border')}>
-            {r.kind === 'have' ? t('mkt.have') : t('mkt.markHave')}
-          </button>
+          {inGame(r)
+            ? <span data-ingame={r.item} className="ml-auto rounded-sm border border-green/40 px-1.5 leading-[18px] text-green">{t('mkt.haveGame')}</span>
+            : <button data-have={r.item} onClick={() => setOwned(r.item, r.kind !== 'have')}
+              className={cn('ml-auto rounded-sm border px-1.5 leading-[18px] hover:bg-foreground/5', r.kind === 'have' ? 'border-green/40 text-green' : 'border-border')}>
+              {r.kind === 'have' ? t('mkt.have') : t('mkt.markHave')}
+            </button>}
         </div>
       </div>
     </div>
@@ -59,12 +61,12 @@ function Tiles({ list }: { list: Row[] }) {
   return list.length ? <div className={cn(grid('row'), 'pb-2.5')}>{list.map(r => <SkinTile key={r.item} r={r} />)}</div> : null
 }
 
-/** Fashionista counter (skins collected) from the achievements the game sends. */
-const collected = () => Math.max(0, ...FASHIONISTA.map(id => S.state?.ach?.[id]?.[0] ?? 0))
+/** Skins collected: the wardrobe list, else the Fashionista achievement counter. */
+const collected = () => wardrobeSize() ?? Math.max(0, ...FASHIONISTA.map(id => S.state?.ach?.[id]?.[0] ?? 0))
 
 function Kpis({ all }: { all: Row[] }) {
   const buy = all.filter(r => r.kind === 'deal' || r.kind === 'buy'), best = buy.filter(r => r.kpp).sort((a, b) => a.kpp! - b.kpp!)[0]
-  const f = fashion(collected()), age = listAge(), known = FASHIONISTA.some(id => S.state?.ach?.[id])
+  const f = fashion(collected()), age = listAge(), known = wardrobeSize() !== null || FASHIONISTA.some(id => S.state?.ach?.[id])
   return (
     <KpiRow>
       <Kpi icon={ShoppingCart} label={t('mkt.kpi.buy')} value={M.list.length ? fmt(buy.length) : '–'} tone={buy.length ? 'warn' : undefined}

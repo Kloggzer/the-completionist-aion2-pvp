@@ -45,6 +45,7 @@ sealed class OverlayForm : Form
     readonly BossRecorder recorder = new();
     BossBarsForm? bossBars;
     BossCallForm? bossCall;
+    int lastSkins = -1; // wardrobe size last logged
     string? bossBarsLog; // replay: the bars' boss, logged once per boss
     bool autoShown; // overlay was shown by a cube alert and hides again afterwards
     bool instHidden; // overlay hidden because the player is in an instance
@@ -1261,6 +1262,11 @@ sealed class OverlayForm : Form
                     daeBoards[b] = set.ToArray();
                 }
             Post(new { type = "daeNodes", bought, reset });
+        });
+        source.SkinsReceived += skins => BeginInvoke(() =>
+        {
+            if (skins.Length != lastSkins) Log($"Kleiderschrank: {lastSkins = skins.Length} Skins");
+            Post(new { type = "skins", ids = skins });
         });
         source.DaevanionReceived += boards => BeginInvoke(() =>
         {
