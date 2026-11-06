@@ -8,7 +8,7 @@
 // PvP instances (arena, battlefield, Abyss corridor, instanced world layers, field events) and field maps keep the
 // enemy list.
 import { G, S, U } from '@/core/state'
-import { alertOn, type BossMods, type SkillCfg } from '@/features/bossmod/logic'
+import { alertOn, guideCfgs, mergeCfgs, type BossMods, type Guide, type SkillCfg } from '@/features/bossmod/logic'
 import { t } from '@/core/i18n'
 import type { Fight } from '@/features/build/build'
 import { ownLootPanel } from './loot'
@@ -41,11 +41,12 @@ const ACTION_COL = '#f0c75e', MUTED = '#a8b0c2', RED = '#ff8a7a', GOOD = '#60d67
 const GRADE_COL: Record<string, string> = { Unique: '#f0c75e', Legend: '#ff9a4d', Epic: '#c792ff', Heroic: '#6fb6ff', Rare: '#60d678' }
 const avg = (a: number[]) => a.reduce((s, x) => s + x, 0) / a.length
 
-/** Boss helper (features/bossmod) for this boss: its named skills with what to do, else how many skills it knows. */
+/** Boss helper (features/bossmod) for this boss: its named skills with what to do (the guide's and the own settings,
+ *  like the helper itself), else how many skills it knows. */
 function helperLines(name: string): { t: string; col: string }[] {
   const e = Object.entries((G.bossMods as BossMods | undefined)?.bosses || {}).find(([, x]) => x.name === name)
   if (!e) return []
-  const cfg: Record<string, SkillCfg> = U.bossSkills || {}, skills = Object.entries(e[1].skills)
+  const cfg: Record<string, SkillCfg> = mergeCfgs(guideCfgs(G.bossGuide as Guide | undefined), U.bossSkills || {}), skills = Object.entries(e[1].skills)
   const named = skills.filter(([id]) => cfg[id]?.name).slice(0, 3)
   if (named.length) return named.map(([id]) => ({ t: `⚔ ${cfg[id].name}${cfg[id].kind ? ' → ' + t('boss.k.' + cfg[id].kind) : ''}`, col: ACTION_COL }))
   return [{ t: t('pvp.dng.helper', { n: skills.length, a: skills.filter(([id, st]) => alertOn(st, cfg[id])).length }), col: MUTED }]

@@ -10,6 +10,9 @@ cast. The boss's HP % at each cast comes from the Abyss Logs fight file with the
 Which npcs are bosses: dungeon bosses only = the bossMobCode of every Abyss Logs boss fight with a zoneId (field
 bosses have none; summaries.json), plus --npc ids.
 
+A fight = one boss entity from its first real cast (idle animations before a long pause dropped) to its death, a reset
+to full HP (wipe) or 60 s without a cast; skills are counted per use (casts closer than 3 s = one multi-part use).
+
 Usage:  python tools/boss_timeline.py <capture-dir | encounters-dir | export.zip> [...] [--npc 2343601 ...] [--out web/public/bossmods.json]
 Every fight is kept in tools/boss_fights.cache.json (entity ids and skills only, not committed), so a new recording adds
 to the earlier ones; the timelines are summarized over all cached fights. "aliases" maps the other modes' npc ids of a
@@ -122,7 +125,10 @@ def encounter_frames(raw):
     if not b.startswith(b"ABENC1\n"):
         return
     end = b.index(b"\n", 7)
-    t0 = datetime.datetime.fromisoformat(json.loads(b[7:end])["start"].replace("Z", "+00:00")).timestamp()
+    head = json.loads(b[7:end])
+    if not head.get("start"):
+        raise ValueError("header without start")
+    t0 = datetime.datetime.fromisoformat(head["start"].replace("Z", "+00:00")).timestamp()
     i = end + 1
     while i + 7 <= len(b):
         kind, ms, op = b[i], struct.unpack_from("<I", b, i + 1)[0], struct.unpack_from("<H", b, i + 5)[0]
@@ -134,13 +140,21 @@ def encounter_frames(raw):
 
 
 def encounters(path):
-    """Raw encounter files in a folder, a ZIP export or one file: [(name, bytes)] in time order."""
+    """Raw recordings in a folder, a ZIP export or one file: (name, bytes) in time order, one at a time (a ZIP can be
+    2 GB)."""
     if path.endswith(".zip"):
-        z = zipfile.ZipFile(path)
-        return sorted((n, z.read(n)) for n in z.namelist() if n.endswith(".enc.gz"))
-    if os.path.isfile(path):
-        return [(os.path.basename(path), open(path, "rb").read())]
-    return sorted((n, open(os.path.join(path, n), "rb").read()) for n in os.listdir(path) if n.endswith(".enc.gz"))
+        try:
+            z = zipfile.ZipFile(path)
+        except zipfile.BadZipFile as e:
+            print(f"skip {path}: {e}")
+            return
+        for n in sorted(n for n in z.namelist() if n.endswith(".enc.gz")):
+            yield n, z.read(n)
+    elif os.path.isfile(path):
+        yield os.path.basename(path), open(path, "rb").read()
+    else:
+        for n in sorted(n for n in os.listdir(path) if n.endswith(".enc.gz")):
+            yield n, open(os.path.join(path, n), "rb").read()
 
 
 def sources(path):
@@ -151,13 +165,14 @@ def sources(path):
     for name, raw in encounters(path):
         try:
             fr = list(encounter_frames(raw))
-        except (OSError, EOFError, ValueError) as e:  # unfinished / damaged file
+        except (OSError, EOFError, ValueError, KeyError) as e:  # unfinished / damaged file
             print(f"skip {name}: {e}")
             continue
         if fr:
             # each recording is its own world: a 0x0140 in front ends the previous file's entities
+            # old per-fight files are named after their boss npc (7 digits), dungeon visits after the map
             hint = name.rsplit("_", 1)[-1].split(".")[0]
-            yield fr[0][0], [(fr[0][0], 0x0140, b"")] + fr, ({int(hint)} if hint.isdigit() else set())
+            yield fr[0][0], [(fr[0][0], 0x0140, b"")] + fr, ({int(hint)} if hint.isdigit() and len(hint) == 7 else set())
 
 
 # ---------------------------------------------------------------- Abyss Logs
@@ -181,25 +196,36 @@ def pb(b):
     return m
 
 
+_SUMMARIES = None
+_SEGS = {}  # Abyss Logs segment id -> (boss entity, [(s, hp %)]) or None
+
+
 def summaries():
-    path = os.path.join(SEGMENTS, "summaries.json")
-    return json.load(open(path, encoding="utf-8")) if os.path.exists(path) else []
-
-
-def abyss_fights(t0, t1):
-    """Abyss Logs boss fights between t0 and t1: [{npc, name, start, ent, hp: [(s, hp)]}]."""
-    path = os.path.join(SEGMENTS, "summaries.json")
-    if not os.path.exists(path):
-        return []
-    out = []
-    for e in json.load(open(path, encoding="utf-8")):
-        if not e.get("hasBoss") or not e.get("bossMobCode") or not e.get("zoneId"):  # zoneId: dungeons only
-            continue
-        start = datetime.datetime.fromisoformat(e["startTime"].replace("Z", "+00:00")).timestamp()
-        if not t0 - 600 <= start <= t1:
-            continue
+    """Abyss Logs summaries.json (read once)."""
+    global _SUMMARIES
+    if _SUMMARIES is None:
+        path = os.path.join(SEGMENTS, "summaries.json")
         try:
-            b = open(os.path.join(SEGMENTS, e["id"] + ".abyss"), "rb").read()
+            _SUMMARIES = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else []
+        except (OSError, ValueError):
+            _SUMMARIES = []
+    return _SUMMARIES
+
+
+def boss_names():
+    """The most common Abyss Logs label per boss npc (a segment's label can name an add or the previous boss)."""
+    c = collections.defaultdict(collections.Counter)
+    for e in summaries():
+        if e.get("hasBoss") and e.get("bossMobCode") and e.get("label"):
+            c[e["bossMobCode"]][e["label"]] += 1
+    return {k: v.most_common(1)[0][0] for k, v in c.items()}
+
+
+def segment(sid):
+    """Boss entity and HP % timeline of one Abyss Logs fight file (parsed once)."""
+    if sid not in _SEGS:
+        try:
+            b = open(os.path.join(SEGMENTS, sid + ".abyss"), "rb").read()
             n, i = varint(b, 8)
             i += n
             secs = {}
@@ -211,27 +237,49 @@ def abyss_fights(t0, t1):
             ents = [pb(x) for x in m.get(4, [])]
             boss = next(x[1][0] for x in ents if 2 in x and 3 in pb(x[2][0]))
             hp = sorted((x.get(1, [0])[0] / 1000, x[3][0]) for x in map(pb, m.get(2, [])) if x.get(2, [0])[0] == boss and 3 in x)
+            top = max((h for _, h in hp), default=0)
+            _SEGS[sid] = (boss, [(s, round(100 * h / top)) for s, h in hp] if top else [])
         except Exception:
+            _SEGS[sid] = None
+    return _SEGS[sid]
+
+
+def abyss_fights(t0, t1):
+    """Abyss Logs dungeon boss fights between t0 and t1: [{npc, zone, start, ent, hp: [(s, hp %)]}]."""
+    out = []
+    for e in summaries():
+        if not e.get("hasBoss") or not e.get("bossMobCode") or not e.get("zoneId"):  # zoneId: dungeons only
             continue
-        top = max((h for _, h in hp), default=0)
-        out.append({"npc": e["bossMobCode"], "name": e["label"], "zone": e["zoneId"], "start": start, "ent": boss,
-                    "hp": [(s, round(100 * h / top)) for s, h in hp] if top else []})
+        try:
+            start = datetime.datetime.fromisoformat(e["startTime"].replace("Z", "+00:00")).timestamp()
+        except (KeyError, ValueError):
+            continue
+        if not t0 - 600 <= start <= t1 or not (seg := segment(e["id"])):
+            continue
+        out.append({"npc": e["bossMobCode"], "zone": e["zoneId"], "start": start, "ent": seg[0], "hp": seg[1]})
     return out
 
 
 # ---------------------------------------------------------------- fights
 
+QUIET = 60      # s without a cast in a running fight: a new fight (wipe, run back, next pull)
+LONE = 15       # s: casts at the start followed by this long a pause are idle animations, not the pull
+MIN_CASTS, MIN_DUR = 10, 20  # smaller "fights" are a boss walking by / a split-off rest
+
+
 def fights(t0, source, extra):
     logs = abyss_fights(t0, t0 + 7 * 86400)
     npcs = {f["npc"] for f in logs} | set(extra)
-    hps = collections.defaultdict(list)  # entity -> [(ts, hp)] from 0x008d (no Abyss Logs fight)
-    names = {f["npc"]: f["name"] for f in logs}
+    names = boss_names()
     zones = {f["npc"]: f["zone"] for f in logs}
+    hps = collections.defaultdict(list)  # entity -> [(ts, hp)] from 0x008d
     ents, open_, done = {}, {}, []  # entity -> npc, entity -> fight being recorded
+
     def close(ent):
         f = open_.pop(ent, None)
         if f and f["casts"]:
             done.append(f)
+
     for ts, op, b in source:
         if op == 0x0140:  # map change: every entity is gone
             for e in list(open_):
@@ -245,10 +293,17 @@ def fights(t0, source, extra):
             continue
         if op == 0x008d:
             if ent in ents and len(b) == o + 11 and b[o:o + 3] == bytes([2, 1, 0]):
-                hps[ent].append((ts, struct.unpack_from("<q", b, o + 3)[0]))
+                hp = struct.unpack_from("<q", b, o + 3)[0]
+                hps[ent].append((ts, hp))
+                f = open_.get(ent)
+                if f:  # back at full HP after losing some: a wipe / reset, the next pull is a new fight
+                    f["top"], f["low"] = max(f.get("top", 0), hp), min(f.get("low", hp), hp)
+                    if f["low"] < 0.95 * f["top"] and hp >= 0.99 * f["top"]:
+                        f["reset"] = True
+                        close(ent)
             continue
         if op == 0x4136:
-            if o + 7 <= len(b) and (npc := struct.unpack_from("<I", b, o + 3)[0]) in npcs:
+            if o + 7 <= len(b) and 1_000_000 <= (npc := struct.unpack_from("<I", b, o + 3)[0]) < 10_000_000 and npc in npcs:
                 close(ent)
                 ents[ent] = npc
         elif ent not in ents:
@@ -260,7 +315,12 @@ def fights(t0, source, extra):
             del ents[ent]
         elif op == 0x0238 and o + 6 <= len(b) and b[o] == 0:
             skill, seq = struct.unpack_from("<I", b, o + 1)[0], b[o + 5]
-            f = open_.setdefault(ent, {"npc": ents[ent], "ent": ent, "casts": [], "died": False})
+            f = open_.get(ent)
+            if f and f["casts"] and ts - f["casts"][-1]["ts"] > QUIET:
+                close(ent)
+                f = None
+            if not f:
+                f = open_[ent] = {"npc": ents[ent], "ent": ent, "casts": [], "died": False}
             f["casts"].append({"ts": ts, "skill": skill, "seq": seq, "end": None})
         elif op == 0x0638 and o + 5 <= len(b) and ent in open_:
             skill, seq = struct.unpack_from("<I", b, o)[0], b[o + 4]
@@ -270,16 +330,22 @@ def fights(t0, source, extra):
                     break
     for e in list(open_):
         close(e)
+    out = []
     for f in done:
-        pull = f["casts"][0]["ts"]
+        cs = f["casts"]
+        while len(cs) > 1 and cs[1]["ts"] - cs[0]["ts"] > LONE:  # idle animations before the pull
+            cs.pop(0)
+        if len(cs) < MIN_CASTS or cs[-1]["ts"] - cs[0]["ts"] < MIN_DUR:
+            continue
+        pull = cs[0]["ts"]
         log = min((l for l in logs if l["npc"] == f["npc"] and l["ent"] == f["ent"] and abs(l["start"] - pull) < 60),
                   key=lambda l: abs(l["start"] - pull), default=None)
         f["name"] = names.get(f["npc"], str(f["npc"]))
         f["zone"] = zones.get(f["npc"])
-        own = hps.get(f["ent"], [])
+        own = [(t, h) for t, h in hps.get(f["ent"], []) if pull - 30 <= t <= cs[-1]["ts"] + 5]
         top = max((h for _, h in own), default=0)
         f["maxhp"] = top
-        for c in f["casts"]:
+        for c in cs:
             c["t"] = c["ts"] - pull
             c["hp"] = None
             if log and log["hp"]:
@@ -287,44 +353,74 @@ def fights(t0, source, extra):
                 c["hp"] = next((h for s, h in reversed(log["hp"]) if s <= at), 100)
             elif top:
                 c["hp"] = round(100 * next((h for s, h in reversed(own) if s <= c["ts"]), top) / top)
-    return done
+        out.append(f)
+    return out
 
 
 def compact(f):
-    """A fight for the cache: [t, skill, cast seconds or None, hp % or None] per cast start."""
+    """A fight for the cache: entity, start, died / reset, [t, skill, cast seconds or None, hp % or None] per cast start.
+    Names are not cached (boss_names on every run)."""
     r = lambda v: None if v is None else round(v, 2)
-    return {"npc": f["npc"], "name": f["name"], "zone": f.get("zone"),
-            "casts": [[r(c["t"]), c["skill"], r(c["end"] - c["ts"]) if c["end"] else None, c["hp"]] for c in f["casts"]]}
+    cs = f["casts"]
+    return {"npc": f["npc"], "zone": f.get("zone"), "ent": f["ent"], "start": round(cs[0]["ts"], 2), "dur": r(cs[-1]["ts"] - cs[0]["ts"]),
+            "died": bool(f.get("died")), "reset": bool(f.get("reset")),
+            "casts": [[r(c["t"]), c["skill"], r(c["end"] - c["ts"]) if c["end"] else None, c["hp"]] for c in cs]}
+
+
+BURST = 3.0  # s: casts of a skill this close are one use (multi-part attacks, several targets)
+
+
+def quantile(v, q):
+    v = sorted(v)
+    i = (len(v) - 1) * q
+    lo = int(i)
+    return v[lo] + (v[min(lo + 1, len(v) - 1)] - v[lo]) * (i - lo)
 
 
 def summarize(fs):
-    """Per skill over all fights of one boss: casts per fight, first use, gap between uses, cast time, HP % range."""
+    """Per skill over all fights of one boss: uses per fight (a burst of casts = one use), first use, gap between uses
+    [p10, median, p90] (min / max under 5 gaps) and their count, cast time, HP % range, and the HP % of a phase skill
+    (once per fight, in ≥ 80 % of at least 3 fights, in a band of ≤ 8 %; phases closer than 5 % merged)."""
     acc = collections.defaultdict(lambda: {"n": [], "first": [], "gap": [], "cast": [], "hp": []})
     for f in fs:  # compact fights (see compact)
         per = collections.defaultdict(list)
         for t, sk, cast, hp in f["casts"]:
             l = per[sk]
-            if l and t - l[-1][0] < 0.4:  # the same cast on several targets
+            if l and t - l[-1][-1] < BURST:  # part of the same use: only extend its end
+                l[-1][-1] = t
                 continue
-            l.append((t, cast, hp))
+            l.append([t, cast, hp, t])
         for sk, l in per.items():
             a = acc[sk]
             a["n"].append(len(l))
             a["first"].append(l[0][0])
             a["gap"] += [y[0] - x[0] for x, y in zip(l, l[1:])]
-            a["cast"] += [c for _, c, _ in l if c]
-            a["hp"] += [h for _, _, h in l if h is not None]
+            a["cast"] += [c for _, c, _, _ in l if c]
+            a["hp"] += [h for _, _, h, _ in l if h is not None]
     r1 = lambda v: round(v, 1)
     out = {}
     for sk, a in sorted(acc.items(), key=lambda x: statistics.median(x[1]["first"])):
         s = {"fights": len(a["n"]), "n": r1(statistics.median(a["n"])), "first": r1(statistics.median(a["first"]))}
-        if a["gap"]:
-            s["gap"] = [r1(min(a["gap"])), r1(statistics.median(a["gap"])), r1(max(a["gap"]))]
+        g = a["gap"]
+        if g:
+            s["gap"] = [r1(quantile(g, 0.1)), r1(statistics.median(g)), r1(quantile(g, 0.9))] if len(g) >= 5 else [r1(min(g)), r1(statistics.median(g)), r1(max(g))]
+            s["gaps"] = len(g)
         if a["cast"]:
             s["cast"] = r1(statistics.median(a["cast"]))
         if a["hp"]:
             s["hp"] = [min(a["hp"]), max(a["hp"])]
+        hp = s.get("hp")
+        if hp and len(fs) >= 3 and s["fights"] >= 0.8 * len(fs) and s["n"] == 1 and hp[1] - hp[0] <= 8 and hp[1] < 100:
+            s["phase"] = hp[1]
         out[str(sk)] = s
+    taken = []
+    for sk, s in sorted(out.items(), key=lambda x: -x[1].get("phase", -1)):
+        if "phase" not in s:
+            continue
+        if any(abs(s["phase"] - p) < 5 for p in taken):
+            del s["phase"]
+        else:
+            taken.append(s["phase"])
     return out
 
 
@@ -344,37 +440,53 @@ def main():
                 # a file name only names the fight's biggest npc: a boss if Abyss Logs knows it or it has boss HP
                 if f["npc"] in hint and f["npc"] not in codes | known | set(args.npc) and f.get("maxhp", 0) < BOSS_HP:
                     continue
-                key = f"{f['npc']}@{round(f['casts'][0]['ts'])}"
-                new += key not in cache
-                cache[key] = compact(f)
+                key = f"{f['npc']}@{f['ent']}@{round(f['casts'][0]['ts'])}"
+                # the same fight from a pcap and a recording: first casts a few ms apart
+                if not any(k.startswith(f"{f['npc']}@{f['ent']}@") and abs(int(k.rsplit('@', 1)[1]) - round(f['casts'][0]['ts'])) <= 2 for k in cache):
+                    new += 1
+                    cache[key] = compact(f)
+    # old cache entries (before entity / names): drop the ones without an entity, they get read again
+    cache = {k: v for k, v in cache.items() if "ent" in v}
     with open(CACHE, "w", encoding="utf-8") as fh:
         json.dump(cache, fh)
     print(f"{new} new fights, {len(cache)} in the cache")
+    names = boss_names()
     by = collections.defaultdict(list)
     for f in cache.values():
         by[f["npc"]].append(f)
     data = json.load(open(args.out, encoding="utf-8")) if os.path.exists(args.out) else {"bosses": {}}
     for npc, fs in sorted(by.items()):
         b = data["bosses"].setdefault(str(npc), {})
-        b["name"] = next((f["name"] for f in fs if f["name"] != str(npc)), fs[0]["name"])
+        b["name"] = names.get(npc, b.get("name") or str(npc))
         if z := next((f["zone"] for f in fs if f.get("zone")), None):
             b["zone"] = z
         b["fights"] = len(fs)
+        b["kills"] = sum(1 for f in fs if f.get("died"))
         b["dur"] = [round(f["casts"][-1][0]) for f in fs]
         b["skills"] = summarize(fs)
         print(f"{npc} {b['name']}: {len(fs)} fights, {len(b['skills'])} skills")
-    # generic skills (the same id on 3+ bosses, e.g. the low-HP animation): never a mechanic
-    seen = collections.Counter(sk for b in data["bosses"].values() for sk in b["skills"])
+    # generic skills (the same id on bosses of 2+ different names, e.g. the low-HP animation): never a mechanic
+    owners = collections.defaultdict(set)
+    for b in data["bosses"].values():
+        for sk in b["skills"]:
+            owners[sk].add(b["name"])
     for b in data["bosses"].values():
         for sk, st in b["skills"].items():
-            if seen[sk] >= 3:
+            if len(owners[sk]) >= 2:
                 st["common"] = True
-    # other modes of the same boss: same name, same dungeon digits and boss number in the id
+                st.pop("phase", None)
+            else:
+                st.pop("common", None)
+    # other modes of the same boss: same name (most common label) and boss number; the timeline with the most fights
     core = lambda i: i // 100000 * 100000 + i % 1000
-    have = {int(k): v["name"] for k, v in data["bosses"].items()}
-    data["aliases"] = {str(e["bossMobCode"]): str(k) for e in summaries() if e.get("zoneId") and e.get("bossMobCode")
-                       for k, n in have.items() if e["bossMobCode"] not in have and core(e["bossMobCode"]) == core(k) and e["label"] == n}
-    data["source"] = "captures + Abyss Logs (tools/boss_timeline.py)"
+    have = {int(k): v for k, v in data["bosses"].items()}
+    aliases = {}
+    for code in {e["bossMobCode"] for e in summaries() if e.get("zoneId") and e.get("bossMobCode")} - set(have):
+        cand = [k for k, v in have.items() if core(k) == core(code) and v["name"] == names.get(code)]
+        if cand:
+            aliases[str(code)] = str(max(cand, key=lambda k: have[k]["fights"]))
+    data["aliases"] = aliases
+    data["source"] = "captures + recordings + Abyss Logs (tools/boss_timeline.py)"
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
     print("->", os.path.abspath(args.out))

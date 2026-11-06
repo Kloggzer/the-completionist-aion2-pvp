@@ -20,18 +20,21 @@ Zusätzlich hilfreich: in die Konsole tippen, was passiert ist, z. B. `Ursus 4 -
 
 Ausgabe in `captures/<datum-zeit>/`: `game.pcap` (Wireshark-kompatibel), `markers.jsonl`, `connections.jsonl`.
 
-## Boss-Helfer: Kämpfe aufzeichnen und Timelines bauen
+## Boss-Helfer: Dungeons aufzeichnen und Timelines bauen
 
-Die App zeichnet Bosskämpfe selbst auf (Einstellungen → Benachrichtigungen → Boss-Helfer → „Bosskämpfe aufzeichnen“, an
-per Default): jeder Kampf mit NPCs im Dungeon (Feldbosse nicht). Pro Kampf eine Datei in
-`%LOCALAPPDATA%\TheCompletionist\encounters\` (`<datum-zeit>_<npc>.enc.gz`, ~1 MB pro Boss), dazu `index.jsonl`.
-`Strg+Alt+B` setzt im Kampf einen Marker (Moment merken, z. B. „jetzt kam der Sprung“). „Als ZIP exportieren“ legt alles
-auf den Desktop.
+Die App zeichnet jeden Dungeon-Besuch komplett auf, vom Betreten bis zum Verlassen (Einstellungen → Benachrichtigungen →
+Boss-Helfer → „Dungeons aufzeichnen“, an per Default, auch bei ausgeschaltetem Helfer). Pro Besuch eine Datei in
+`%LOCALAPPDATA%\TheCompletionist\encounters\` (`<datum-zeit>_<karte>.enc.gz`, ~2–5 MB pro Run), dazu `index.jsonl`;
+Pakete mit Charakternamen werden weggelassen, höchstens 2 GB (älteste fliegen raus). `Strg+Alt+B` setzt im Kampf einen
+Marker. „Als ZIP exportieren“ (Einstellungen oder Seite Boss-Helfer) legt alles auf den Desktop.
 
-Timelines (`web/public/bossmods.json`) aus Aufnahmen und/oder pcaps, mit Boss-HP aus Abyss Logs:
+Timelines (`web/public/bossmods.json`) aus Aufnahmen und/oder pcaps, mit Boss-HP aus Abyss Logs; jeder Kampf landet im
+Cache `tools/boss_fights.cache.json` (nicht committen), neue Aufnahmen ergänzen die alten:
 
 ```bash
 python tools/boss_timeline.py <encounters-ordner | export.zip | captures/<datum-zeit>> [...]
+python tools/boss_guide.py
 ```
 
-`pip install lz4` beschleunigt pcaps stark. Aufnahmen und Mitschnitte nie committen, nur das erzeugte `bossmods.json`.
+`boss_guide.py` ergänzt `web/public/bossguide.json` (Phasen, Mechaniken, Raserei; Platzhalter `todo`) ohne Handarbeit zu
+überschreiben. `pip install lz4` beschleunigt pcaps stark. Aufnahmen und Mitschnitte nie committen.

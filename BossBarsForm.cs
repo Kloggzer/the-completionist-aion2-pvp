@@ -20,7 +20,8 @@ sealed class BossBarsForm : Form
                           Track = Color.FromArgb(255, 38, 42, 54), HpCol = Color.FromArgb(255, 205, 70, 60), Red = Color.FromArgb(255, 255, 110, 100),
                           Gold = Color.FromArgb(232, 200, 114);
     readonly Settings s;
-    readonly System.Windows.Forms.Timer tick = new() { Interval = 50 };
+    readonly System.Windows.Forms.Timer tick = new() { Interval = 100 };
+    static readonly TimeSpan Stale = TimeSpan.FromSeconds(2.5); // the page sends 4 times a second: older = it stopped
     string title = "", phase = "", target = "";
     bool me, edit;
     int hp = 100;
@@ -52,7 +53,12 @@ sealed class BossBarsForm : Form
         var wa = (game.IsEmpty ? Screen.PrimaryScreen! : Screen.FromRectangle(game)).WorkingArea;
         Location = Placement.Restore(s.BossBarsX, s.BossBarsY, Size, new Point(wa.Left + wa.Width * 16 / 100, wa.Top + wa.Height * 32 / 100),
             Screen.AllScreens.Select(sc => sc.WorkingArea).ToList());
-        tick.Tick += (_, _) => { if (Visible) Render(); };
+        tick.Tick += (_, _) =>
+        {
+            // the page stopped sending (reload, crash) during a fight: never stay up frozen
+            if (!edit && title.Length > 0 && DateTime.UtcNow - at > Stale) { title = ""; Apply(); return; }
+            if (Visible) Render();
+        };
     }
 
     protected override void Dispose(bool disposing)
@@ -97,7 +103,7 @@ sealed class BossBarsForm : Form
         {
             Render();
             if (!Visible) { Show(); Native.KeepOnTop(Handle); }
-            tick.Enabled = bars.Length > 0 || frenzy > 0;
+            tick.Enabled = title.Length > 0; // countdowns, Frenzy and the stale check
         }
         else
         {
@@ -137,8 +143,8 @@ sealed class BossBarsForm : Form
         using var fh = new Font("Segoe UI Semibold", 13f * k, GraphicsUnit.Pixel);
         using var fs = new Font("Segoe UI", 11f * k, GraphicsUnit.Pixel);
         using var fb = new Font("Segoe UI Semibold", 12f * k, GraphicsUnit.Pixel);
-        using var fbadge = new Font("Segoe UI", 8.5f * k, FontStyle.Bold, GraphicsUnit.Pixel);
-        using var fnum = new Font("Segoe UI", 12f * k, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var fbadge = new Font("Segoe UI", 9.5f * k, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var fnum = new Font("Segoe UI", 15f * k, FontStyle.Bold, GraphicsUnit.Pixel);
         using var left = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         using var right = new StringFormat(left) { Alignment = StringAlignment.Far };
         using var center = new StringFormat(left) { Alignment = StringAlignment.Center };
@@ -165,7 +171,7 @@ sealed class BossBarsForm : Form
             using (var pbr = new SolidBrush(Gold)) g.DrawString(ph, fs, pbr, new RectangleF(x0 + (x1 - x0 - fzW) * 0.62f, 4 * k, (x1 - x0 - fzW) * 0.38f, 18 * k), right);
         if (fz >= 0)
             using (var zb = new SolidBrush(fz < 30 ? Red : Muted))
-                g.DrawString($"Frenzy {(int)fz / 60}:{(int)fz % 60:00}", fs, zb, new RectangleF(x1 - fzW, 4 * k, fzW, 18 * k), right);
+                g.DrawString($"{L.T("Raserei", "Frenzy")} {(int)fz / 60}:{(int)fz % 60:00}", fs, zb, new RectangleF(x1 - fzW, 4 * k, fzW, 18 * k), right);
         // HP bar with phase marks and the percentage
         var hpR = new RectangleF(x0, 25 * k, x1 - x0 - 34 * k, 8 * k);
         using (var tr = new SolidBrush(Track)) g.FillRectangle(tr, hpR);
@@ -191,6 +197,8 @@ sealed class BossBarsForm : Form
                 g.SetClip(new RectangleF(r.X, r.Y, r.Width * frac, r.Height));
                 using (var fill = new SolidBrush(Color.FromArgb(a, b.Col))) g.FillPath(fill, rp);
                 g.ResetClip();
+                // under 5 s also a frame in the mechanic's colour (not only the pulse)
+                if (soon) using (var fr = new Pen(b.Col, 2f * k)) g.DrawPath(fr, rp);
             }
             // badge = what to do
             float bx = r.X + 4 * k, bw = 0;
@@ -204,7 +212,7 @@ sealed class BossBarsForm : Form
             }
             g.DrawString(b.Name, fb, fg, new RectangleF(bx + bw + 6 * k, y, r.Right - bx - bw - 54 * k, RowH), left);
             using (var nb = new SolidBrush(l < 5 ? Color.FromArgb(255, 255, 230, 140) : Fg))
-                g.DrawString(l >= 10 ? $"{l:0}" : $"{l:0.0}", fnum, nb, new RectangleF(r.Right - 46 * k, y, 40 * k, RowH), right);
+                g.DrawString(l >= 10 ? $"{l:0}" : l.ToString("0.0", System.Globalization.CultureInfo.CurrentUICulture), fnum, nb, new RectangleF(r.Right - 50 * k, y, 44 * k, RowH), right);
             y += RowH + Gap;
         }
 
@@ -231,12 +239,15 @@ sealed class BossBarsForm : Form
         base.WndProc(ref m);
     }
 
+    // Edit mode: wheel = size. Needs "scroll inactive windows" (Windows default), since the window never takes the focus.
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
         if (!edit || e.Delta == 0) return;
         s.BossBarsScale = Math.Clamp(s.BossBarsScale + 0.05 * Math.Sign(e.Delta), 0.6, 2.0);
         Render();
+        Location = Placement.Clamp(Bounds, Screen.AllScreens.Select(sc => sc.WorkingArea).ToList()).Location; // grew off screen
+        s.BossBarsX = Left; s.BossBarsY = Top;
         Moved?.Invoke();
     }
 

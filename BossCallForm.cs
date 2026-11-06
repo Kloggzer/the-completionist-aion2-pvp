@@ -43,7 +43,12 @@ sealed class BossCallForm : Form
             Screen.AllScreens.Select(sc => sc.WorkingArea).ToList());
         tick.Tick += (_, _) =>
         {
-            if (!edit && DateTime.UtcNow > until) { tick.Stop(); Hide(); return; }
+            if (DateTime.UtcNow > until)
+            {
+                tick.Stop(); // over: hidden, or the static sample in the edit mode
+                if (edit) Render(); else Hide();
+                return;
+            }
             if (Visible) Render();
         };
     }
@@ -134,7 +139,7 @@ sealed class BossCallForm : Form
         using (var sb = new SolidBrush(Sub)) g.DrawString(st, fs, sb, new RectangleF(tx, r.Y + 38 * k, r.Right - tx - numW - 10 * k, 18 * k), left0);
         if (numW > 0)
             using (var nb = new SolidBrush(c))
-                g.DrawString(left >= 10 ? $"{left:0}" : $"{left:0.0}", fn, nb, new RectangleF(r.Right - numW - 12 * k, r.Y, numW, r.Height - 8 * k), right);
+                g.DrawString(left >= 10 ? $"{left:0}" : left.ToString("0.0", System.Globalization.CultureInfo.CurrentUICulture), fn, nb, new RectangleF(r.Right - numW - 12 * k, r.Y, numW, r.Height - 8 * k), right);
         // bar running down at the bottom
         if (frac > 0)
         {
@@ -153,12 +158,15 @@ sealed class BossCallForm : Form
         base.WndProc(ref m);
     }
 
+    // Edit mode: wheel = size. Needs "scroll inactive windows" (Windows default), since the window never takes the focus.
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
         if (!edit || e.Delta == 0) return;
         s.BossCallScale = Math.Clamp(s.BossCallScale + 0.05 * Math.Sign(e.Delta), 0.6, 2.0);
         Render();
+        Location = Placement.Clamp(Bounds, Screen.AllScreens.Select(sc => sc.WorkingArea).ToList()).Location; // grew off screen
+        s.BossCallX = Left; s.BossCallY = Top;
         Moved?.Invoke();
     }
 

@@ -15,7 +15,8 @@ import os
 ROOT = os.path.join(os.path.dirname(__file__), "..", "web", "public")
 GUIDE = os.path.join(ROOT, "bossguide.json")
 # aion2data's reaction -> the boss helper's kind (web/src/features/bossmod/logic.ts KINDS)
-KIND = {"spread": "spread", "stack": "stack", "in": "in", "out": "out", "stagger": "interrupt", "dodge": "dodge", "tank": "tank"}
+KIND = {"spread": "spread", "stack": "stack", "in": "in", "out": "out", "stagger": "interrupt", "break": "interrupt", "stop": "interrupt",
+        "dodge": "dodge", "jump": "dodge", "lane": "dodge", "behind": "dodge", "tank": "tank", "block": "tank"}
 
 
 def main():
@@ -33,14 +34,12 @@ def main():
             g["dungeon"] = d
         if a and a["enrage"] and "frenzy" not in g:
             g["frenzy"] = max(s for s, _ in a["enrage"])
-        # phases: skills cast once per fight in a narrow HP band (like logic.ts phaseHp)
-        phases = g.setdefault("phases", [])
-        for sk, s in m["skills"].items():
-            hp = s.get("hp")
-            if s.get("common") or not hp or s["n"] != 1 or s["fights"] < 2 or hp[1] - hp[0] > 8 or hp[1] >= 100:
-                continue
-            if not any(p.get("skill") == int(sk) for p in phases):
-                phases.append({"hp": hp[1], "name": f"Phase {len(phases) + 2}", "skill": int(sk), "todo": True})
+        # phases: the skills boss_timeline.py marks as phase skills ("phase": HP %); placeholders it no longer confirms go
+        found = {int(sk): s["phase"] for sk, s in m["skills"].items() if "phase" in s and not s.get("common")}
+        phases = g["phases"] = [p for p in g.get("phases", []) if not p.get("todo") or p.get("skill") in found]
+        for sk, hp in found.items():
+            if not any(p.get("skill") == sk for p in phases):
+                phases.append({"hp": hp, "name": "Phase", "skill": sk, "todo": True})
         phases.sort(key=lambda p: -p["hp"])
         for i, p in enumerate(phases):  # placeholder names follow the HP order (phase 1 = the pull)
             if p.get("todo") and p["name"].startswith("Phase "):

@@ -4,7 +4,15 @@
   "2300310": {
    "name": "Silver Blade Rotan",
    "phases": [],
-   "mechanics": []
+   "mechanics": [
+    {
+     "name": "Flame Bomb",
+     "skills": [],
+     "todo": true,
+     "cast": 1.2
+    }
+   ],
+   "dungeon": "Fire Temple"
   },
   "2300311": {
    "name": "Red Spark Ignus",
@@ -21,20 +29,7 @@
   },
   "2300312": {
    "name": "Black Smoke Murute",
-   "phases": [
-    {
-     "hp": 68,
-     "name": "Phase 2",
-     "skill": 1600670,
-     "todo": true
-    },
-    {
-     "hp": 20,
-     "name": "Phase 3",
-     "skill": 1600720,
-     "todo": true
-    }
-   ],
+   "phases": [],
    "mechanics": []
   },
   "2300401": {
@@ -334,12 +329,6 @@
      "name": "Phase 2",
      "skill": 1603350,
      "todo": true
-    },
-    {
-     "hp": 60,
-     "name": "Phase 3",
-     "skill": 1603355,
-     "todo": true
     }
    ],
    "mechanics": [
@@ -373,14 +362,7 @@
   "2353707": {
    "name": "Siliator of Deceit",
    "dungeon": "Shattered Arkanis",
-   "phases": [
-    {
-     "hp": 4,
-     "name": "Phase 2",
-     "skill": 1606116,
-     "todo": true
-    }
-   ],
+   "phases": [],
    "mechanics": [
     {
      "name": "Tracking chakrams",
@@ -407,14 +389,7 @@
   "2353708": {
    "name": "Ruthilis of Pain",
    "dungeon": "Shattered Arkanis",
-   "phases": [
-    {
-     "hp": 58,
-     "name": "Phase 2",
-     "skill": 1606430,
-     "todo": true
-    }
-   ],
+   "phases": [],
    "mechanics": [
     {
      "name": "Electrified quarters",
@@ -442,26 +417,7 @@
    "name": "Talisra of the Void",
    "dungeon": "Shattered Arkanis",
    "frenzy": 300,
-   "phases": [
-    {
-     "hp": 62,
-     "name": "Phase 2",
-     "skill": 1801690,
-     "todo": true
-    },
-    {
-     "hp": 60,
-     "name": "Phase 3",
-     "skill": 1801759,
-     "todo": true
-    },
-    {
-     "hp": 28,
-     "name": "Phase 4",
-     "skill": 1801696,
-     "todo": true
-    }
-   ],
+   "phases": [],
    "mechanics": [
     {
      "name": "Cast fall",

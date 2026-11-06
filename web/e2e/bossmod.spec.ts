@@ -13,7 +13,8 @@ const fightLog = {
 }
 
 test('page: last fights with the Petze, the guide and the skill editor', async ({ page }) => {
-  const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true, bossFights: [fightLog] } })
+  // the skill is marked avoidable (dodge): the Petze counts it
+  const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true, bossSetupDone: true, bossFights: [fightLog], bossSkills: { 1801450: { kind: 'dodge' } } } })
   const row = page.locator('[data-fight="0"]')
   await expect(row).toContainText('Atiel')
   await expect(row.locator('[data-blame="Testdaevi"]')).toContainText('2×')
@@ -26,7 +27,7 @@ test('page: last fights with the Petze, the guide and the skill editor', async (
   await expect(page.locator('[data-bm-skill="1801450"]')).toHaveClass(/bg-gold/)
   await page.locator('[data-bm-name="1801450"]').fill('Sprung')
   const ui = (await h.posted('ui')).map((m: { patch: Record<string, unknown> }) => m.patch).filter(p => p.bossSkills).at(-1)
-  expect(ui?.bossSkills).toEqual({ 1801450: { name: 'Sprung' } })
+  expect(ui?.bossSkills).toEqual({ 1801450: { kind: 'dodge', name: 'Sprung' } })
   await page.screenshot({ path: 'e2e/.out/shots/bossmod-detail.png', fullPage: true })
 })
 
@@ -43,9 +44,8 @@ test('live: callout, timer panel and the Petze after the fight', async ({ page }
   expect(callout.title).toContain('AUF DICH')
   await expect.poll(async () => (await h.posted('bossBars')).some((m: { title?: string }) => m.title === 'Atiel')).toBe(true)
   const bars = (await h.posted('bossBars')).filter((m: { title?: string }) => m.title === 'Atiel').at(-1)
-  expect(bars.rows[0][0]).toBe('Sprung')
-  expect(bars.rows[0][4]).toBe('WEG')
-  expect(bars.frenzy).toBeGreaterThan(290)
+  expect(bars.frenzy).toBeGreaterThan(290) // Raserei from the guide
+  expect(bars.hp).toBe(100)
   // two players hit by the avoidable attack: Petze banner after the kill
   await h.send({ type: 'bossHit', npc: ATIEL, ent: 7, skill: 1801450, tgt: 3, name: 'Testdaeva', me: true, flags: 0, at: at + 500 })
   await h.send({ type: 'bossHit', npc: ATIEL, ent: 7, skill: 1801450, tgt: 4, name: 'Testdaevi', me: false, flags: 0, at: at + 600 })
@@ -56,9 +56,44 @@ test('live: callout, timer panel and the Petze after the fight', async ({ page }
   await expect(page.locator('[data-fight="0"]')).toContainText('Atiel')
 })
 
+test('setup, per boss mode, honest Petze and a profile string', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true, tts: true, bossFights: [fightLog] } })
+  // first visit: the setup card (role, voice, windows); the role goes to the settings
+  await expect(page.locator('[data-bm-setup]')).toBeVisible()
+  await page.locator('[data-bm-setup] [data-slot="select-trigger"], [data-bm-setup] button[role="combobox"]').first().click()
+  await page.getByRole('option', { name: 'Tank' }).click()
+  expect((await h.posted('ui')).some((m: { patch: { bossRole?: string } }) => m.patch.bossRole === 'tank')).toBe(true)
+  await page.locator('[data-bm-setup]').getByRole('button', { name: 'Fertig' }).click()
+  await expect(page.locator('[data-bm-setup]')).toHaveCount(0)
+  // no skill marked avoidable yet: the Petze says so instead of "nobody hit"
+  await expect(page.locator('[data-fight="0"] [data-blame-off]')).toBeVisible()
+  await page.locator('[data-fight="0"]').click()
+  // mark the skill avoidable: the kept fight's Petze is counted again with it
+  await page.locator('[data-bm-skill="1801450"]').getByRole('button', { name: 'Petze' }).click()
+  await page.locator('[data-bm-blame]').waitFor()
+  // bars only for this boss
+  await page.locator('[data-bm-mode="bars"]').click()
+  expect((await h.posted('ui')).some((m: { patch: { bossBoss?: Record<string, string> } }) => m.patch.bossBoss?.[ATIEL] === 'bars')).toBe(true)
+  // profile: copy, then paste it back
+  await page.locator('[data-bm-name="1801450"]').fill('Sprung')
+  await page.locator('[data-bm-share]').getByRole('button', { name: 'Profil kopieren' }).click()
+  const profile = await page.evaluate(() => navigator.clipboard.readText())
+  expect(profile.startsWith('TCBH1:')).toBe(true)
+  await page.locator('[data-bm-name="1801450"]').fill('')
+  await page.locator('[data-bm-import]').fill(profile)
+  await page.locator('[data-bm-share]').getByRole('button', { name: 'Übernehmen' }).click()
+  await expect(page.locator('[data-bm-name="1801450"]')).toHaveValue('Sprung')
+  await page.screenshot({ path: 'e2e/.out/shots/bossmod-detail2.png', fullPage: true })
+})
+
 test('test pull plays the timeline', async ({ page }) => {
   const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true } })
   await page.locator(`[data-bm-boss="${ATIEL}"]`).click()
   await page.locator('[data-bm-test]').click()
   await expect.poll(async () => (await h.posted('bossBars')).length, { timeout: 5000 }).toBeGreaterThan(0)
+  // it can be stopped: the button switches back, the callout is cleared
+  await page.locator('[data-bm-stop]').click()
+  await expect(page.locator('[data-bm-test]')).toBeVisible()
+  expect((await h.posted('bossCall')).at(-1).title).toBe('')
 })

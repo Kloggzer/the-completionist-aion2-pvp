@@ -41,7 +41,7 @@ sealed class OverlayForm : Form
     readonly System.Windows.Forms.Timer pvpTimer = new() { Interval = 250 };
     HashSet<uint> trackedNpcs = new();
     HashSet<uint> bossModNpcs = new();
-    bool bossLearn; // boss mod: every npc's casts into boss-casts.log
+    bool bossModOn; // boss helper switched on (page): its windows take part in the edit mode
     readonly BossRecorder recorder = new();
     BossBarsForm? bossBars;
     BossCallForm? bossCall;
@@ -424,8 +424,8 @@ sealed class OverlayForm : Form
         Announcer().SetEdit(on, screen);
         Alert().SetEdit(on, screen);
         if (settings.FeedOn || !on) Feed().SetEdit(on);
-        if (bossBars != null || on) BossBars().SetEdit(on);
-        if (bossCall != null || on) BossCall().SetEdit(on);
+        if (bossBars != null || on && bossModOn) BossBars().SetEdit(on);
+        if (bossCall != null || on && bossModOn) BossCall().SetEdit(on);
         if (!on) SaveSoon();
         PostPvpWin();
     }
@@ -444,19 +444,6 @@ sealed class OverlayForm : Form
         bossCall = new BossCallForm(settings);
         bossCall.Moved += SaveSoon;
         return bossCall;
-    }
-
-    /// Boss helper sounds by name (page: per mechanic kind).
-    static void BossSound(string? name)
-    {
-        switch (name)
-        {
-            case "alarm": Chime.Enemy(); break;
-            case "close": Chime.EnemyClose(); break;
-            case "timer": Chime.Timer(); break;
-            case "pling": Chime.Pling(); break;
-            case "plong": Chime.Plong(); break;
-        }
     }
 
     EnemyFeedForm Feed()
@@ -570,52 +557,30 @@ sealed class OverlayForm : Form
         if (info != null && replayDir != null) Log($"PLAYNC {name}@{srv}: {(info.Found ? $"{info.Cls} CP {info.Cp} iLvl {info.ItemLevel}" : "nicht gefunden")}");
     }
 
-    // Boss mod: casts of the npcs the page has timelines for go to the page (web/src/features/bossmod); while learning,
-    // every npc's spawn / casts / end go into boss-casts.log (for tools/boss_timeline.py-like analysis without a capture).
+    // Boss mod: events of the npcs the page has timelines for go to the page (web/src/features/bossmod); the dungeon
+    // recorder (BossRecorder.cs) gets every frame.
     void WireBossMod(PetSource src)
     {
         src.BossModNpcs = bossModNpcs;
-        src.BossModAll = bossLearn;
         src.Recorder = recorder;
         static long Ms(DateTime ts) => new DateTimeOffset(ts).ToUnixTimeMilliseconds();
         static string T(DateTime ts) => ts.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff");
         // players by entity: the PvP list's (spawns in range, the party in a dungeon) and oneself
         uint Own() => src.OwnId is { } id ? PetFrames.VarintValue(id) : 0;
         string Who(uint ent) => ent == Own() ? pvpOwn?.Name ?? "" : pvpPlayers.TryGetValue(ent, out var p) ? p.P.Name : "";
-        src.NpcSpawned += (npc, ent, ts) =>
-        {
-            if (bossLearn) BossLog($"{T(ts)} spawn npc {npc} ent {ent}");
-            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossSpawn", npc, ent, at = Ms(ts) }));
-        };
+        src.NpcSpawned += (npc, ent, ts) => BeginInvoke(() => Post(new { type = "bossSpawn", npc, ent, at = Ms(ts) }));
         src.NpcCast += (npc, ent, skill, seq, tgt, ts) =>
         {
-            if (bossLearn) BossLog($"{T(ts)} cast npc {npc} ent {ent} skill {skill} seq {seq} tgt {tgt}");
-            if (!bossModNpcs.Contains(npc)) return;
             if (replayDir != null) Log($"Boss-Cast: npc {npc} skill {skill} ({T(ts)})");
             BeginInvoke(() => Post(new { type = "bossCast", npc, ent, skill, seq, tgt, me = tgt != 0 && tgt == Own(), name = Who(tgt), at = Ms(ts) }));
         };
-        src.NpcCastEnd += (npc, ent, skill, seq, ts) =>
-        {
-            if (bossLearn) BossLog($"{T(ts)} end npc {npc} ent {ent} skill {skill} seq {seq}");
-            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossCastEnd", npc, ent, skill, seq, at = Ms(ts) }));
-        };
-        src.NpcHp += (npc, ent, hp, ts) =>
-        {
-            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossHp", npc, ent, hp, at = Ms(ts) }));
-        };
+        src.NpcCastEnd += (npc, ent, skill, seq, ts) => BeginInvoke(() => Post(new { type = "bossCastEnd", npc, ent, skill, seq, at = Ms(ts) }));
+        src.NpcHp += (npc, ent, hp, ts) => BeginInvoke(() => Post(new { type = "bossHp", npc, ent, hp, at = Ms(ts) }));
         src.NpcTarget += (npc, ent, tgt, ts) =>
-        {
-            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossTarget", npc, ent, tgt, me = tgt == Own(), name = Who(tgt), at = Ms(ts) }));
-        };
+            BeginInvoke(() => Post(new { type = "bossTarget", npc, ent, tgt, me = tgt == Own(), name = Who(tgt), at = Ms(ts) }));
         src.NpcHit += (npc, ent, skill, seq, tgt, flags, ts) =>
-        {
-            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossHit", npc, ent, skill, seq, tgt, flags, me = tgt == Own(), name = Who(tgt), at = Ms(ts) }));
-        };
-        src.NpcGone += (npc, ent, died, ts) =>
-        {
-            if (bossLearn) BossLog($"{T(ts)} gone npc {npc} ent {ent} died {(died ? 1 : 0)}");
-            if (bossModNpcs.Contains(npc)) BeginInvoke(() => Post(new { type = "bossGone", npc, ent, died, at = Ms(ts) }));
-        };
+            BeginInvoke(() => Post(new { type = "bossHit", npc, ent, skill, seq, tgt, flags, me = tgt == Own(), name = Who(tgt), at = Ms(ts) }));
+        src.NpcGone += (npc, ent, died, ts) => BeginInvoke(() => Post(new { type = "bossGone", npc, ent, died, at = Ms(ts) }));
     }
 
     void PostBossRecs()
@@ -900,29 +865,28 @@ sealed class OverlayForm : Form
                 break;
             case "bossMod":
                 bossModNpcs = new HashSet<uint>((m["ids"] as JsonArray ?? []).Select(v => (uint?)v ?? 0));
-                bossLearn = (bool?)m["learn"] == true;
-                if (source != null) { source.BossModNpcs = bossModNpcs; source.BossModAll = bossLearn; }
-                recorder.Npcs = bossModNpcs;
-                recorder.All = (bool?)m["inst"] == true;
-                recorder.On = (bool?)m["rec"] == true;
-                if (!recorder.On) recorder.Stop();
+                if (source != null) source.BossModNpcs = bossModNpcs;
+                bossModOn = (bool?)m["on"] == true;
+                // the recorder: the whole dungeon visit while the page says this map is a dungeon and recording is on
+                if ((bool?)m["rec"] == true) recorder.StartFor((uint?)m["zone"] ?? 0);
+                else recorder.Stop();
                 PostBossRecs();
                 break;
             case "bossBars":
                 {
+                    static JsonNode? At(JsonArray a, int i) => i < a.Count ? a[i] : null;
                     var rows = (m["rows"] as JsonArray ?? []).OfType<JsonArray>().Take(8).Select(r => new BossBarsForm.Bar(
-                        (string?)r[0] ?? "", (double?)r[1] ?? 0, (double?)r[2] ?? 0, HexColor((string?)r[3]), (string?)r[4] ?? "")).ToArray();
+                        (string?)At(r, 0) ?? "", (double?)At(r, 1) ?? 0, (double?)At(r, 2) ?? 0, HexColor((string?)At(r, 3)), (string?)At(r, 4) ?? "")).ToArray();
                     if (rows.Length == 0 && m["title"] == null && bossBars == null) break; // nothing shown yet: no window needed
                     if (replayDir != null && (string?)m["title"] is { } bt && bt != bossBarsLog)
                         Log($"Boss-Balken: {bossBarsLog = bt} · HP {(int?)m["hp"]} % · {string.Join(", ", rows.Select(r => $"{r.Name} {r.Left:0}/{r.Total:0} s"))}");
-                    BossBars().SetData((string?)m["title"] ?? "", (string?)m["phase"] ?? "", (int?)m["hp"] ?? 100,
-                        (m["phases"] as JsonArray ?? []).Select(v => (int?)v ?? 0).ToArray(), (double?)m["frenzy"] ?? -1,
+                    BossBars().SetData((string?)m["title"] ?? "", (string?)m["phase"] ?? "", (int)Math.Round((double?)m["hp"] ?? 100),
+                        (m["phases"] as JsonArray ?? []).Select(v => (int)Math.Round((double?)v ?? 0)).ToArray(), (double?)m["frenzy"] ?? -1,
                         (string?)m["target"] ?? "", (bool?)m["me"] == true, rows,
-                        (m["foot"] as JsonArray ?? []).OfType<JsonArray>().Take(4).Select(l => new PvpForm.Line((string?)l[0] ?? "", HexColor((string?)l[1]))).ToArray());
+                        (m["foot"] as JsonArray ?? []).OfType<JsonArray>().Take(4).Select(l => new PvpForm.Line((string?)At(l, 0) ?? "", HexColor((string?)At(l, 1)))).ToArray());
                     break;
                 }
             case "bossCall":
-                BossSound((string?)m["sound"]);
                 if (replayDir != null) Log($"Boss-Ansage: {(string?)m["title"]} | {(string?)m["sub"]}");
                 if ((string?)m["title"] is { Length: > 0 } ct)
                     BossCall().Call(ct, (string?)m["sub"] ?? "", HexColor((string?)m["col"]), (double?)m["seconds"] ?? 0, (bool?)m["danger"] == true);
@@ -1030,7 +994,6 @@ sealed class OverlayForm : Form
                     case "opened": Chime.Opened(); break;
                     case "pvp": Chime.Enemy(); break;
                     case "pvpClose": Chime.EnemyClose(); break;
-                    default: BossSound((string?)m["sound"]); break;
                 }
                 // The in-page toast is enough while the full overlay is visible; otherwise use the banner.
                 if ((bool?)m["danger"] == true && settings.FeedOn) feedForm?.Flash();
@@ -1407,27 +1370,6 @@ sealed class OverlayForm : Form
     }
 
     static readonly object logLock = new();
-    static readonly object bossLogLock = new();
-    static readonly System.Text.StringBuilder bossLog = new();
-    static DateTime bossLogFlush = DateTime.UtcNow;
-    /// Boss mod learning log (boss-casts.log): appended in batches, stops at 50 MB; null flushes (exit).
-    internal static void BossLog(string? line)
-    {
-        lock (bossLogLock)
-        {
-            if (line != null) bossLog.Append(line).Append('\n');
-            if (bossLog.Length == 0 || line != null && bossLog.Length < 64_000 && DateTime.UtcNow - bossLogFlush < TimeSpan.FromSeconds(2)) return;
-            bossLogFlush = DateTime.UtcNow;
-            try
-            {
-                var f = Path.Combine(Settings.DataDir, "boss-casts.log");
-                if (!File.Exists(f) || new FileInfo(f).Length < 50_000_000) File.AppendAllText(f, bossLog.ToString());
-            }
-            catch { }
-            bossLog.Clear();
-        }
-    }
-
     // Also called from the capture threads (Capture.cs: adapter, diagnosis).
     static readonly object daeOpsLock = new();
     static readonly System.Text.StringBuilder daeOps = new();
@@ -1800,7 +1742,6 @@ sealed class OverlayForm : Form
         SaveSettings();
         source?.Dispose();
         Research(null);
-        BossLog(null);
         recorder.Stop();
         if (state.Pos != null) state.Save(statePath);
         for (int i = 0; i < hotkeyIds.Length; i++) Native.UnregisterHotKey(Handle, i + 1);

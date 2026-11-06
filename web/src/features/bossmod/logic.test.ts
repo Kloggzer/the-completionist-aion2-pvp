@@ -3,13 +3,21 @@ import data from '../../../public/bossmods.json'
 import {
   HP_LEAD, WARN, addCast, addHit, alertOn, avoidable, bars, blame, duePhases, dueWarnings, endCast, findBoss, isBig, newFight, npcIds, phaseHp,
   predictable, setHp, upcoming, warnLead, wasReset, findGuide, guideCfgs, mergeCfgs, mainTarget, trackTarget, phaseName, dueGuidePhases, isDanger,
-  type BossMods, type Guide,
+  speakable, type BossMods, type BossStat, type Guide,
 } from './logic'
 
 // Atiel (Deus Research Base, 2343601): 3 fights in captures/20261027-170912 (tools/boss_timeline.py).
 const mods = data as unknown as BossMods
 const atiel = mods.bosses['2343601']
 const fight = () => newFight(2343601, 38334, 0)
+// A boss with a well-known timer (many fights): 9001 every 66–72 s, 9002 every 30–60 s (not predictable).
+const timed: BossStat = {
+  name: 'Test', fights: 6, dur: [180], skills: {
+    9001: { fights: 6, n: 3, first: 10, gap: [66.6, 70, 72], gaps: 12, cast: 3.7, hp: [10, 95] },
+    9002: { fights: 6, n: 4, first: 5, gap: [30, 45, 60], gaps: 18, cast: 3.2, hp: [5, 99] },
+    9003: { fights: 2, n: 3, first: 5, gap: [40, 41, 42], gaps: 4, cast: 3.5, hp: [5, 99] },
+  },
+}
 
 describe('boss mod timelines', () => {
   it('has the captured dungeon bosses', () => {
@@ -30,17 +38,26 @@ describe('boss mod timelines', () => {
     expect(alertOn(atiel.skills['1801540'], { alert: true })).toBe(true) // own setting wins
   })
 
-  it('predictable: the gap varies little', () => {
-    expect(predictable(atiel.skills['1801450'])).toBe(true) // 66.6–75.8 s
-    expect(predictable(atiel.skills['1801430'])).toBe(false) // 13.5–46.2 s
+  it('predictable: the gap varies little and comes from enough fights', () => {
+    expect(predictable(timed.skills[9001])).toBe(true) // 66.6–72 s from 12 gaps in 6 fights
+    expect(predictable(timed.skills[9002])).toBe(false) // 30–60 s
+    expect(predictable(timed.skills[9003])).toBe(false) // tight, but 4 gaps from 2 fights: noise
     expect(predictable(atiel.skills['1801510'])).toBe(false) // once per fight (HP phase)
-    expect(warnLead(atiel.skills['1801450'])).toBe(WARN)
-    expect(warnLead(atiel.skills['1801450'], { warn: 0 })).toBe(0)
+    expect(warnLead(timed.skills[9001])).toBe(WARN)
+    expect(warnLead(timed.skills[9001], { warn: 0 })).toBe(0)
   })
 
-  it('phase skills: once per fight in a narrow HP band', () => {
+  it('never says a skill id: only named / described skills are spoken', () => {
+    expect(speakable(undefined)).toBe(false)
+    expect(speakable({ alert: true })).toBe(false)
+    expect(speakable({ kind: 'out' })).toBe(true)
+    expect(speakable({ name: 'Sprung' })).toBe(true)
+  })
+
+  it('phase skills: marked by the tool (once per fight, in most fights, narrow HP band), never a generic skill', () => {
     expect(phaseHp(atiel.skills['1801510'])).toBe(atiel.skills['1801510'].hp![1]) // 70–74 %
     expect(phaseHp(atiel.skills['1801450'])).toBeNull()
+    expect(phaseHp({ ...atiel.skills['1801510'], common: true })).toBeNull()
   })
 })
 
@@ -55,18 +72,18 @@ describe('boss mod fight', () => {
 
   it('warns once, WARN seconds before the earliest next use', () => {
     const f = fight()
-    addCast(f, 1801450, 0)
-    const next = upcoming(f, atiel).find(n => n.skill === 1801450)!
-    expect(next.at).toBe(atiel.skills['1801450'].gap![0] * 1000)
-    expect(dueWarnings(f, atiel, {}, next.at - WARN * 1000 - 100)).toEqual([])
-    expect(dueWarnings(f, atiel, {}, next.at - WARN * 1000 + 100).map(n => n.skill)).toContain(1801450)
-    expect(dueWarnings(f, atiel, {}, next.at - 1000)).toEqual([])
+    addCast(f, 9001, 0)
+    const next = upcoming(f, timed).find(n => n.skill === 9001)!
+    expect(next.at).toBe(66_600)
+    expect(dueWarnings(f, timed, {}, next.at - WARN * 1000 - 100)).toEqual([])
+    expect(dueWarnings(f, timed, {}, next.at - WARN * 1000 + 100).map(n => n.skill)).toEqual([9001])
+    expect(dueWarnings(f, timed, {}, next.at - 1000)).toEqual([])
   })
 
   it('named skills show their name', () => {
     const f = fight()
-    addCast(f, 1801450, 0)
-    expect(upcoming(f, atiel, { 1801450: { name: 'Sprung' } }).find(n => n.skill === 1801450)?.name).toBe('Sprung')
+    addCast(f, 9001, 0)
+    expect(upcoming(f, timed, { 9001: { name: 'Sprung' } }).find(n => n.skill === 9001)?.name).toBe('Sprung')
   })
 
   it('phase warning once, HP_LEAD % above the phase, not after the skill came', () => {
@@ -85,14 +102,15 @@ describe('boss mod fight', () => {
     expect(duePhases(g, atiel, {})).toEqual([])
   })
 
-  it('bars: soonest first, counting down, coloured by what to do', () => {
+  it('bars: only predictable skills, counting down, coloured by what to do', () => {
     const f = fight()
-    addCast(f, 1801450, 0)
-    addCast(f, 1801460, 2000)
-    const b = bars(f, atiel, { 1801450: { kind: 'dodge' } }, 10_000)
-    expect(b[0]).toMatchObject({ skill: 1801450, col: '#ff6a5c' })
-    expect(b[0].left).toBeCloseTo(atiel.skills['1801450'].gap![0] - 10, 1)
-    expect(bars(f, atiel, { 1801450: { bar: false } }, 10_000).some(x => x.skill === 1801450)).toBe(false)
+    addCast(f, 9001, 0)
+    addCast(f, 9002, 2000)
+    const b = bars(f, timed, { 9001: { kind: 'dodge' } }, 10_000)
+    expect(b.map(x => x.skill)).toEqual([9001])
+    expect(b[0]).toMatchObject({ col: '#ff6a5c' })
+    expect(b[0].left).toBeCloseTo(56.6, 1)
+    expect(bars(f, timed, { 9001: { bar: false } }, 10_000)).toEqual([])
   })
 
   it('the tank: who held the boss most of the time (from 10 s)', () => {

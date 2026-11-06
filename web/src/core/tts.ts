@@ -16,8 +16,12 @@ if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {
 /** Voices for the current UI language. */
 export const voices = () => (window.speechSynthesis ? speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith(lang())) : [])
 
-export function say(kind: string, text: string) {
+/** Speak `text`. `urgent`: drop what is queued or being said first (a danger callout, a countdown number: late is
+ *  wrong); `idle`: only when nothing is being said (low priority, e.g. live blame). Default: queued. */
+export function say(kind: string, text: string, opts: { urgent?: boolean; idle?: boolean } = {}) {
   if (!U.tts || U.ttsOff?.[kind] || !window.speechSynthesis) return
+  if (opts.idle && (speechSynthesis.speaking || speechSynthesis.pending)) return
+  if (opts.urgent) speechSynthesis.cancel()
   const u = new SpeechSynthesisUtterance(text)
   const vs = voices()
   const v = vs.find(v => v.name === U.ttsVoice) || vs[0]

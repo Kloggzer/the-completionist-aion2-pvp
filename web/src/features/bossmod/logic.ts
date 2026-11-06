@@ -1,14 +1,19 @@
 // Boss mod logic (like WoW's WeakAuras / DBM): what a boss is casting right now, what comes next, and who did not play
 // the mechanic (the "Petze": hits of avoidable skills per player).
-// Timelines per boss npc from captures (web/public/bossmods.json, tools/boss_timeline.py): per skill the casts per fight,
-// the first use after the pull, the gap between two uses [min, median, max], the cast time and the boss HP % range.
+// Timelines per boss npc from captures and recordings (web/public/bossmods.json, tools/boss_timeline.py): per skill the
+// uses per fight, the first use after the pull, the gap between two uses [p10, median, p90] and how many gaps were seen,
+// the cast time, the boss HP % range and, for phase skills, the HP % they come at.
 // Live data from the host (Capture.cs NpcFrame): 0x0238 cast start / 0x0638 cast end, 0x008d HP, 0x3538 aggro target,
 // 0x0438 hits of the boss's skills on players (entity -> name by the host), entity -> npc via 0x4136.
 // Skill names are not in any public data set: skills are "Skill <id>" until the player names them (U.bossSkills).
 
-/** `common`: the same skill id on several bosses (generic, e.g. the low-HP animation every boss has): never a mechanic. */
-export type SkillStat = { fights: number; n: number; first: number; gap?: [number, number, number]; cast?: number; hp?: [number, number]; common?: boolean }
-export type BossStat = { name: string; zone?: number; fights: number; dur: number[]; skills: Record<string, SkillStat> }
+/** `common`: the same skill id on several bosses (generic, e.g. the low-HP animation every boss has): never a mechanic.
+ *  `gaps`: how many gaps the `gap` numbers come from; `phase`: HP % of a phase skill (tools/boss_timeline.py rules). */
+export type SkillStat = {
+  fights: number; n: number; first: number; gap?: [number, number, number]; gaps?: number; cast?: number; hp?: [number, number]
+  phase?: number; common?: boolean
+}
+export type BossStat = { name: string; zone?: number; fights: number; kills?: number; dur: number[]; skills: Record<string, SkillStat> }
 /** `aliases`: other modes' npc ids of a boss -> the id with the timeline (same name in Abyss Logs, tools/boss_timeline.py). */
 export type BossMods = { bosses: Record<string, BossStat>; aliases?: Record<string, string> }
 
@@ -16,10 +21,13 @@ export type BossMods = { bosses: Record<string, BossStat>; aliases?: Record<stri
 export const KINDS = ['dodge', 'out', 'in', 'stack', 'spread', 'interrupt', 'tank', 'info'] as const
 export type Kind = typeof KINDS[number]
 const AVOIDABLE: Kind[] = ['dodge', 'out', 'in', 'spread']
-/** Bar / banner colour per kind (hex, the native windows draw them). */
+/** Bar / banner colour per kind (hex, the native windows draw them); every kind also has a text badge. */
 export const KIND_COL: Record<Kind, string> = {
-  dodge: '#ff6a5c', out: '#ff9f43', in: '#4cc3ff', stack: '#5ce08a', spread: '#c58bff', interrupt: '#ffd25e', tank: '#9aa6bd', info: '#9aa6bd',
+  dodge: '#ff6a5c', out: '#ff9f43', in: '#4cc3ff', stack: '#5ce08a', spread: '#c58bff', interrupt: '#ffd25e', tank: '#7f9cff', info: '#9aa6bd',
 }
+/** The player's role (U.bossRole): the tank gets no "target on you", only the tank hears tank callouts; auto = the one
+ *  who holds the boss most of the time (mainTarget). */
+export type Role = 'auto' | 'tank' | 'heal' | 'dps'
 
 /** Player settings for one skill (all optional, defaults from the timeline):
  *  name, kind, own callout text, banner on cast start (default: big casts), warning seconds before the predicted next
@@ -47,20 +55,20 @@ export const newFight = (npc: number, ent: number, at: number): Fight => ({ npc,
 
 export const isBig = (s?: SkillStat) => !!s && !s.common && (s.cast ?? 0) >= BIG_CAST && s.n <= BIG_MAX
 
-/** Next use is predictable: seen at least twice per fight and the gap varies little (≤ 25 %, at least 3 s). */
+/** Next use is predictable: at least 5 gaps from at least 3 fights, and the gap varies little (p10..p90 within 30 % of
+ *  the median, at least 3 s). Few fights are noise: no timer then, only the cast callout. */
 export function predictable(s?: SkillStat): boolean {
-  if (!s?.gap || s.n < 2) return false
-  const [min, med, max] = s.gap
-  return max - min <= Math.max(3, 0.25 * med)
+  if (!s?.gap || s.common || s.n < 2 || (s.gaps ?? 0) < 5 || s.fights < 3) return false
+  const [lo, med, hi] = s.gap
+  return hi - lo <= Math.max(3, 0.3 * med)
 }
 
-/** Phase skill: once per fight, always in a narrow HP band (≤ 8 %): returns the HP % it comes at (top of the band). */
-export function phaseHp(s?: SkillStat): number | null {
-  if (!s?.hp || s.common || s.n !== 1 || s.fights < 2) return null
-  return s.hp[1] - s.hp[0] <= 8 && s.hp[1] < 100 ? s.hp[1] : null
-}
+/** Phase skill: the HP % it comes at (tools/boss_timeline.py: once per fight, in most fights, narrow HP band). */
+export const phaseHp = (s?: SkillStat): number | null => (s && !s.common && s.phase !== undefined ? s.phase : null)
 
 export const skillName = (id: number, cfg?: SkillCfg) => cfg?.name || `Skill ${id}`
+/** Worth saying out loud: the skill has a name, a kind or an own text (never read a skill id). */
+export const speakable = (cfg?: SkillCfg) => !!(cfg?.text || cfg?.kind || cfg?.name)
 export const alertOn = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.alert ?? isBig(s)
 export const warnLead = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.warn ?? (isBig(s) && predictable(s) ? WARN : 0)
 export const barOn = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.bar ?? predictable(s)
@@ -111,7 +119,11 @@ export const hpPct = (f: Fight) => (f.maxHp ? Math.round((100 * (f.hp ?? f.maxHp
 /** Record a hit of the boss's skill on a player; several frames of the same skill on the same player within 1 s are one
  *  hit (multi-hit skills, damage over time). Returns the hit if it is new. */
 export function addHit(f: Fight, h: Hit): Hit | null {
-  if (f.hits.some(x => x.skill === h.skill && x.tgt === h.tgt && (h.seq !== undefined && x.seq === h.seq || h.at - x.at < 1000))) return null
+  // only the recent hits can be the same one (a fight has thousands)
+  for (let i = f.hits.length - 1; i >= 0 && h.at - f.hits[i].at < 30_000; i--) {
+    const x = f.hits[i]
+    if (x.skill === h.skill && x.tgt === h.tgt && (h.seq !== undefined && x.seq === h.seq || h.at - x.at < 1000)) return null
+  }
   f.hits.push(h)
   return h
 }
@@ -179,7 +191,11 @@ export type Blame = { name: string; me: boolean; hits: number; skills: { skill: 
 /** The hits of a fight per cast: same skill and cast counter (0x0438), else within 3 s of the cast's first hit. */
 function perCast(hits: Hit[]): Hit[][] {
   const bySkill = new Map<number, Hit[]>(), out: Hit[][] = []
-  for (const h of hits) bySkill.set(h.skill, [...(bySkill.get(h.skill) || []), h])
+  for (const h of hits) {
+    const a = bySkill.get(h.skill)
+    if (a) a.push(h)
+    else bySkill.set(h.skill, [h])
+  }
   for (const hs of bySkill.values()) {
     const open = new Map<string, Hit[]>()
     for (const h of hs) {
@@ -272,7 +288,8 @@ export function phaseName(gb: GuideBoss | undefined, hp: number): string {
   return cur
 }
 
-/** Guide phases about to come: the boss's HP within HP_LEAD % above it; each once (also skipped when its skill came). */
+/** Guide phases about to come: the boss's HP within HP_LEAD % above it; each once (also skipped when its skill came).
+ *  Placeholders (todo) come too: the caller shows them without voice. */
 export function dueGuidePhases(f: Fight, gb: GuideBoss | undefined): GuidePhase[] {
   if (!gb || f.maxHp === undefined) return []
   const now = hpPct(f), due: GuidePhase[] = []

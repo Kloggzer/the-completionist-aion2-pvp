@@ -17,7 +17,7 @@ import { applyTheme } from '@/core/theme'
 import { nextRange, MIN_RANGE, MAX_RANGE, radarCfg, setRadarCfg, toggleMiniRadar, toggleRadarLock, centerRadar } from '@/features/map/miniRadar'
 import { pvpCfg, setPvpCfg, togglePvp, toggleWinEdit } from '@/features/pvp'
 import { cn } from '@/lib/utils'
-import { BossRecRow } from '@/features/bossmod/SettingsRow'
+import { BossRecRow, BossRoleRow } from '@/features/bossmod/SettingsRow'
 
 const pct = (v: number) => Math.round(v * 100) + ' %'
 
@@ -294,7 +294,8 @@ export function Notify() {
     <Group title={t('set.g.bossMod')}>
       <UToggle k="bossMod" />
       {U.bossMod && <>
-        <UToggle k="bossBars" /><UToggle k="bossCount" /><UToggle k="bossTargetMe" />
+        <BossRoleRow />
+        <UToggle k="bossBars" /><UToggle k="bossCount" /><UToggle k="bossTargetMe" /><UToggle k="bossDangerOnly" />
         <UToggle k="bossBlame" /><UToggle k="bossBlameLive" />
       </>}
       <UToggle k="bossRec" sub={t('set.bossRec.sub', { key: hkText('bossMark') || '–' })} />
