@@ -227,6 +227,14 @@ export function BossModTab() {
           </div>
         </Panel>
       )}
+      {U.bossMod && !U.tts && (
+        <Panel data-bm-tts-off="">
+          <div className="flex items-center gap-3 px-3 py-2.5">
+            <span className="flex-1 text-[13px]">{t('bm.ttsOff')}</span>
+            <Button size="sm" onClick={() => { U.tts = true; saveUi(['tts']); bump() }}>{t('bm.ttsOn')}</Button>
+          </div>
+        </Panel>
+      )}
       {V.bmBoss ? <Detail npc={V.bmBoss} /> : <Overview />}
     </Page>
   )

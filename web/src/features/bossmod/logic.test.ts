@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import data from '../../../public/bossmods.json'
 import {
   HP_LEAD, WARN, addCast, addHit, alertOn, avoidable, bars, blame, duePhases, dueWarnings, endCast, findBoss, isBig, newFight, npcIds, phaseHp,
-  predictable, setHp, upcoming, warnLead, wasReset, findGuide, guideCfgs, mergeCfgs, mainTarget, trackTarget, phaseName, dueGuidePhases, kindSound, isDanger,
+  predictable, setHp, upcoming, warnLead, wasReset, findGuide, guideCfgs, mergeCfgs, mainTarget, trackTarget, phaseName, dueGuidePhases, isDanger,
   type BossMods, type Guide,
 } from './logic'
 
@@ -203,11 +203,7 @@ describe('boss guide', () => {
     expect(dueGuidePhases(f, gb)).toEqual([])
   })
 
-  it('sound and danger per kind', () => {
-    expect(kindSound('out')).toBe('alarm')
-    expect(kindSound('stack')).toBe('timer')
-    expect(kindSound(undefined)).toBe('plong') // a big attack nobody described yet
-    expect(kindSound('info')).toBe('pling')
+  it('danger per kind', () => {
     expect(isDanger('dodge')).toBe(true)
     expect(isDanger('stack')).toBe(false)
   })

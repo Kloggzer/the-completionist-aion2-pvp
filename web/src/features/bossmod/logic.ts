@@ -285,12 +285,5 @@ export function dueGuidePhases(f: Fight, gb: GuideBoss | undefined): GuidePhase[
   return due
 }
 
-/** Sound of a cast by its kind (OverlayForm.BossSound): avoid = alarm, group positions = timer chime, interrupt = urgent,
- *  tank / info = a soft pling; without a kind (a big attack nobody has described yet) a clear "plong". */
-export const kindSound = (k?: Kind) =>
-  k === 'dodge' || k === 'out' || k === 'in' ? 'alarm' : k === 'stack' || k === 'spread' ? 'timer' : k === 'interrupt' ? 'close' : k ? 'pling' : 'plong'
-/** Sounds of the other callouts: something aims at you = urgent, an attack is coming = soft (the countdown follows),
- *  a new phase = timer chime, the Petze after the fight = the "opened" chime. */
-export const SOUND = { onYou: 'close', soon: 'pling', phase: 'timer', blame: 'opened' } as const
 /** Danger kinds: the centre callout pulses and a plain one cannot replace it. */
 export const isDanger = (k?: Kind) => k === 'dodge' || k === 'out' || k === 'in'
