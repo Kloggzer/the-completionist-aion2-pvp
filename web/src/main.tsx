@@ -12,6 +12,7 @@ import './features/progress'
 import './features/farm'
 import './features/merchant'
 import './features/bossmod'
+import './features/market'
 // Optional local modules (not in the public repository).
 import.meta.glob('./private/*.ts', { eager: true })
 

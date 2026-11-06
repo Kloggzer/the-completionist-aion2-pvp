@@ -11,6 +11,7 @@ import { SpotsTab } from '@/features/pets/SpotsTab'
 import { FarmTab, FarmToolbar } from '@/features/farm/FarmTab'
 import { MerchantTab } from '@/features/merchant/MerchantTab'
 import { BossModTab } from '@/features/bossmod/BossModPage'
+import { MarketTab } from '@/features/market/MarketTab'
 import { Footer } from '@/features/pets/Footer'
 import { Toolbar } from '@/features/pets/parts'
 import { TimerTab } from '@/features/events/TimerTab'
@@ -66,6 +67,7 @@ function List() {
     case 'spots': return <SpotsTab />
     case 'farm': return <FarmTab />
     case 'merchant': return <MerchantTab />
+    case 'market': return <MarketTab />
     case 'ach': return <AchTab />
     case 'check': return <CheckTab />
     case 'arc': return <ArcanaTab />

@@ -38,3 +38,8 @@ python tools/boss_guide.py
 
 `boss_guide.py` ergänzt `web/public/bossguide.json` (Phasen, Mechaniken, Raserei; Platzhalter `todo`) ohne Handarbeit zu
 überschreiben. `pip install lz4` beschleunigt pcaps stark. Aufnahmen und Mitschnitte nie committen.
+
+## Markt-Seite: Skins
+
+`python tools/fetch_skins.py` schreibt `web/public/skins.json`: die im Markt handelbaren Skin-Items (aion2data.com, mit
+Sammelpunkten und Wert pro Punkt). Preise holt die App selbst von aion2.exchange (`MarketLookup.cs`, gedrosselt, gecacht).

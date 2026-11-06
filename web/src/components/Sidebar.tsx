@@ -3,7 +3,7 @@
 // current area as a segmented control above the content (SubNav). Page keys are the tab keys (U.tab) plus the build
 // pages (dae.stats, dae.gear); an area remembers its last page (U.lastPage), however the page was reached.
 import { useEffect } from 'react'
-import { BarChart3, Clock, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Swords, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
+import { BarChart3, Clock, Gem, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Swords, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
 import { U, V, saveUi, bump } from '@/core/state'
 import { goTab } from '@/core/nav'
 import { t } from '@/core/i18n'
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { BADGE, Seg } from '@/components/kit'
 import { buyCount, freshOffers } from '@/features/merchant/logic'
 import { bs, setBuild, type Page as BuildPage } from '@/features/build/build'
+import { buyNow } from '@/features/market'
 
 type NavPage = { key: string; tab: string; build?: BuildPage; icon: LucideIcon; label: () => string; count?: () => number }
 type Area = { key: string; icon: LucideIcon; pages: NavPage[] }
@@ -28,7 +29,7 @@ export const AREAS: Area[] = [
   { key: 'pets', icon: PawPrint, pages: [
     tabPage('targets', Target, () => V.targets.filter((x: { done: boolean }) => !x.done).length), tabPage('spots', MapPin, () => V.spots.length), tabPage('merchant', Store, merchBuy)] },
   { key: 'farm', icon: Pickaxe, pages: [tabPage('farm', Pickaxe)] },
-  { key: 'char', icon: UserRound, pages: [buildPage('dae', Grid3x3), buildPage('stats', BarChart3), buildPage('gear', Shield), tabPage('arc', Layers), tabPage('ach', Trophy)] },
+  { key: 'char', icon: UserRound, pages: [buildPage('dae', Grid3x3), buildPage('stats', BarChart3), buildPage('gear', Shield), tabPage('arc', Layers), tabPage('ach', Trophy), tabPage('market', Gem, buyNow)] },
 ]
 
 const known = (key: string) => AREAS.some(a => a.pages.some(p => p.key === key))

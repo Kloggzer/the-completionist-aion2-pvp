@@ -123,6 +123,10 @@ export async function openApp(page: Page, o: HostOpts = {}) {
             // AbyssLogs (fight history): the index or one file (base64) from w.__abyss = { index: [...], files: {id: base64} }
             const a = w.__abyss
             reply({ type: 'abyss', id: m.id, body: !a ? null : m.file == null ? JSON.stringify(a.index) : a.files?.[m.file] ?? null })
+          } else if (m.type === 'market') {
+            // the market proxy (MarketLookup.cs): the tests route https://aion2.exchange/api/... to fixtures
+            fetch('https://aion2.exchange' + m.path).then(async r => reply({ type: 'market', id: m.id, status: r.status, body: r.ok ? await r.text() : null, age: 0 }))
+              .catch(() => reply({ type: 'market', id: m.id, status: 0, body: null, age: 0 }))
           } else if (m.type === 'plaync') {
             // PlayerLookup.Raw: the host fetches the website; here the page does (tests mock it with page.route)
             fetch(m.url).then(async r => reply({ type: 'plaync', id: m.id, status: r.status, body: await r.text() }))
@@ -150,11 +154,11 @@ export async function openApp(page: Page, o: HostOpts = {}) {
 /** Page keys by their German label (the sidebar's pages, components/Sidebar.tsx). */
 export const PAGE_KEY: Record<string, string> = {
   'Übersicht': 'home', Ziele: 'targets', Spots: 'spots', 'Händler': 'merchant', Farmen: 'farm', Erfolge: 'ach', Checkliste: 'check',
-  Build: 'dae', Daevanion: 'dae', Werte: 'dae.stats', 'Ausrüstung': 'dae.gear', Arkana: 'arc', Bosse: 'boss', 'Boss-Helfer': 'bossmod', Timer: 'timer',
+  Build: 'dae', Daevanion: 'dae', Werte: 'dae.stats', 'Ausrüstung': 'dae.gear', Arkana: 'arc', Bosse: 'boss', 'Boss-Helfer': 'bossmod', Timer: 'timer', Markt: 'market',
 }
 const AREA_OF: Record<string, string> = {
   home: 'today', check: 'today', boss: 'today', bossmod: 'today', timer: 'today', targets: 'pets', spots: 'pets', merchant: 'pets', farm: 'farm',
-  dae: 'char', 'dae.stats': 'char', 'dae.gear': 'char', arc: 'char', ach: 'char',
+  dae: 'char', 'dae.stats': 'char', 'dae.gear': 'char', arc: 'char', ach: 'char', market: 'char',
 }
 /** The visible button of a page: in the sidebar (wide windows) or in the area's page switch (narrow windows). */
 export const navBtn = (page: Page, key: string) => page.locator(`[data-nav="${PAGE_KEY[key] ?? key}"]:visible`).first()

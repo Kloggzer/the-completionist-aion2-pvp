@@ -1,0 +1,439 @@
+{
+ "source": "aion2data.com (https://aion2data.com/raw/skins.json)",
+ "client": "2026.10.28",
+ "total": 1537,
+ "items": [
+  {
+   "item": 515810049,
+   "skin": 40060107,
+   "name": "Promise Legion",
+   "cat": "Cloak",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Cloak Defense increase +0.1%"
+  },
+  {
+   "item": 515810014,
+   "skin": 30067107,
+   "name": "Restored Recon Team",
+   "cat": "Cloak",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Cloak Defense increase +0.1%"
+  },
+  {
+   "item": 515810021,
+   "skin": 30176107,
+   "name": "Silent Resolve",
+   "cat": "Cloak",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Cloak Defense increase +0.1%"
+  },
+  {
+   "item": 515910013,
+   "skin": 50028101,
+   "name": "Moonlight Blossom",
+   "cat": "Earrings",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Earrings Attack increase +0.1%"
+  },
+  {
+   "item": 515910009,
+   "skin": 50029101,
+   "name": "Spring Blossom Whisper",
+   "cat": "Earrings",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Earrings Attack increase +0.1%"
+  },
+  {
+   "item": 515910015,
+   "skin": 50023101,
+   "name": "Sweet Whisper",
+   "cat": "Earrings",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Earrings Attack increase +0.1%"
+  },
+  {
+   "item": 515910011,
+   "skin": 50022101,
+   "name": "White Petal Sigh",
+   "cat": "Earrings",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Earrings Attack increase +0.1%"
+  },
+  {
+   "item": 515910007,
+   "skin": 50082101,
+   "name": "Light Droplet",
+   "cat": "Earrings",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Earrings Attack increase +0.1%"
+  },
+  {
+   "item": 515910005,
+   "skin": 50010101,
+   "name": "Shadow Ruby",
+   "cat": "Earrings",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Earrings Attack increase +0.1%"
+  },
+  {
+   "item": 515910001,
+   "skin": 50005101,
+   "name": "Verdant Leaf",
+   "cat": "Earrings",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Earrings Attack increase +0.1%"
+  },
+  {
+   "item": 515910003,
+   "skin": 50069101,
+   "name": "Woodland Whisper",
+   "cat": "Earrings",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Earrings Attack increase +0.1%"
+  },
+  {
+   "item": 515810047,
+   "skin": 40060105,
+   "name": "Promise Legion",
+   "cat": "Gloves",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Gloves Defense increase +0.1%"
+  },
+  {
+   "item": 515810012,
+   "skin": 30067105,
+   "name": "Restored Recon Team",
+   "cat": "Gloves",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Gloves Defense increase +0.1%"
+  },
+  {
+   "item": 515810019,
+   "skin": 30176105,
+   "name": "Silent Resolve",
+   "cat": "Gloves",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Gloves Defense increase +0.1%"
+  },
+  {
+   "item": 515810040,
+   "skin": 40059105,
+   "name": "Wild Wanderer",
+   "cat": "Gloves",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Gloves Defense increase +0.1%"
+  },
+  {
+   "item": 516010004,
+   "skin": 80018101,
+   "name": "Guardian Token",
+   "cat": "Helm",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 516010001,
+   "skin": 80015101,
+   "name": "Saam Laurel",
+   "cat": "Helm",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 516010006,
+   "skin": 80019101,
+   "name": "Saendukal Mask",
+   "cat": "Helm",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 516010003,
+   "skin": 80017101,
+   "name": "Water Spirit Mask",
+   "cat": "Helm",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 516010002,
+   "skin": 80016101,
+   "name": "Windmancer Mask",
+   "cat": "Helm",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 516010007,
+   "skin": 80028101,
+   "name": "Apple Candy",
+   "cat": "Helm",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 515810045,
+   "skin": 40060103,
+   "name": "Promise Legion",
+   "cat": "Helm",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 515810010,
+   "skin": 30067103,
+   "name": "Restored Recon Team",
+   "cat": "Helm",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 515810017,
+   "skin": 30176103,
+   "name": "Silent Resolve",
+   "cat": "Helm",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 515810038,
+   "skin": 40059103,
+   "name": "Wild Wanderer",
+   "cat": "Helm",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Helm Defense increase +0.1%"
+  },
+  {
+   "item": 515810044,
+   "skin": 40060102,
+   "name": "Promise Legion",
+   "cat": "Legs",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Legs Defense increase +0.1%"
+  },
+  {
+   "item": 515810009,
+   "skin": 30067102,
+   "name": "Restored Recon Team",
+   "cat": "Legs",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Legs Defense increase +0.1%"
+  },
+  {
+   "item": 515810016,
+   "skin": 30176102,
+   "name": "Silent Resolve",
+   "cat": "Legs",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Legs Defense increase +0.1%"
+  },
+  {
+   "item": 515810037,
+   "skin": 40059102,
+   "name": "Wild Wanderer",
+   "cat": "Legs",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Legs Defense increase +0.1%"
+  },
+  {
+   "item": 515910014,
+   "skin": 50028103,
+   "name": "Moonlight Blossom",
+   "cat": "Necklace",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Necklace Attack increase +0.1%"
+  },
+  {
+   "item": 515910010,
+   "skin": 50029103,
+   "name": "Spring Blossom Whisper",
+   "cat": "Necklace",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Necklace Attack increase +0.1%"
+  },
+  {
+   "item": 515910016,
+   "skin": 50023103,
+   "name": "Sweet Whisper",
+   "cat": "Necklace",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Necklace Attack increase +0.1%"
+  },
+  {
+   "item": 515910012,
+   "skin": 50022103,
+   "name": "White Petal Sigh",
+   "cat": "Necklace",
+   "grade": "Unique",
+   "pts": 4,
+   "stat": "Necklace Attack increase +0.1%"
+  },
+  {
+   "item": 515910008,
+   "skin": 50082103,
+   "name": "Light Droplet",
+   "cat": "Necklace",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Necklace Attack increase +0.1%"
+  },
+  {
+   "item": 515910006,
+   "skin": 50010103,
+   "name": "Shadow Ruby",
+   "cat": "Necklace",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Necklace Attack increase +0.1%"
+  },
+  {
+   "item": 515910002,
+   "skin": 50005103,
+   "name": "Verdant Leaf",
+   "cat": "Necklace",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Necklace Attack increase +0.1%"
+  },
+  {
+   "item": 515910004,
+   "skin": 50069103,
+   "name": "Woodland Whisper",
+   "cat": "Necklace",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Necklace Attack increase +0.1%"
+  },
+  {
+   "item": 515810046,
+   "skin": 40060104,
+   "name": "Promise Legion",
+   "cat": "Pauldrons",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Pauldrons Defense increase +0.1%"
+  },
+  {
+   "item": 515810011,
+   "skin": 30067104,
+   "name": "Restored Recon Team",
+   "cat": "Pauldrons",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Pauldrons Defense increase +0.1%"
+  },
+  {
+   "item": 515810018,
+   "skin": 30176104,
+   "name": "Silent Resolve",
+   "cat": "Pauldrons",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Pauldrons Defense increase +0.1%"
+  },
+  {
+   "item": 515810048,
+   "skin": 40060106,
+   "name": "Promise Legion",
+   "cat": "Shoes",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Shoes Defense increase +0.1%"
+  },
+  {
+   "item": 515810013,
+   "skin": 30067106,
+   "name": "Restored Recon Team",
+   "cat": "Shoes",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Shoes Defense increase +0.1%"
+  },
+  {
+   "item": 515810020,
+   "skin": 30176106,
+   "name": "Silent Resolve",
+   "cat": "Shoes",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Shoes Defense increase +0.1%"
+  },
+  {
+   "item": 515810041,
+   "skin": 40059106,
+   "name": "Wild Wanderer",
+   "cat": "Shoes",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Shoes Defense increase +0.1%"
+  },
+  {
+   "item": 515810043,
+   "skin": 40060101,
+   "name": "Promise Legion",
+   "cat": "Top",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Top Defense increase +0.1%"
+  },
+  {
+   "item": 515810008,
+   "skin": 30067101,
+   "name": "Restored Recon Team",
+   "cat": "Top",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Top Defense increase +0.1%"
+  },
+  {
+   "item": 515810015,
+   "skin": 30176101,
+   "name": "Silent Resolve",
+   "cat": "Top",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Top Defense increase +0.1%"
+  },
+  {
+   "item": 515810036,
+   "skin": 40059101,
+   "name": "Wild Wanderer",
+   "cat": "Top",
+   "grade": "Epic",
+   "pts": 3,
+   "stat": "Top Defense increase +0.1%"
+  }
+ ]
+}

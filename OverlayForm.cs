@@ -539,6 +539,13 @@ sealed class OverlayForm : Form
     }
 
     // Website request of the page (Daevanion boards): answered as 'plaync' with the request id.
+    /// Markt page: market prices from aion2.exchange (MarketLookup: allowed paths only, throttled, cached).
+    async void Market(int id, string path)
+    {
+        var (status, body, age) = await MarketLookup.Get(path); // resumes on the UI thread
+        Post(new { type = "market", id, status, body, age });
+    }
+
     async void PlayNc(int id, string url)
     {
         var (status, body) = await PlayerLookup.Raw(url); // resumes on the UI thread
@@ -939,6 +946,7 @@ sealed class OverlayForm : Form
                 PostPvpWin();
                 break;
             case "plaync": PlayNc((int?)m["id"] ?? 0, (string?)m["url"] ?? ""); break;
+            case "market": Market((int?)m["id"] ?? 0, (string?)m["path"] ?? ""); break;
             case "abyss": Abyss((int?)m["id"] ?? 0, (string?)m["file"]); break;
             case "pvpLookup":
                 if ((string?)m["name"] is { Length: > 0 } lname && (int?)m["srv"] is int lsrv) PvpLookup(lname, lsrv);
