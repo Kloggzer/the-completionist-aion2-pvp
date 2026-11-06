@@ -1,6 +1,6 @@
 // "Ziele" tab: missing soul pets on the current map as tiles, plus what is near the player.
 import type { ReactNode } from 'react'
-import { Check, Crosshair, Ghost, PawPrint, Star, Unlock } from 'lucide-react'
+import { Check, Star } from 'lucide-react'
 import { G, S, U, V, bump, hasState, manual, useApp, type Any } from '@/core/state'
 
 import { emit } from '@/core/bus'
@@ -8,7 +8,7 @@ import { mapName, petName } from '@/core/data'
 import { ago, dirTo, fmtDist, posAge } from '@/core/geo'
 import { fmt, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
-import { Disclosure, Hint, Kpi, KpiRow, ListRow, Page, Panel, ROWS, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE as KTILE, TILE_CLICK, TILE_P, TILE_SEL, TopN, Bar, grid } from '@/components/kit'
+import { Disclosure, Hint, ListRow, Page, Panel, ROWS, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_SUB, T_TITLE, TILE as KTILE, TILE_CLICK, TILE_P, TILE_SEL, TopN, Bar, grid } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
 import { lvTxt, mobGroups, toggleMulti } from './logic'
 import { Dot, Empty, Pbar, PinBox, SelBar, rich } from './parts'
@@ -102,23 +102,6 @@ function TargetTile({ x }: { x: Any }) {
   )
 }
 
-/** The answer: how many pets are missing here, how many to unlock, souls to Lv 3, the nearest needed mob. */
-function Kpis({ m }: { m: Any }) {
-  const open = V.targets.filter((x: Any) => !x.done), unlock = open.filter((x: Any) => x.lv === 0).length
-  const souls = open.reduce((s: number, x: Any) => s + x.rest, 0)
-  const mob = !manual() && (posAge() <= 1800 || S.replay) ? V.near?.mob : null
-  return (
-    <KpiRow>
-      <Kpi icon={PawPrint} label={t('pets.kpi.missing')} value={fmt(open.length)} sub={mapName(m.name)} tip={t('pets.kpi.missingSub')} data-kpi="missing" />
-      <Kpi icon={Unlock} label={t('pets.kpi.unlock')} value={fmt(unlock)} tone={unlock ? 'info' : undefined} sub={t('pets.kpi.unlockSub')} data-kpi="unlock" />
-      <Kpi icon={Ghost} label={t('pets.kpi.souls')} value={fmt(souls)} sub={t('pets.kpi.soulsSub')} data-kpi="souls" />
-      <Kpi icon={Crosshair} label={t('pets.kpi.nearest')} value={mob ? `${fmtDist(mob.dist)} ${mob.dir}` : '–'} tone={mob ? 'info' : undefined}
-        sub={mob ? `${mob.mob.n} · ${petName(mob.t.p)}` : t('pets.kpi.noPos')} tip={t('pets.kpi.nearestTip')} data-kpi="nearest"
-        onClick={mob ? () => { if (!V.multi.has(mob.t.p.id)) selectPet(mob.t.p.id) } : undefined} />
-    </KpiRow>
-  )
-}
-
 function Targets({ m }: { m: Any }) {
   const ts = V.targets
   if (!ts.length) {
@@ -133,18 +116,22 @@ function Targets({ m }: { m: Any }) {
     if (!sects.length || sects[sects.length - 1].group !== group) sects.push({ group, items: [] })
     sects[sects.length - 1].items.push(x)
   }
+  // what a group still needs: its pets, and the souls to Lv 3 of the unfinished ones
+  const sub = (items: Any[]) => {
+    const souls = items.reduce((n: number, x: Any) => n + (x.done ? 0 : x.rest), 0)
+    return t('pets.group.n', { n: items.length }) + (souls ? ' · ' + t('pets.group.souls', { n: fmt(souls) }) : '')
+  }
   const tiles = (items: Any[]) => <div className={cn(GRID, 'pt-0.5 pb-2.5')}>{items.map(x => <TargetTile key={x.p.id} x={x} />)}</div>
   return <Page>
     <SelBar />
     {!hasState() && <NoStateHint />}
     {manual() && <ManualHint />}
-    <Kpis m={m} />
     <Near />
     {sects.map(s => s.group === 'done'
       ? <Panel key={s.group} data-group={s.group} className="pb-1.5">
         <Disclosure id="pets.done" title={t('pets.group.done')} sub={t('pets.group.n', { n: s.items.length })}>{tiles(s.items)}</Disclosure>
       </Panel>
-      : <Panel key={s.group} data-group={s.group} title={t('pets.group.' + s.group)} sub={t('pets.group.n', { n: s.items.length })}>{tiles(s.items)}</Panel>)}
+      : <Panel key={s.group} data-group={s.group} title={t('pets.group.' + s.group)} sub={sub(s.items)}>{tiles(s.items)}</Panel>)}
   </Page>
 }
 

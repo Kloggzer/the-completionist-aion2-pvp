@@ -3,7 +3,7 @@
 // (top 5); totals, assumptions and the model wait in closed disclosures. Gear: tiles (best upgrade, upgrades, best swap, gear),
 // upgrades (top 5), another piece for a slot (top 4), every piece and the rating in closed disclosures.
 import { useEffect } from 'react'
-import { ArrowRightLeft, CircleDot, Crosshair, Download, Gem, Package, RefreshCw, Shirt, Sparkles, Swords, Target, TrendingUp, Wrench } from 'lucide-react'
+import { ArrowRightLeft, CircleDot, Crosshair, Download, Gem, Package, RefreshCw, Shirt, Sparkles, Swords, Target, TrendingUp } from 'lucide-react'
 import { V, useApp } from '@/core/state'
 import { P } from '@/features/pvp'
 import { fmt, fmtPct, locale, t } from '@/core/i18n'
@@ -189,7 +189,7 @@ function GearPage() {
       <Empty icon={Shirt} title={t('build.noGearShort')} action={p && <LoadBtn char={char} has={false} />}>{t(p ? 'build.noGearSub' : 'build.noProfile')}</Empty>
     </Page>
   )
-  const ups = upgrades(md.state, s0, db), worth = ups.filter(u => u.gain > 0.005)
+  const ups = upgrades(md.state, s0, db)
   const sel = s0.items.find(i => i.slot === b.cmp) || s0.items[0]
   const race = P.own?.race, faction = race === 1 ? 'Elyos' : race === 2 ? 'Asmodian' : undefined
   const cands = sel ? candidates(md.state, sel, gearRows(), faction).slice(0, 12) : []
@@ -199,7 +199,6 @@ function GearPage() {
       <KpiRow>
         <Kpi icon={TrendingUp} label={t('build.kpi.up')} value={top && top.gain > 0.005 ? gainPct(top.gain) : '–'} tone={top && top.gain > 0.005 ? 'ok' : undefined}
           sub={top ? `${t('build.up.' + top.kind)} · ${top.item}` : t('build.noUp')} tip={top ? `${top.item} (${top.slot}): ${top.text}` : undefined} data-kpi="up" />
-        <Kpi icon={Wrench} label={t('build.kpi.ups')} value={fmt(worth.length)} sub={t('build.kpi.upsSub', { n: ups.length - worth.length })} data-kpi="ups" />
         <Kpi icon={ArrowRightLeft} label={t('build.kpi.swap')} value={swap ? gainPct(swap.c.gain) : '–'} tone={swap ? 'ok' : undefined} data-kpi="swap"
           sub={swap ? `${swap.slot} · ${swap.c.row[1]}` : gearRows().length ? t('build.noCand') : t('build.noGearDb')}
           tip={swap ? swap.c.row[1] : undefined} onClick={swap ? () => setBuild({ cmp: swap.slot }) : undefined} />

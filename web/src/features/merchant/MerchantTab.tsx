@@ -1,4 +1,4 @@
-// "Händler" tab: number tiles (next offer, worth buying now, missing pets, hard to farm), the Black Cloud Merchant's
+// "Händler" tab: number tiles (next offer, worth buying now), the Black Cloud Merchant's
 // current offer (read from the game when its window opens, or entered by hand; cleared on the full hour) with a verdict
 // per pet by the souls still missing to Lv 3, and the missing pets (below Lv 3) in three panels (merchant only / hard /
 // easy to farm, the easy one closed), ranked by farm difficulty × missing souls. Clicking a pet shows its spawns in the
@@ -366,17 +366,15 @@ function Wishlist() {
 const FACS = ['all', 'Asmodian', 'Elyos']
 const more = (k: number) => t('common.moreN', { n: k })
 
-/** The answer: countdown to the next offer, what to buy now, how many pets are missing, how many are hard to farm. */
+/** The answer: countdown to the next offer and what to buy now (the missing pets count in their panels below). */
 function Kpis() {
-  const cur = offers(), all = wishlist()
-  const buy = buyCount(cur), open = cur.items.filter(x => !x.bought).length, hard = all.filter(x => groupOf(x.d) === 'hard').length
+  const cur = offers()
+  const buy = buyCount(cur), open = cur.items.filter(x => !x.bought).length
   return (
     <KpiRow>
       <Kpi icon={Clock} label={t('merch.kpi.next')} value={mmss(msToNext(Date.now()))} sub={t('merch.kpi.nextSub')} data-kpi="next" />
       <Kpi icon={ShoppingCart} label={t('merch.kpi.buy')} value={open ? fmt(buy) : '–'} tone={buy ? 'warn' : undefined}
         sub={open ? t('merch.kpi.buySub', { n: open }) : t('merch.kpi.noOffer')} data-kpi="buy" />
-      <Kpi icon={PawPrint} label={t('merch.kpi.missing')} value={fmt(all.length)} sub={t('merch.kpi.missingSub')} data-kpi="missing" />
-      <Kpi icon={Mountain} label={t('merch.kpi.hard')} value={fmt(hard)} sub={t('merch.kpi.hardSub', { n: HARD })} tip={t('merch.hardOnly.tip', { n: HARD })} data-kpi="hard" />
     </KpiRow>
   )
 }

@@ -1,7 +1,7 @@
-// Overview ("Übersicht"): four number tiles (reset, pets here, next boss, checklist), the urgent warnings, then panels
-// "up next", "open today", "farm here" with the top few rows each; "almost done" behind a disclosure. Every block links
+// Overview ("Übersicht"): two number tiles (reset, pets here – the rest has its own panel below), the urgent warnings,
+// then panels "up next", "open today", "farm here" with the top few rows each; "almost done" behind a disclosure. Every block links
 // to its tab; the common actions (+1, bell) work right here.
-import { Clock, ListChecks, PawPrint, Plus, RefreshCw, Skull, Star, User, type LucideIcon } from 'lucide-react'
+import { Clock, PawPrint, Plus, RefreshCw, Skull, Star, User, type LucideIcon } from 'lucide-react'
 import { G, S, U, V, hasState, useApp, type Any } from '@/core/state'
 import { selectMap, mapName, petName } from '@/core/data'
 import { goTab } from '@/core/nav'
@@ -86,7 +86,7 @@ function OpenToday({ all }: { all: ReturnType<typeof checkItems> }) {
   const open = all.filter(o => o.c < o.max)
     .sort((a, b) => (TIER[a.id] ?? 2) - (TIER[b.id] ?? 2) || (a.kind === b.kind ? 0 : a.kind === 'd' ? -1 : 1) || b.c / b.max - a.c / a.max)
   return (
-    <Panel title={t('home.openToday')} sub={t('home.important')} right={<More onClick={() => goTab('check')}>{t('home.allN', { n: all.length })}</More>} data-home-open>
+    <Panel title={t('home.openToday')} sub={t('home.doneOf', { n: all.length - open.length, total: all.length }) + ' · ' + t('home.important')} right={<More onClick={() => goTab('check')}>{t('home.allN', { n: all.length })}</More>} data-home-open>
       <div className={ROWS}>
         {!open.length && <Note className={TONE.ok}><DoneMark /> {t('chk.everything')}</Note>}
         <TopN id="home.open" items={open} n={5} more={more} render={o => {
@@ -165,8 +165,8 @@ export function HomeTab() {
   const now = Date.now(), m = G.md[U.map]
   const sp = soulPets(), have = sp.filter((p: Any) => (S.state.levels[p.id] || 0) > 0).length
   const missing = V.targets.filter((x: Any) => !x.done).length
-  const items = checkItems(), done = items.filter(o => o.c >= o.max).length, left = items.length - done
-  const up = upNext(now, 12), boss = up.find(r => r.boss)
+  const items = checkItems()
+  const up = upNext(now, 12)
   const rows = G.ach ? achRows() : []
   const close = rows.filter(r => !r.done && r.val > 0 && r.frac < 1).sort((a, b) => b.frac - a.frac)
   const warn = alerts()
@@ -179,12 +179,6 @@ export function HomeTab() {
           onClick={() => goTab('check')} tip={tip('check')} data-kpi="reset" />
         <Kpi icon={PawPrint} label={t('home.kpi.pets')} value={hasState() ? t('home.missing', { n: missing }) : '–'} tone={hasState() && !missing ? 'ok' : undefined}
           sub={hasState() ? t('home.pets.have', { have, total: sp.length }) : t('home.kpi.noData')} onClick={() => goTab('targets')} tip={tip('targets')} data-kpi="pets" />
-        {/* the same source as "up next": world boss events and the field bosses of this map (+ belled ones) */}
-        <Kpi icon={Skull} label={t('home.kpi.boss')} value={boss ? (boss.due ? t('home.due') : hm(boss.ms)) : '–'}
-          tone={boss ? (boss.due ? 'warn' : 'info') : undefined} sub={boss ? `${boss.due ? hm(boss.ms) : leftTxt(boss.ms, now)} · ${boss.name}` : t('home.kpi.noBoss')}
-          onClick={boss ? boss.go : () => goTab('boss')} tip={boss ? `${boss.name}${boss.where ? ' · ' + boss.where : ''}\n${tip(boss.page)}` : tip('boss')} data-kpi="boss" />
-        <Kpi icon={ListChecks} label={t('home.kpi.today')} value={left ? t('chk.openN', { n: left }) : <DoneMark />} tone={left ? undefined : 'ok'}
-          sub={t('home.doneOf', { n: done, total: items.length })} onClick={() => goTab('check')} tip={tip('check')} data-kpi="check" />
       </KpiRow>
       {warn.length > 0 && (
         <Panel title={t('alert.title')} sub={t('alert.sub')} right={<More onClick={() => { V.chkPage = null; goTab('check') }}>{t('tab.check')}</More>} data-home-alerts>

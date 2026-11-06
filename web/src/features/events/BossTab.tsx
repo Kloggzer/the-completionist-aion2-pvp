@@ -1,13 +1,13 @@
-// "Bosse" tab: number tiles (next boss here, alive, bells, next Abyss boss), the field bosses of the current map, then
+// "Bosse" tab: number tiles (next boss here, next Abyss boss; alive ones and bells show on the tiles), the field bosses of the current map, then
 // the Abyss bosses behind a disclosure (available whatever map is selected, open by default on the Abyss map).
-import { BellRing, HeartPulse, Skull, Swords } from 'lucide-react'
+import { Skull, Swords } from 'lucide-react'
 import { G, U, manual, useApp, type Any } from '@/core/state'
 import { mapName } from '@/core/data'
 import { hm, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
 import { BarInfo, BellBtn, Disclosure, Empty, Kpi, KpiRow, Page, Panel, T_BODY, T_FOOT, T_PORTRAIT, T_TITLE, TILE, TILE_P, grid } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
-import { ABYSS, abyssBosses, allBosses, bossShort, fbServer, fbStatus, fieldBosses, killBoss, lead, toggleBossBell, whenTxt } from './events'
+import { ABYSS, abyssBosses, bossShort, fbServer, fbStatus, fieldBosses, killBoss, toggleBossBell, whenTxt } from './events'
 
 const ORDER = { due: 0, wait: 1, alive: 2, stale: 3, unknown: 4 }
 // Tile accent per boss status.
@@ -76,14 +76,11 @@ export function BossTab() {
   const tbl = field.length ? U.bossTables?.[field[0].mapId] : null
   const note = manual() ? t('boss.manual') : tbl ? t('boss.server', { at: hm(tbl.at) }) : t('boss.estimate')
   const fs = sorted(field), as = sorted(abyss)
-  const alive = fs.filter(x => x.s.k === 'alive').length, bells = allBosses().filter(b => U.bossBells?.[b.key]).length
   const bar = <BarInfo tip={note}>{m ? mapName(m.name) + ' · ' : ''}{note}</BarInfo>
   return (
     <Page bar={bar}>
       <KpiRow>
         <NextKpi x={nextOf(fs)} icon={Skull} label={t('boss.kpi.next')} none={field.length ? t('home.kpi.noBoss') : t('boss.kpi.noField')} data-kpi="next" />
-        <Kpi icon={HeartPulse} label={t('boss.kpi.alive')} value={field.length ? alive : '–'} tone={alive ? 'ok' : undefined} sub={t('boss.kpi.ofN', { n: field.length })} data-kpi="alive" />
-        <Kpi icon={BellRing} label={t('boss.kpi.bells')} value={bells} tone={bells ? 'warn' : undefined} sub={t('boss.kpi.lead', { n: lead() })} data-kpi="bells" />
         <NextKpi x={nextOf(as)} icon={Swords} label={t('boss.kpi.abyss')} none={t('home.kpi.noBoss')} data-kpi="abyss" />
       </KpiRow>
       {field.length > 0 && <Panel title={m ? mapName(m.name) : ''} sub={t('boss.fieldSub')} className="pb-1" data-boss-field>

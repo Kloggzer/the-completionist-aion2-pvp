@@ -1,16 +1,14 @@
-// "Spots" tab: ranked farm spots (spawn clusters of needed mobs) for the current map. Number tiles first (best spot,
-// how many spots, how many pets the best one covers), then the ranked list; the pets of a spot show under it once it
-// is selected. How the ranking works sits in a closed HowTo at the end.
-import { Crosshair, MapPin, PawPrint } from 'lucide-react'
+// "Spots" tab: ranked farm spots (spawn clusters of needed mobs) for the current map as one list (the best one first,
+// its row says why); the pets of a spot show under it once it is selected. How the ranking works sits in a closed HowTo at the end.
 import { G, U, V, bump, useApp, type Any } from '@/core/state'
 import { emit } from '@/core/bus'
-import { fmt, t } from '@/core/i18n'
+import { t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
 import { R, mobGroups } from './logic'
 import { Dot, Empty, SelBar, rich } from './parts'
-import { HowTo, Kpi, KpiRow, ListRow, Page, Panel, ROWS, Rank, TopN } from '@/components/kit'
+import { HowTo, ListRow, Page, Panel, ROWS, Rank, TopN } from '@/components/kit'
 import { Portrait } from '@/components/Portrait'
-import { mapName, petName } from '@/core/data'
+import { petName } from '@/core/data'
 
 const more = (k: number) => t('common.moreN', { n: k })
 
@@ -49,21 +47,15 @@ function SpotRow({ s }: { s: Any }) {
   </>
 }
 
-function Spots({ m }: { m: Any }) {
-  const spots: Any[] = V.spots, top = spots[0]
-  const missing = (V.spotsSel ? V.targets.filter((x: Any) => V.multi.has(x.p.id)) : V.targets).filter((x: Any) => !x.done).length
-  return <>
-    <KpiRow>
-      <Kpi icon={Crosshair} label={t('pets.kpi.best')} value={top.name} sub={reason(top)} tip={top.name} onClick={() => { if (V.spot !== 1) select(1) }} className="col-span-2" data-kpi="best" />
-      <Kpi icon={MapPin} label={t('pets.kpi.spots')} value={fmt(spots.length)} sub={mapName(m.name)} tip={t('pets.kpi.spotsSub')} data-kpi="spots" />
-      <Kpi icon={PawPrint} label={t('pets.kpi.covered')} value={`${top.pets.length} / ${missing}`} sub={t('pets.kpi.coveredSub', { n: missing })} data-kpi="covered" />
-    </KpiRow>
+function Spots() {
+  const spots: Any[] = V.spots
+  return (
     <Panel title={t('pets.spots')} sub={V.spotsSel ? t('pets.spots.forSel') : t('pets.spots.sub')} data-spots={String(spots.length)}>
       <div className={ROWS}>
         <TopN id="spots.list" items={spots} n={Math.max(5, V.spot || 0)} more={more} render={s => <SpotRow key={s.rank} s={s} />} />
       </div>
     </Panel>
-  </>
+  )
 }
 
 export function SpotsTab() {
@@ -73,7 +65,7 @@ export function SpotsTab() {
     <SelBar />
     {!m ? <Empty>{t('data.loading')}</Empty>
       : !V.spots.length ? <Empty>{t('pets.spot.empty', { filter: U.hideNamed ? t('pets.spot.filter') : '' })}</Empty>
-        : <Spots m={m} />}
+        : <Spots />}
     <Panel className="pb-1.5">
       <HowTo id="spots.how" title={t('pets.how')}>
         <ul className="flex list-disc flex-col gap-1 pl-4 marker:text-dim">

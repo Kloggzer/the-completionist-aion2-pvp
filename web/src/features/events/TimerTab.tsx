@@ -2,9 +2,9 @@
 // events as blocks at their time, coloured by kind. Events that repeat every hour (Shugo festival, invasion) would
 // drown the calendar: they are one row each above it (series bell), in the calendar only as small ticks.
 // Clicking a block opens a small popover with both bells: this occurrence only, or the whole series.
-// Above it: number tiles (next event, today, bells, lead time) and the hourly rows (the next four, the rest on demand).
+// Above it: number tiles (next event, still to come today; bells and lead time are in the bar) and the hourly rows (the next four, the rest on demand).
 import { useEffect, useState } from 'react'
-import { Bell, BellDot, BellOff, BellRing, CalendarClock, ChevronLeft, ChevronRight, Clock, Eye, Megaphone, RefreshCw, Skull, Swords, Tent, Timer, Tornado, type LucideIcon } from 'lucide-react'
+import { Bell, BellDot, BellOff, CalendarClock, ChevronLeft, ChevronRight, Clock, Eye, RefreshCw, Skull, Swords, Tent, Timer, Tornado, type LucideIcon } from 'lucide-react'
 import { G, U, V, saveUi, bump, useApp, type Any } from '@/core/state'
 import { hm, locale, t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
@@ -208,7 +208,7 @@ export function TimerTab() {
   }
   const range = (ms: number) => new Date(ms).toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' })
   const bar = <>
-    <BarInfo tip={t('timer.barInfo') + '\n' + t('timer.leadTip')}>{t('timer.barCtx', { n: G.timers.filter((e: Any) => e.kind !== 'reset' && timerOn(e)).length })}</BarInfo>
+    <BarInfo tip={t('timer.barInfo') + '\n' + t('timer.leadTip', { n: lead() })}>{t('timer.barCtx', { n: G.timers.filter((e: Any) => e.kind !== 'reset' && timerOn(e)).length })}</BarInfo>
     <BarRight>
       {TIMER_KINDS.filter(k => G.timers.some((e: Any) => e.kind === k)).map(k => {
         const on = kindOn(k)
@@ -222,17 +222,14 @@ export function TimerTab() {
     </BarRight>
   </>
   const { next, today } = upcoming(now)
-  const series = G.timers.filter((e: Any) => e.kind !== 'reset'), seriesOn = series.filter(timerOn).length
   // prev / today / next as one group (segmented look): "today" is pressed while the calendar starts today.
   const nav = 'grid h-6 min-w-6 place-items-center rounded-md px-1.5 text-[11.5px] text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground disabled:pointer-events-none disabled:opacity-30 [&_svg]:size-3.5'
   return (
     <Page bar={bar}>
       <KpiRow>
         <Kpi icon={CalendarClock} label={t('timer.kpi.next')} value={next ? hm(next.ms) : '–'} tone={next ? (next.ms - now < 10 * 60e3 ? 'warn' : 'info') : undefined}
-          sub={next ? [leftTxt(next.ms, now), timerName(next.ev)].filter(Boolean).join(' · ') : t('timer.kpi.none')} tip={next ? timerName(next.ev) + (timerWhere(next.ev) ? ' · ' + timerWhere(next.ev) : '') : undefined} data-kpi="next" />
+          sub={next ? [leftTxt(next.ms, now), timerName(next.ev)].filter(Boolean).join(' · ') : t('timer.kpi.none')} tip={next ? timerName(next.ev) + (timerWhere(next.ev) ? ' · ' + timerWhere(next.ev) : '') + '\n' + t('timer.leadTip', { n: lead() }) : undefined} data-kpi="next" />
         <Kpi icon={Timer} label={t('timer.kpi.today')} value={today} sub={t('timer.kpi.todaySub')} data-kpi="today" />
-        <Kpi icon={BellRing} label={t('timer.kpi.bells')} value={`${seriesOn}/${series.length}`} tone={seriesOn ? 'warn' : undefined} sub={t('timer.kpi.bellsSub')} data-kpi="bells" />
-        <Kpi icon={Megaphone} label={t('timer.kpi.lead')} value={t('timer.kpi.leadV', { n: lead() })} sub={t('timer.kpi.leadSub')} tip={t('timer.leadTip')} data-kpi="lead" />
       </KpiRow>
       <HourlyRows now={now} />
       <Sect className="pt-3" sub={range(days[0]) + ' – ' + range(days[DAYS - 1])} right={

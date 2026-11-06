@@ -1,6 +1,6 @@
 // Achievements: number tiles (open, close to done, title rewards still open, done), then one panel per difficulty
 // band with the first few tiles (rest behind "show all"); completed ones wait in a closed disclosure.
-import { Award, Castle, Check, CheckCheck, Clock, Coins, Compass, Crown, Flame, Gamepad2, Gem, Hammer, HeartCrack, Hourglass, LayoutGrid, ListChecks, ListTodo, LogIn, PawPrint, Pickaxe, ScrollText, Shield, Skull, Sparkles, Sprout, Square, SquareCheck, Star, Swords, Tornado, TrendingUp, Trophy, Users, type LucideIcon } from 'lucide-react'
+import { Award, Castle, Check, CheckCheck, Clock, Coins, Compass, Crown, Flame, Gamepad2, Gem, Hammer, HeartCrack, Hourglass, LayoutGrid, ListChecks, LogIn, PawPrint, Pickaxe, ScrollText, Shield, Skull, Sparkles, Sprout, Square, SquareCheck, Star, Swords, Tornado, TrendingUp, Trophy, Users, type LucideIcon } from 'lucide-react'
 import { S, U, G, V, bump, saveUi, manual, useApp, type Any } from '@/core/state'
 import { Portrait } from '@/components/Portrait'
 import { t, fmt } from '@/core/i18n'
@@ -143,7 +143,6 @@ export function AchTab() {
   if (U.achCat) rows = rows.filter(r => CAT[r.a.category_de]?.key === U.achCat)
   const open = rows.filter(r => !r.done), done = rows.length - open.length
   const close = open.filter(r => r.frac >= CLOSE).length
-  const titles = open.filter(r => r.a.tiers.slice(r.reached).some((y: Any) => y.rewards?.title)).length
   open.sort((x, y) => x.diff - y.diff || y.frac - x.frac)
   // group the open ones into difficulty bands (rows are sorted by difficulty)
   const bands: { b: number; rows: AchRow[] }[] = []
@@ -172,9 +171,7 @@ export function AchTab() {
     <Page bar={bar}>
       {!has && <LoginHint />}
       <KpiRow>
-        <Kpi icon={ListTodo} label={t('ach.kpi.open')} value={fmt(open.length)} sub={cat !== 'all' ? t('progress.cat.' + cat) : t('ach.kpi.openSub')} data-kpi="open" />
         <Kpi icon={Hourglass} label={t('ach.kpi.close')} value={fmt(close)} sub={t('ach.kpi.closeSub', { n: Math.round(CLOSE * 100) })} tone={close ? 'ok' : undefined} data-kpi="close" />
-        <Kpi icon={Award} label={t('ach.kpi.titles')} value={fmt(titles)} sub={t('ach.kpi.titlesSub')} data-kpi="titles" />
         <Kpi icon={Trophy} label={t('ach.kpi.done')} value={`${fmt(done)} / ${fmt(rows.length)}`} sub={t('ach.kpi.doneSub', { n: rows.length ? Math.round(done / rows.length * 100) : 0 })} data-kpi="done" />
       </KpiRow>
       {!open.length && !U.achDone && <Panel><Empty>{t('ach.allDone')}</Empty></Panel>}

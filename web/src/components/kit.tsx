@@ -512,9 +512,10 @@ export function Kpi({ label, value, sub, tone, icon: I, onClick, tip, className,
 }
 /** "Done" mark (the ✓ as an icon), sized to the text around it (Kpi values, status lines). */
 export const DoneMark = ({ className }: { className?: string }) => <Check strokeWidth={2.75} className={cn('inline-block size-[1em] flex-none align-[-0.125em]', className)} />
-/** The row of number tiles at the top of a page: 2 columns on the overlay, 4 from 640 px. */
+/** The row of number tiles at the top of a page: as many columns as fit (min. 9.5 rem each), so two tiles fill one
+ *  row on the overlay and four sit side by side on wide windows. Only tiles that say something the page below does not. */
 export function KpiRow({ children }: { children: ReactNode }) {
-  return <div data-kpis className="grid grid-cols-2 gap-1.5 px-2.5 pt-2.5 @min-[640px]:grid-cols-4">{children}</div>
+  return <div data-kpis className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-1.5 px-2.5 pt-2.5">{children}</div>
 }
 
 /** One list line: icon, title + one sub line, meta, value / action at the right. Click = select. */

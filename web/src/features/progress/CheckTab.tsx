@@ -1,10 +1,10 @@
-// Checklist dashboard: number tiles (open daily / weekly, characters, reset), the warnings, the characters as compact
+// Checklist dashboard: the reset countdown in the bar, number tiles (open daily / weekly), the warnings, the characters as compact
 // rows, then the server/account items (shared by all characters); a character's own list on its page. Entries and
 // charges are tiles: icon column left, name, bar + footer, −/+ column at the right edge; the explanation of an entry
 // is in its tooltip, the explanation of the page in a closed "how it works".
 import { useEffect, useState } from 'react'
-import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw, RotateCcw, Server, Sun, Trash2, UserCheck, Users, Zap } from 'lucide-react'
-import { chargeLight, chargesOf, entryBonusKey } from './charges'
+import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw, RotateCcw, Server, Sun, Trash2, UserCheck } from 'lucide-react'
+import { entryBonusKey } from './charges'
 import { S, U, V, bump, manual, useApp } from '@/core/state'
 import { t, hm } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
@@ -124,7 +124,6 @@ function OwnerBody({ name, live, level, per, char, right }: { name: string; live
 const openList = (per: Per, char?: string) => CHECK.flatMap(([kind, items]) => items.filter(([id, max, p]) => p === per && checkCount(id, p, kind, char) < max)
   .map(([id, max, p]) => `${t('progress.item.' + id)} ${checkCount(id, p, kind, char)}/${max}`))
 /** Number of open entries of an owner in one period. */
-const countOf = (per: Per, kind: Kind) => CHECK.filter(([k]) => k === kind).flatMap(([, items]) => items).filter(i => i[2] === per).length
 const openOf = (per: Per, kind: Kind, char?: string) =>
   CHECK.filter(([k]) => k === kind).flatMap(([, items]) => items).filter(([id, max, p]) => p === per && checkCount(id, p, kind, char) < max).length
 
@@ -182,24 +181,15 @@ function ManualCharActions({ name, live, onRename }: { name: string; live: boole
   </>
 }
 
-/** Reset countdown tile (daily, weekly below). */
-const ResetKpi = () => <Kpi icon={RefreshCw} label={t('chk.kpi.reset')} value={resetIn(nextReset('d'))} sub={t('home.kpi.weekly', { d: resetIn(nextReset('w')) })} data-kpi="reset" />
+/** Reset countdown of the bar (daily, then weekly). */
+const resetTxt = () => `${t('chk.kpi.reset')} ${resetIn(nextReset('d'))} · ${t('home.kpi.weekly', { d: resetIn(nextReset('w')) })}`
 
-/** One character's own page (reached from the dashboard): owner tile with remove, alerts, charges, lists. */
+/** One character's own page (reached from the dashboard): owner tile (daily / weekly split, open count) with remove,
+ *  alerts, charges, lists. */
 function CharPage({ name, live }: { name: string; live: boolean }) {
   const lvl = ownerLevel('char', name), man = manual(), [renaming, setRenaming] = useState(false)
   const right = man ? <ManualCharActions name={name} live={live} onRename={() => setRenaming(true)} /> : null
-  const d = openOf('char', 'd', name), w = openOf('char', 'w', name), nd = countOf('char', 'd'), nw = countOf('char', 'w')
-  // charges: the worst light decides the tile (their own tiles below say the details)
-  const lights = chargesOf('char').map(c => chargeLight(c, name)), full = lights.filter(l => l === 'red').length, soon = lights.filter(l => l === 'yellow').length
   return <>
-    <KpiRow>
-      <Kpi icon={Sun} label={t('chk.kpi.daily')} value={d || <DoneMark />} tone={d ? undefined : 'ok'} sub={d ? t('chk.kpi.ofN', { n: nd }) : t('chk.kpi.allDone', { n: nd })} data-kpi="daily" />
-      <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={w || <DoneMark />} tone={w ? undefined : 'ok'} sub={w ? t('chk.kpi.ofN', { n: nw }) : t('chk.kpi.allDone', { n: nw })} data-kpi="weekly" />
-      <Kpi icon={Zap} label={t('chk.kpi.charges')} value={full ? t('chk.kpi.full', { n: full }) : soon ? t('chk.kpi.soon', { n: soon }) : <DoneMark />}
-        tone={full ? 'bad' : soon ? 'warn' : 'ok'} sub={t('chk.kpi.chargesSub')} data-kpi="charges" />
-      <ResetKpi />
-    </KpiRow>
     <div className="px-2.5 pt-2.5">
       <div className={cn(TILE, TILE_P, live && 'border-green/30', lvl && ACCENT[lvl])}>
         <RingBox frac={progressOf('char', name)} level={lvl} live={live} />
@@ -244,12 +234,12 @@ export function CheckTab() {
   const warn = alerts()
   const more = (k: number) => t('common.moreN', { n: k })
   const sumOpen = (kind: Kind) => chars.reduce((s, c) => s + openOf('char', kind, c), openOf('server', kind))
-  const dOpen = sumOpen('d'), wOpen = sumOpen('w'), complete = chars.filter(c => progressOf('char', c) >= 1).length
+  const dOpen = sumOpen('d'), wOpen = sumOpen('w')
   const bar = <>
     {page
       ? <Button variant="ghost" size="xs" className="h-6 text-[12px] text-muted-foreground" onClick={() => { V.chkPage = null; bump() }}><ChevronLeft />{t('chk.back')}</Button>
-      : <BarInfo>{t('chk.title')}</BarInfo>}
-    {page && <span data-drag className="h-6 min-w-2 flex-1 cursor-grab" />}
+      : null}
+    <BarInfo tip={t('chk.title')}><RefreshCw /> {resetTxt()}</BarInfo>
     {man && chars.length > 0 && <BarRight><AppSelect value={live && chars.includes(live) ? live : ''} tip={t('chk.activeSel')} className="h-6 max-w-40 text-xs"
       options={[...(live && chars.includes(live) ? [] : [{ value: '', label: '–' }]), ...chars.map(c => ({ value: c, label: charName(c) }))]}
       onChange={c => c && selectChar(c)} /></BarRight>}
@@ -260,8 +250,6 @@ export function CheckTab() {
         <KpiRow>
           <Kpi icon={Sun} label={t('chk.kpi.daily')} value={dOpen || <DoneMark />} tone={dOpen ? undefined : 'ok'} sub={t('chk.kpi.openAll')} data-kpi="daily" />
           <Kpi icon={CalendarDays} label={t('chk.kpi.weekly')} value={wOpen || <DoneMark />} tone={wOpen ? undefined : 'ok'} sub={t('chk.kpi.openAll')} data-kpi="weekly" />
-          <Kpi icon={Users} label={t('chk.kpi.done')} value={chars.length ? `${complete}/${chars.length}` : '–'} tone={chars.length && complete === chars.length ? 'ok' : undefined} sub={t('chk.kpi.charsDone')} data-kpi="chars" />
-          <ResetKpi />
         </KpiRow>
         {warn.length > 0 && (
           <Panel title={t('alert.title')} sub={t('alert.sub')} data-chk-alerts>

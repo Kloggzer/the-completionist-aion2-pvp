@@ -1,15 +1,14 @@
 // "Farm" tab: pick a resource, get ranked hotspots with a loop route each; "Switch" jumps to the next one
-// (bots or other gatherers on your spot). Number tiles first (best rate, route of the selected / best spot, how many
-// hotspots, the resource), then the ranked list, the resource details in a closed disclosure, the ranking in a HowTo.
-import { ArrowRightLeft, Feather, Gauge, MapPin, Pickaxe, Route, Skull } from 'lucide-react'
+// (bots or other gatherers on your spot). The ranked list (rate and route per row), the resource details in a closed
+// disclosure, the ranking in a HowTo.
+import { ArrowRightLeft, Pickaxe, Skull } from 'lucide-react'
 import { G, U, V, saveUi, useApp, type Any } from '@/core/state'
 import { emit } from '@/core/bus'
 import { t, fmt, fmtPct } from '@/core/i18n'
-import { mapName } from '@/core/data'
 import { cn } from '@/lib/utils'
 import { AppSelect, type Option } from '@/components/AppSelect'
 import { Button } from '@/components/ui/button'
-import { Disclosure, Empty, HowTo, Kpi, KpiRow, ListRow, Note, Page, Panel, ROWS, Rank, ToolbarStrip, TopN, rich } from '@/components/kit'
+import { Disclosure, Empty, HowTo, ListRow, Note, Page, Panel, ROWS, Rank, ToolbarStrip, TopN, rich } from '@/components/kit'
 import { PARAMS, recomputeFarm, selectSpot, switchSpot, type Hotspot } from './logic'
 
 const pct = (p: number) => fmtPct(p * 100)
@@ -75,23 +74,6 @@ function ResInfo({ r }: { r: Any }) {
   )
 }
 
-function Kpis({ r, m }: { r: Any; m: Any }) {
-  const spots: Hotspot[] = V.farmSpots, top = spots[0], cur = spots.find(s => s.rank === V.farmSpot) || top
-  const bestMob = r.kind === 'drop' ? [...r.mobs].sort((a: Any, b: Any) => b.p - a.p)[0] : null
-  return (
-    <KpiRow>
-      <Kpi icon={Gauge} label={t('farm.kpi.rate')} value={`≈ ${fmt(top.per10, 1)}`} sub={spotName(top)}
-        tip={t('farm.kpi.rateTip')} onClick={() => { if (V.farmSpot !== 1) selectSpot(1) }} data-kpi="rate" />
-      <Kpi icon={Route} label={cur === top ? t('farm.kpi.route') : t('farm.kpi.routeSel', { n: cur.rank })} value={`~${mins(cur.secs)} min`}
-        sub={t('farm.kpi.routeSub', { n: cur.route.length, len: fmt(Math.round(cur.len)) })} data-kpi="route" />
-      <Kpi icon={MapPin} label={t('farm.kpi.spots')} value={fmt(spots.length)} sub={mapName(m.name)} data-kpi="spots" />
-      {r.kind === 'gather'
-        ? <Kpi icon={r.air ? Feather : Pickaxe} label={t('farm.kpi.nodes')} value={fmt(r.nodes)} sub={r.air ? t('farm.res.air') : r.name} tip={r.mats.join(', ')} data-kpi="res" />
-        : <Kpi icon={Skull} label={t('farm.kpi.drop')} value={pct(r.best)} sub={bestMob ? `${bestMob.n} · ${t('farm.mob.lv', { lv: bestMob.lv })}` : r.name} tip={bestMob?.n} data-kpi="res" />}
-    </KpiRow>
-  )
-}
-
 function HowRanked() {
   const g = PARAMS.gather, d = PARAMS.drop
   const lines = [
@@ -119,7 +101,6 @@ export function FarmTab() {
         : !r ? <Empty>{t('farm.pick.first')}</Empty>
           : !spots.length ? <><Empty>{t('farm.empty')}</Empty><ResInfo r={r} /></>
             : <>
-              <Kpis r={r} m={m} />
               <Panel title={t('farm.spots')} sub={t('farm.spots.sub')} data-farmspots={String(spots.length)}>
                 <div className={ROWS}>
                   <TopN id="farm.spots" items={spots} n={Math.max(5, V.farmSpot || 0)} more={more} render={s => <SpotRow key={s.rank} s={s} />} />
