@@ -78,7 +78,13 @@ function sync(force = false) {
 fetch('bossmods.json').then(r => r.json()).then(d => { G.bossMods = d; sync(); bump() }).catch(() => { G.bossMods = { bosses: {} } })
 fetch('bossguide.json').then(r => r.json()).then(d => { G.bossGuide = d; guideBase = guideCfgs(d); bump() }).catch(() => { G.bossGuide = { bosses: {} } })
 onHost('init', () => sync(true))
-onHost('zone', () => { for (const f of [...fights.values()]) finish(f); topHp.clear(); sync(true) }) // the host stops recording on a map change
+// another map: the fights are over; the same map again (cutscene into a boss room, respawn) keeps them running
+let lastZone = 0
+onHost('zone', m => {
+  if (m.id !== lastZone) { for (const f of [...fights.values()]) finish(f); topHp.clear() }
+  lastZone = m.id
+  sync(true)
+})
 on('recompute', () => sync()) // settings toggles
 
 onHost('bossRecs', m => { V.bossRecs = m; bump() })

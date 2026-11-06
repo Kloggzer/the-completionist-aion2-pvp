@@ -56,7 +56,7 @@ sealed class BossRecorder
             {
                 uint next = body.Length >= 4 ? BitConverter.ToUInt32(body, 0) : 0;
                 // the same map again (respawn after a death, a teleport inside the dungeon): the visit goes on
-                if (gz != null && next == map) { Write(0, op, body, ts); npcs.Clear(); return; }
+                if (gz != null && next == map) { Write(0, op, body, ts); return; } // entities stay (no new spawns)
                 End();
                 On = false; // until the page says what this map is
                 failed = false;

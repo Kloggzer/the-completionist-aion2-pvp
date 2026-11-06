@@ -274,6 +274,7 @@ def fights(t0, source, extra):
     zones = {f["npc"]: f["zone"] for f in logs}
     hps = collections.defaultdict(list)  # entity -> [(ts, hp)] from 0x008d
     ents, open_, done = {}, {}, []  # entity -> npc, entity -> fight being recorded
+    cur_map = None
 
     def close(ent):
         f = open_.pop(ent, None)
@@ -281,10 +282,13 @@ def fights(t0, source, extra):
             done.append(f)
 
     for ts, op, b in source:
-        if op == 0x0140:  # map change: every entity is gone
-            for e in list(open_):
-                close(e)
-            ents.clear()
+        if op == 0x0140:  # another map: every entity is gone; the same map again (cutscene, respawn) keeps them
+            m = b[:4] if len(b) >= 4 else None
+            if m != cur_map or m is None:
+                for e in list(open_):
+                    close(e)
+                ents.clear()
+            cur_map = m
             continue
         if op not in (0x4136, 0x0238, 0x0638, 0x4236, 0x008d):
             continue

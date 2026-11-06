@@ -110,6 +110,7 @@ abstract class PetSource : IDisposable
     public event Action<uint, uint, uint, byte, uint, byte, DateTime>? NpcHit; // npc, entity, skill, cast counter, target entity, flags
     readonly Dictionary<uint, uint> modEntities = new();
     readonly Dictionary<uint, DateTime> hpSent = new();
+    uint npcMap; // map of modEntities
     int BossErrors;
     /// Fight recordings for the boss mod (BossRecorder.cs), null = off.
     public BossRecorder? Recorder { get; set; }
@@ -315,7 +316,14 @@ abstract class PetSource : IDisposable
 
     void NpcFrame(int op, byte[] body, DateTime ts)
     {
-        if (op == 0x0140) { modEntities.Clear(); hpSent.Clear(); return; }
+        if (op == 0x0140)
+        {
+            // only another map clears the entities: the same map again (cutscene into a boss room, respawn) keeps them,
+            // and the server does not send their spawns again (Kromede's Desire, Fire Temple)
+            uint next = body.Length >= 4 ? BitConverter.ToUInt32(body, 0) : 0;
+            if (next != npcMap) { modEntities.Clear(); hpSent.Clear(); npcMap = next; }
+            return;
+        }
         if (op is not (0x4136 or 0x0238 or 0x0638 or 0x4236 or 0x0438 or 0x008d or 0x3538)) return;
         if (op == 0x4136)
         {

@@ -35,7 +35,14 @@
   "2300401": {
    "name": "Phantasmal Lakshmi",
    "dungeon": "Draupnir",
-   "phases": [],
+   "phases": [
+    {
+     "hp": 53,
+     "name": "Phase",
+     "skill": 1605970,
+     "todo": true
+    }
+   ],
    "mechanics": [
     {
      "name": "Lakshmi's Handmaiden has been summoned! …",
@@ -440,6 +447,106 @@
      "todo": true
     }
    ]
+  },
+  "2300371": {
+   "name": "Kromede's Desire",
+   "dungeon": "Fire Temple",
+   "frenzy": 300,
+   "phases": [],
+   "mechanics": [
+    {
+     "name": "Sprint between the flame walls",
+     "skills": [],
+     "todo": true,
+     "kind": "dodge",
+     "cast": 16.5,
+     "hint": "Sprint between the flame walls"
+    },
+    {
+     "name": "Flame walls: sprint, do not spam dash",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "After the walls: arrows and a jump",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Read the weapon",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Triple AoE",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Clone cleaves",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Do not stack on teammates",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Pull her toward the edge",
+     "skills": [],
+     "todo": true
+    },
+    {
+     "name": "Enrage timer",
+     "skills": [],
+     "todo": true
+    }
+   ]
+  },
+  "2310171": {
+   "name": "Ultimate Berk",
+   "dungeon": "Krao Cave",
+   "frenzy": 300,
+   "phases": [],
+   "mechanics": [
+    {
+     "name": "Extinction for Eternity",
+     "skills": [],
+     "todo": true,
+     "kind": "interrupt",
+     "cast": 8,
+     "hint": "Now! Use your special skill to increase Stagger"
+    },
+    {
+     "name": "Wave of Fury",
+     "skills": [],
+     "todo": true,
+     "kind": "dodge",
+     "cast": 6,
+     "hint": "Quickly, hide behind the rock!"
+    }
+   ]
+  },
+  "2980175": {
+   "name": "Fortress Guardian Notun",
+   "phases": [],
+   "mechanics": []
+  },
+  "2980176": {
+   "name": "Fortress Guardian Notun",
+   "phases": [],
+   "mechanics": []
+  },
+  "2980177": {
+   "name": "Fortress Guardian Notun",
+   "phases": [],
+   "mechanics": []
+  },
+  "2980221": {
+   "name": "Zikel's Apparition",
+   "phases": [],
+   "mechanics": []
   }
  }
 }
