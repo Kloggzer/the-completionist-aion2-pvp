@@ -15,7 +15,7 @@ import { toast } from '@/core/toast'
 import { inInstance } from '@/features/pvp'
 import {
   addCast, addHit, alertOn, avoidable, bars, blame, dueGuidePhases, duePhases, dueWarnings, endCast, findBoss, findGuide, guideCfgs, hpPct,
-  isDanger, kindCol, kindSound, mainTarget, mergeCfgs, newFight, trackTarget, npcIds, phaseHp, phaseName, predictable, setHp, skillName, voiceOn, warnLead, wasReset,
+  SOUND, isDanger, kindCol, kindSound, mainTarget, mergeCfgs, newFight, trackTarget, npcIds, phaseHp, phaseName, predictable, setHp, skillName, voiceOn, warnLead, wasReset,
   type BossMods, type Cfgs, type Fight, type Guide,
 } from './logic'
 import strings from './strings'
@@ -75,8 +75,8 @@ onHost('bossExported', m => toast(m.path ? t('boss.exported') : t('boss.exportNo
 
 const speak = (text: string, cfg?: { voice?: boolean }) => { if (voiceOn(cfg)) say('bossmod', text) }
 /** Centre callout (BossCallForm) with the mechanic's colour and sound. */
-function call(title: string, sub: string, cfg: Cfgs[string] | undefined, seconds: number, danger = isDanger(cfg?.kind)) {
-  host({ type: 'bossCall', title, sub, col: danger && !cfg?.kind ? '#ff6a5c' : kindCol(cfg), seconds, danger, sound: opt('bossSound') ? kindSound(cfg?.kind) : '' })
+function call(title: string, sub: string, cfg: Cfgs[string] | undefined, seconds: number, danger = isDanger(cfg?.kind), sound: string = kindSound(cfg?.kind)) {
+  host({ type: 'bossCall', title, sub, col: danger && !cfg?.kind ? '#ff6a5c' : kindCol(cfg), seconds, danger, sound: opt('bossSound') ? sound : '' })
 }
 /** What the voice / callout says for a skill: own text, else the kind ("Raus!"), else its name, else "big attack". */
 const what = (cfg?: Cfgs[string]) => cfg?.text || (cfg?.kind ? t('boss.k.' + cfg.kind) : '') || cfg?.name || t('boss.big')
@@ -107,7 +107,7 @@ export function onCast(npc: number, ent: number, skill: number, at: number, me =
     const sec = s?.cast ?? 0, kind = cfg?.kind ? t('boss.k.' + cfg.kind).toUpperCase() : ''
     // a big cast aimed at oneself: "ON YOU" (not for the tank: the boss aims at the tank all the time)
     const onMe = me && opt('bossTargetMe') && !iTank(f, at)
-    call([onMe ? t('boss.onYou') : kind, skillName(skill, cfg)].filter(Boolean).join(' · '), b.name + (sec ? ' · ' + t('boss.castSub', { s: sec }) : ''), cfg, sec, onMe || undefined)
+    call([onMe ? t('boss.onYou') : kind, skillName(skill, cfg)].filter(Boolean).join(' · '), b.name + (sec ? ' · ' + t('boss.castSub', { s: sec }) : ''), cfg, sec, onMe || undefined, onMe ? SOUND.onYou : undefined)
     speak(onMe ? t('boss.sayOnYou', { skill: what(cfg) }) : what(cfg), cfg)
   }
   bump()
@@ -139,7 +139,7 @@ export function onTarget(ent: number, tgt: number, name: string, me: boolean, at
   f.target = { ent: tgt, name, me }
   if (me && !was && on_() && opt('bossTargetMe') && !iTank(f, at) && at - targetAt > TARGET_GAP) {
     targetAt = at
-    call(t('boss.targetYou'), boss(f.npc)?.name ?? '', undefined, 0, true)
+    call(t('boss.targetYou'), boss(f.npc)?.name ?? '', undefined, 0, true, SOUND.onYou)
     speak(t('boss.sayTarget'))
   }
 }
@@ -170,7 +170,7 @@ export function finish(f: Fight, test = false) {
   }
   if (opt('bossBlame') && bl.length) {
     const top = bl.slice(0, 3).map(x => `${x.name} ${x.hits}×`).join(', ')
-    host({ type: 'alert', title: t('boss.blame', { name: log.name }), sub: top + (bl.length > 3 ? ' …' : ''), seconds: 10, always: true, sound: opt('bossSound') ? 'plong' : '' })
+    host({ type: 'alert', title: t('boss.blame', { name: log.name }), sub: top + (bl.length > 3 ? ' …' : ''), seconds: 10, always: true, sound: opt('bossSound') ? SOUND.blame : '' })
   }
   bump()
 }
@@ -191,7 +191,7 @@ setInterval(() => {
     const b = boss(f.npc), gb = guide(f.npc)
     for (const n of dueWarnings(f, b, c, now)) {
       const s = Math.max(1, Math.round((n.at - now) / 1000)), cfg = c[n.skill]
-      call(t('boss.soonTitle', { skill: n.name }), b?.name ?? '', cfg, (n.at - now) / 1000)
+      call(t('boss.soonTitle', { skill: n.name }), b?.name ?? '', cfg, (n.at - now) / 1000, undefined, SOUND.soon)
       speak(t('boss.saySoon', { skill: what(cfg), n: s }), cfg)
     }
     // countdown "3, 2, 1" for the warned (predictable) skills
@@ -210,12 +210,12 @@ setInterval(() => {
       }
     // phases: the guide's (named), else the ones found in the timelines
     for (const p of dueGuidePhases(f, gb)) {
-      call(t('boss.phase', { skill: p.name, hp: p.hp }), b?.name ?? '', undefined, 0)
+      call(t('boss.phase', { skill: p.name, hp: p.hp }), b?.name ?? '', undefined, 0, false, SOUND.phase)
       speak(t('boss.sayPhase', { skill: p.name, hp: p.hp }))
     }
     for (const p of duePhases(f, b, c)) {
       if (gb?.phases.some(x => x.skill === p.skill)) continue
-      call(t('boss.phase', { skill: p.name, hp: p.hp }), b?.name ?? '', c[p.skill], 0)
+      call(t('boss.phase', { skill: p.name, hp: p.hp }), b?.name ?? '', c[p.skill], 0, false, SOUND.phase)
       speak(t('boss.sayPhase', { skill: what(c[p.skill]), hp: p.hp }), c[p.skill])
     }
   }

@@ -206,7 +206,8 @@ describe('boss guide', () => {
   it('sound and danger per kind', () => {
     expect(kindSound('out')).toBe('alarm')
     expect(kindSound('stack')).toBe('timer')
-    expect(kindSound(undefined)).toBe('pling')
+    expect(kindSound(undefined)).toBe('plong') // a big attack nobody described yet
+    expect(kindSound('info')).toBe('pling')
     expect(isDanger('dodge')).toBe(true)
     expect(isDanger('stack')).toBe(false)
   })

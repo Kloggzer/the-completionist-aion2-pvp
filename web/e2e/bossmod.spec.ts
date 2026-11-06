@@ -38,7 +38,7 @@ test('live: callout, timer panel and the Petze after the fight', async ({ page }
   await h.send({ type: 'bossCast', npc: ATIEL, ent: 7, skill: 1801450, seq: 1, tgt: 3, me: true, name: 'Testdaeva', at })
   await expect.poll(async () => (await h.posted('bossCall')).map((m: { title: string }) => m.title)).toContainEqual(expect.stringContaining('Sprung'))
   const callout = (await h.posted('bossCall')).find((m: { title: string }) => m.title.includes('Sprung'))
-  expect(callout).toMatchObject({ danger: true, col: '#ff6a5c', sound: 'alarm' })
+  expect(callout).toMatchObject({ danger: true, col: '#ff6a5c', sound: 'close' }) // aimed at oneself: the urgent sound
   expect(callout.title).toContain('AUF DICH')
   await expect.poll(async () => (await h.posted('bossBars')).some((m: { title?: string }) => m.title === 'Atiel')).toBe(true)
   const bars = (await h.posted('bossBars')).filter((m: { title?: string }) => m.title === 'Atiel').at(-1)
