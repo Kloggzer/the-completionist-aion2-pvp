@@ -65,8 +65,11 @@ const num = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 1
 /** Tell the host which npcs to watch, whether the helper is on (its windows in the edit mode) and whether to record:
  *  the whole visit of a dungeon (BossRecorder.cs; on unless switched off, U.bossRec), nothing outside. */
 let synced = ''
+/** 600000–699999 are the group PvE instances (raids, conquest, transcendence): one the dungeon index does not know yet
+ *  (a new mode after a rework, e.g. Ludra Hard) is recorded too, so its timeline can be built. */
+const newGroupInstance = (zone: number) => zone >= 600000 && zone < 700000 && !!G.instances?.size && !G.instances.has(zone)
 function sync(force = false) {
-  const inst = inInstance()
+  const inst = inInstance() || newGroupInstance(S.zone || 0)
   // zone: the map the page means (the host only starts recording if it is still the current one)
   const m = { type: 'bossMod', ids: npcIds(mods()), on: on_(), rec: inst && U.bossRec !== false, inst, zone: S.zone || 0 }
   const key = JSON.stringify(m)
