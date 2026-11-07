@@ -2,7 +2,7 @@
 export default {
   de: {
     'tab.targets': 'Ziele', 'tab.spots': 'Spots', 'tab.ach': 'Erfolge', 'tab.check': 'Checkliste', 'tab.dae': 'Daevanion', 'tab.arc': 'Arkana', 'tab.boss': 'Bosse', 'tab.timer': 'Timer',
-    'area.today': 'Heute', 'area.pets': 'Pets', 'area.farm': 'Farmen', 'area.char': 'Charakter', 'nav.dae': 'Daevanion', 'nav.stats': 'Werte', 'nav.gear': 'Ausrüstung', 'nav.collapse': 'Einklappen', 'nav.label': 'Seiten', 'nav.expand': 'Seitenleiste ausklappen',
+    'area.today': 'Heute', 'area.pets': 'Pets', 'area.farm': 'Farmen', 'area.dungeon': 'Dungeon', 'area.char': 'Charakter', 'nav.dae': 'Daevanion', 'nav.stats': 'Werte', 'nav.gear': 'Ausrüstung', 'nav.collapse': 'Einklappen', 'nav.label': 'Seiten', 'nav.expand': 'Seitenleiste ausklappen',
     'tab.home': 'Übersicht',
     'tab.home.tip': 'Übersicht: als Nächstes, Pets, Checkliste, Erfolge', 'tab.targets.tip': 'Seelen-Pets, die dir auf dieser Karte fehlen',
     'tab.spots.tip': 'Farmspots für deine fehlenden Pets', 'tab.ach.tip': 'Erfolge von leicht nach schwer', 'tab.check.tip': 'Tägliche und wöchentliche Checkliste', 'tab.dae.tip': 'Daevanion-Boards, Werte & DPS, Ausrüstung',
@@ -30,7 +30,7 @@ export default {
   },
   en: {
     'tab.targets': 'Targets', 'tab.spots': 'Spots', 'tab.ach': 'Achievements', 'tab.check': 'Checklist', 'tab.dae': 'Daevanion', 'tab.arc': 'Arcana', 'tab.boss': 'Bosses', 'tab.timer': 'Timers',
-    'area.today': 'Today', 'area.pets': 'Pets', 'area.farm': 'Farming', 'area.char': 'Character', 'nav.dae': 'Daevanion', 'nav.stats': 'Stats', 'nav.gear': 'Gear', 'nav.collapse': 'Collapse', 'nav.label': 'Pages', 'nav.expand': 'Expand sidebar',
+    'area.today': 'Today', 'area.pets': 'Pets', 'area.farm': 'Farming', 'area.dungeon': 'Dungeon', 'area.char': 'Character', 'nav.dae': 'Daevanion', 'nav.stats': 'Stats', 'nav.gear': 'Gear', 'nav.collapse': 'Collapse', 'nav.label': 'Pages', 'nav.expand': 'Expand sidebar',
     'tab.home': 'Overview',
     'tab.home.tip': 'Overview: up next, pets, checklist, achievements', 'tab.targets.tip': 'Soul pets you still need on this map',
     'tab.spots.tip': 'Farm spots for your missing pets', 'tab.ach.tip': 'Achievements from easy to hard', 'tab.check.tip': 'Daily and weekly checklist', 'tab.dae.tip': 'Daevanion boards, stats & DPS, gear',

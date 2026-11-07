@@ -164,7 +164,7 @@ export const PAGE_KEY: Record<string, string> = {
   Build: 'dae', Daevanion: 'dae', Werte: 'dae.stats', 'Ausrüstung': 'dae.gear', Arkana: 'arc', Bosse: 'boss', 'Boss-Helfer': 'bossmod', Timer: 'timer', Markt: 'market',
 }
 const AREA_OF: Record<string, string> = {
-  home: 'today', check: 'today', boss: 'today', bossmod: 'today', timer: 'today', targets: 'pets', spots: 'pets', merchant: 'pets', farm: 'farm',
+  home: 'today', check: 'today', boss: 'today', bossmod: 'dungeon', timer: 'today', targets: 'pets', spots: 'pets', merchant: 'pets', farm: 'farm',
   dae: 'char', 'dae.stats': 'char', 'dae.gear': 'char', arc: 'char', ach: 'char', market: 'char',
 }
 /** The visible button of a page: in the sidebar (wide windows) or in the area's page switch (narrow windows). */

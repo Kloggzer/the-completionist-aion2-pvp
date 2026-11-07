@@ -1,9 +1,9 @@
-// Navigation: four areas (Today, Pets, Farming, Character) with their pages. Wide windows: a sidebar with every page
+// Navigation: five areas (Today, Pets, Farming, Dungeon, Character) with their pages. Wide windows: a sidebar with every page
 // under its area; narrow windows (< 760 px) or the collapsed sidebar (U.navMini): area icons only, the pages of the
 // current area as a segmented control above the content (SubNav). Page keys are the tab keys (U.tab) plus the build
 // pages (dae.stats, dae.gear); an area remembers its last page (U.lastPage), however the page was reached.
 import { useEffect } from 'react'
-import { BarChart3, Clock, Gem, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Swords, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
+import { BarChart3, Castle, Clock, Gem, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Swords, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
 import { U, V, saveUi, bump } from '@/core/state'
 import { goTab } from '@/core/nav'
 import { t } from '@/core/i18n'
@@ -25,10 +25,11 @@ const merchBuy = () => (U.merch ? buyCount(freshOffers(U.merch, Date.now())) : 0
 // Badges count what is open and worth acting on now (missing pets, spots, merchant offers to buy); the achievements'
 // open count is always large and was noise.
 export const AREAS: Area[] = [
-  { key: 'today', icon: Sun, pages: [tabPage('home', LayoutDashboard), tabPage('check', ListChecks), tabPage('boss', Skull), tabPage('bossmod', Swords), tabPage('timer', Clock)] },
+  { key: 'today', icon: Sun, pages: [tabPage('home', LayoutDashboard), tabPage('check', ListChecks), tabPage('timer', Clock), tabPage('boss', Skull)] },
   { key: 'pets', icon: PawPrint, pages: [
     tabPage('targets', Target, () => V.targets.filter((x: { done: boolean }) => !x.done).length), tabPage('spots', MapPin, () => V.spots.length), tabPage('merchant', Store, merchBuy)] },
   { key: 'farm', icon: Pickaxe, pages: [tabPage('farm', Pickaxe)] },
+  { key: 'dungeon', icon: Castle, pages: [tabPage('bossmod', Swords)] },
   { key: 'char', icon: UserRound, pages: [buildPage('dae', Grid3x3), buildPage('stats', BarChart3), buildPage('gear', Shield), tabPage('arc', Layers), tabPage('ach', Trophy), tabPage('market', Gem, buyNow)] },
 ]
 
