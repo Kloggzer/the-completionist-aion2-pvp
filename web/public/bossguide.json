@@ -547,6 +547,43 @@
    "name": "Zikel's Apparition",
    "phases": [],
    "mechanics": []
+  },
+  "2301006": {
+   "name": "Isolation Specialist Rahu",
+   "dungeon": "Abyssal Forge: Ludra",
+   "phases": [
+    {
+     "hp": 97,
+     "name": "Phase",
+     "skill": 1802740,
+     "todo": true
+    }
+   ],
+   "mechanics": [
+    {
+     "name": "Soul Strike",
+     "skills": [],
+     "todo": true,
+     "cast": 3
+    },
+    {
+     "name": "Wheel of Torment",
+     "skills": [],
+     "todo": true,
+     "cast": 15
+    },
+    {
+     "name": "Feeding Time",
+     "skills": [],
+     "todo": true,
+     "cast": 5
+    }
+   ]
+  },
+  "2301008": {
+   "name": "Central Abyss Fusion Reactor",
+   "phases": [],
+   "mechanics": []
   }
  }
 }
