@@ -629,8 +629,8 @@
     {
      "name": "Schwert – Suppe",
      "kind": "dodge",
-     "text": "Suppe ausweichen",
-     "hint": "Hebt das Schwert und verteilt Suppe: jeder Spieler wird anvisiert, 3–4 kleine Flächen ausweichen; sie bleiben eine Weile liegen. Kommt nach HP (~91, 66, 57, 50, 34, 26 %) – Vorwarnung 5 % vorher.",
+     "text": "Suppe ausweichen, nicht in die Mitte",
+     "hint": "Hebt das Schwert und verteilt Suppe: jeder Spieler wird anvisiert, 3–4 kleine Flächen ausweichen und nicht in die Mitte legen; sie bleiben eine Weile liegen. Kommt nach HP (~91, 66, 57, 50, 34, 26 %) – Vorwarnung 5 % vorher.",
      "skills": [
       1802805
      ],
