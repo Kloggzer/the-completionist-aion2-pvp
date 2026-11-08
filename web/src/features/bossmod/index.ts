@@ -17,7 +17,7 @@ import { inInstance } from '@/features/pvp'
 import {
   addCast, addHit, alertOn, avoidable, bars, blame, dueGuidePhases, duePhases, dueWarnings, endCast, findBoss, findGuide, guideCfgs, hpPct,
   isDanger, kindCol, mainTarget, mergeCfgs, newFight, npcIds, phaseHp, phaseName, predictable, setHp, skillName, speakable, trackTarget,
-  voiceOn, warnLead, wasReset, type Blame, type BossMods, type Cfgs, type Fight, type Guide, type Hit, type Role, type SkillCfg,
+  voiceOn, warnLead, wasReset, type Blame, type BossMods, type Cfgs, type Fight, type Guide, type GuideMech, type Hit, type Role, type SkillCfg,
 } from './logic'
 import strings from './strings'
 
@@ -65,13 +65,20 @@ const num = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 1
 /** Tell the host which npcs to watch, whether the helper is on (its windows in the edit mode) and whether to record:
  *  the whole visit of a dungeon (BossRecorder.cs; on unless switched off, U.bossRec), nothing outside. */
 let synced = ''
+/** Npc ids whose appearance is a mechanic (guide mechanics' `spawns`): npc id -> its boss and mechanic. */
+function spawnMechs() {
+  const out = new Map<number, { boss: number; m: GuideMech }>()
+  for (const [id, b] of Object.entries((G.bossGuide as Guide | undefined)?.bosses || {}))
+    for (const m of b.mechanics) for (const n of m.spawns || []) out.set(n, { boss: +id, m })
+  return out
+}
 /** 600000–699999 are the group PvE instances (raids, conquest, transcendence): one the dungeon index does not know yet
  *  (a new mode after a rework, e.g. Ludra Hard) is recorded too, so its timeline can be built. */
 const newGroupInstance = (zone: number) => zone >= 600000 && zone < 700000 && !!G.instances?.size && !G.instances.has(zone)
 function sync(force = false) {
   const inst = inInstance() || newGroupInstance(S.zone || 0)
   // zone: the map the page means (the host only starts recording if it is still the current one)
-  const m = { type: 'bossMod', ids: npcIds(mods()), on: on_(), rec: inst && U.bossRec !== false, inst, zone: S.zone || 0 }
+  const m = { type: 'bossMod', ids: npcIds(mods()), spawns: [...spawnMechs().keys()], on: on_(), rec: inst && U.bossRec !== false, inst, zone: S.zone || 0 }
   const key = JSON.stringify(m)
   if (key === synced && !force) return // 'recompute' comes often; the host rescans the recordings on every message
   synced = key
@@ -79,7 +86,7 @@ function sync(force = false) {
 }
 
 fetch('bossmods.json').then(r => r.json()).then(d => { G.bossMods = d; sync(); bump() }).catch(() => { G.bossMods = { bosses: {} } })
-fetch('bossguide.json').then(r => r.json()).then(d => { G.bossGuide = d; guideBase = guideCfgs(d); bump() }).catch(() => { G.bossGuide = { bosses: {} } })
+fetch('bossguide.json').then(r => r.json()).then(d => { G.bossGuide = d; guideBase = guideCfgs(d); sync(); bump() }).catch(() => { G.bossGuide = { bosses: {} } })
 onHost('init', () => sync(true))
 // another map: the fights are over; the same map again (cutscene into a boss room, respawn) keeps them running
 let lastZone = 0
@@ -198,6 +205,19 @@ export function onTarget(ent: number, tgt: number, name: string, me: boolean, at
 }
 
 onHost('bossCast', m => { clock = Date.now() - m.at; if (m.me) ownEnt = m.tgt; onCast(m.npc, m.ent, m.skill, m.at, !!m.me) })
+// a mechanic that is an npc appearing (Rahu's rings: one per player): one callout per wave, only in that boss's fight
+onHost('bossSpawn', m => {
+  clock = Date.now() - m.at
+  const sm = spawnMechs().get(m.npc), f = V.bossFight as Fight | null
+  if (!sm || !on_() || !f || f.end !== undefined || canon(f.npc) !== canon(sm.boss)) return
+  const k = 'spawn:' + m.npc, last = lastAlert.get(k) ?? -Infinity
+  if (m.at - last < 3000) return
+  lastAlert.set(k, m.at)
+  const cfg: SkillCfg = { name: sm.m.name, ...(sm.m.kind ? { kind: sm.m.kind } : {}), ...(sm.m.text ? { text: sm.m.text } : {}) }
+  const danger = isDanger(cfg.kind)
+  call(f, [cfg.kind ? t('boss.k.' + cfg.kind).toUpperCase() : '', cfg.name].filter(Boolean).join(' · '), boss(f.npc)?.name ?? '', cfg, 0, danger)
+  if (voiceFor(f, cfg, danger, m.at)) speak(what(cfg), danger)
+})
 onHost('bossCastEnd', m => { const f = fights.get(m.ent); if (f) endCast(f, m.skill, m.at) })
 onHost('bossHp', m => { clock = Date.now() - m.at; onHp(m.ent, m.hp) })
 onHost('bossHit', m => onHit(m.npc, m.ent, m.skill, m.tgt, m.name, m.me, m.at, m.seq))

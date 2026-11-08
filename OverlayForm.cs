@@ -41,6 +41,7 @@ sealed class OverlayForm : Form
     readonly System.Windows.Forms.Timer pvpTimer = new() { Interval = 250 };
     HashSet<uint> trackedNpcs = new();
     HashSet<uint> bossModNpcs = new();
+    HashSet<uint> spawnNpcs = new(); // boss mechanics that are an npc appearing (bossmod guide `spawns`)
     bool bossModOn; // boss helper switched on (page): its windows take part in the edit mode
     readonly BossRecorder recorder = new();
     BossBarsForm? bossBars;
@@ -570,6 +571,7 @@ sealed class OverlayForm : Form
     void WireBossMod(PetSource src)
     {
         src.BossModNpcs = bossModNpcs;
+        src.SpawnNpcs = spawnNpcs;
         src.Recorder = recorder;
         static long Ms(DateTime ts) => new DateTimeOffset(ts).ToUnixTimeMilliseconds();
         static string T(DateTime ts) => ts.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff");
@@ -873,7 +875,8 @@ sealed class OverlayForm : Form
                 break;
             case "bossMod":
                 bossModNpcs = new HashSet<uint>((m["ids"] as JsonArray ?? []).Select(v => (uint?)v ?? 0));
-                if (source != null) source.BossModNpcs = bossModNpcs;
+                spawnNpcs = new HashSet<uint>((m["spawns"] as JsonArray ?? []).Select(v => (uint?)v ?? 0));
+                if (source != null) { source.BossModNpcs = bossModNpcs; source.SpawnNpcs = spawnNpcs; }
                 bossModOn = (bool?)m["on"] == true;
                 // the recorder: the whole dungeon visit while the page says this map is a dungeon and recording is on
                 if ((bool?)m["rec"] == true) recorder.StartFor((uint?)m["zone"] ?? 0);

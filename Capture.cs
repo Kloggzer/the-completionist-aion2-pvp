@@ -102,6 +102,8 @@ abstract class PetSource : IDisposable
     // 0x4136 spawn (NpcData id after the entity varint + 3 bytes; also bosses that spawned before the list came), events
     // only for the listed npcs: skills from 0x0238 / 0x0638 (PetFrames.CastStart / CastEnd), gone / died from 0x4236.
     public HashSet<uint> BossModNpcs { get; set; } = new();
+    /// Npcs whose spawn alone is a boss mechanic (the guide's `spawns`, e.g. rings): only NpcSpawned, no fight.
+    public HashSet<uint> SpawnNpcs { get; set; } = new();
     public event Action<uint, uint, uint, byte, uint, DateTime>? NpcCast; // npc, entity, skill, cast counter, target
     public event Action<uint, uint, uint, byte, DateTime>? NpcCastEnd; // npc, entity, skill, cast counter
     public event Action<uint, uint, bool, DateTime>? NpcGone; // npc, entity, died
@@ -334,7 +336,7 @@ abstract class PetSource : IDisposable
             if (PetFrames.NpcSpawn(body) is not { } sp) return;
             var (ent, id) = sp;
             modEntities[ent] = id;
-            if (BossModNpcs.Contains(id)) NpcSpawned?.Invoke(id, ent, ts);
+            if (BossModNpcs.Contains(id) || SpawnNpcs.Contains(id)) NpcSpawned?.Invoke(id, ent, ts);
         }
         else if (modEntities.Count == 0 || BossModNpcs.Count == 0) return;
         else if (op == 0x0238 && PetFrames.CastStart(body) is { } c && Watched(c.ent, out var npc))

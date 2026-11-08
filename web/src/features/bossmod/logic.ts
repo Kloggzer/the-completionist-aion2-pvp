@@ -254,9 +254,10 @@ export const npcIds = (d?: BossMods): number[] => [...Object.keys(d?.bosses || {
 /** Hand-made boss guide: Frenzy time, phases (HP %, name, the skill that starts it) and mechanics (kind, callout,
  *  hint, the boss's skill ids). `todo`: placeholder, real values follow from recordings. */
 export type GuidePhase = { hp: number; name: string; skill?: number; todo?: boolean }
-/** `alert` / `warn` / `bar` / `avoid`: the guide switches the callout, the early warning (s), the timer bar or the Petze on
+/** `spawns`: npc ids whose appearance is this mechanic (e.g. Rahu's rings), called out when they spawn.
+ *  `alert` / `warn` / `bar` / `avoid`: the guide switches the callout, the early warning (s), the timer bar or the Petze on
  *  (or off) like the skill editor – e.g. a short cast still worth a callout, a spread whose hits are no mistake. */
-export type GuideMech = { name: string; kind?: Kind; text?: string; hint?: string; cast?: number; skills: number[]; todo?: boolean; alert?: boolean; warn?: number; bar?: boolean; avoid?: boolean }
+export type GuideMech = { name: string; kind?: Kind; text?: string; hint?: string; cast?: number; skills: number[]; todo?: boolean; alert?: boolean; warn?: number; bar?: boolean; avoid?: boolean; spawns?: number[] }
 export type GuideBoss = { name: string; dungeon?: string; frenzy?: number; phases: GuidePhase[]; mechanics: GuideMech[] }
 export type Guide = { bosses: Record<string, GuideBoss> }
 

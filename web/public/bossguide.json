@@ -558,28 +558,16 @@
      "skill": 1802740
     },
     {
-     "hp": 91,
-     "name": "Schwert – Suppe"
-    },
-    {
      "hp": 66,
-     "name": "Schwert – Suppe"
-    },
-    {
-     "hp": 57,
-     "name": "Schwert – Suppe"
+     "name": "Port-Phase"
     },
     {
      "hp": 50,
-     "name": "Arena teilen + Schwert"
+     "name": "Arena teilen"
     },
     {
      "hp": 34,
-     "name": "Schwert – Suppe, dann Adds"
-    },
-    {
-     "hp": 26,
-     "name": "Schwert – Suppe"
+     "name": "Adds – Schwert auf die Adds"
     }
    ],
    "mechanics": [
@@ -607,13 +595,10 @@
     {
      "name": "Auge – Spalte",
      "kind": "stack",
-     "text": "Alle in die Spalte, Auge zuletzt",
-     "hint": "Einer bekommt ein Auge: alle in die Spalte, der mit dem Auge erst in letzter Sekunde.",
-     "skills": [
-      1802770
-     ],
-     "alert": true,
-     "avoid": false
+     "hint": "Einer bekommt ein Auge: alle in die Spalte, der mit dem Auge erst in letzter Sekunde. Skill noch nicht gefunden (1802770 war falsch: der trifft den Tank direkt nach den Ringen).",
+     "skills": [],
+     "avoid": false,
+     "todo": true
     },
     {
      "name": "Arena teilen",
@@ -630,9 +615,9 @@
      "name": "Schwert – Suppe",
      "kind": "dodge",
      "text": "Suppe ausweichen, nicht in die Mitte",
-     "hint": "Hebt das Schwert und verteilt Suppe: jeder Spieler wird anvisiert, 3–4 kleine Flächen ausweichen und nicht in die Mitte legen; sie bleiben eine Weile liegen. Kommt nach HP (~91, 66, 57, 50, 34, 26 %) – Vorwarnung 5 % vorher.",
+     "hint": "Hebt das Schwert (1802840), 2,4 s später rote Kreise auf jedem Spieler – ausweichen und nicht in die Mitte legen; sie bleiben ~30 s liegen (Objekt 2920718). In allen 40 Wellen kam der Cast vorher.",
      "skills": [
-      1802805
+      1802840
      ],
      "alert": true,
      "avoid": false
@@ -659,6 +644,28 @@
       1802980
      ],
      "alert": true,
+     "avoid": false
+    },
+    {
+     "name": "Ringe – springen",
+     "kind": "dodge",
+     "text": "Ringe, springen",
+     "hint": "Alle sammeln sich, 2,5 s nach 1802820 kommt um jeden Spieler ein Ring (Objekt 2920717, 4 s) – drüberspringen. In allen 92 Wellen kam der Cast vorher.",
+     "skills": [
+      1802820
+     ],
+     "avoid": false,
+     "alert": true
+    },
+    {
+     "name": "Port-Phase",
+     "kind": "stack",
+     "text": "Port nach außen, im Kreis laufen, Schaden soaken",
+     "hint": "1802805 (Animation) – 2,4 s später das Objekt 2920722 in der Mitte, dann portet er alle außer dem Tank nach außen: im Kreis um den Boss laufen, den Schaden auf einer Person soaken. Bei ~65 %.",
+     "skills": [],
+     "spawns": [
+      2920722
+     ],
      "avoid": false
     }
    ]
