@@ -254,7 +254,9 @@ export const npcIds = (d?: BossMods): number[] => [...Object.keys(d?.bosses || {
 /** Hand-made boss guide: Frenzy time, phases (HP %, name, the skill that starts it) and mechanics (kind, callout,
  *  hint, the boss's skill ids). `todo`: placeholder, real values follow from recordings. */
 export type GuidePhase = { hp: number; name: string; skill?: number; todo?: boolean }
-export type GuideMech = { name: string; kind?: Kind; text?: string; hint?: string; cast?: number; skills: number[]; todo?: boolean }
+/** `alert` / `warn` / `bar` / `avoid`: the guide switches the callout, the early warning (s), the timer bar or the Petze on
+ *  (or off) like the skill editor – e.g. a short cast still worth a callout, a spread whose hits are no mistake. */
+export type GuideMech = { name: string; kind?: Kind; text?: string; hint?: string; cast?: number; skills: number[]; todo?: boolean; alert?: boolean; warn?: number; bar?: boolean; avoid?: boolean }
 export type GuideBoss = { name: string; dungeon?: string; frenzy?: number; phases: GuidePhase[]; mechanics: GuideMech[] }
 export type Guide = { bosses: Record<string, GuideBoss> }
 
@@ -270,7 +272,9 @@ export function guideCfgs(g: Guide | undefined): Cfgs {
   const out: Cfgs = {}
   for (const b of Object.values(g?.bosses || {}))
     for (const m of b.mechanics)
-      for (const id of m.skills) out[id] = { name: m.name, ...(m.kind ? { kind: m.kind } : {}), ...(m.text ? { text: m.text } : {}) }
+      for (const id of m.skills) out[id] = { name: m.name, ...(m.kind ? { kind: m.kind } : {}), ...(m.text ? { text: m.text } : {}),
+        ...(m.alert !== undefined ? { alert: m.alert } : {}), ...(m.warn !== undefined ? { warn: m.warn } : {}), ...(m.bar !== undefined ? { bar: m.bar } : {}),
+        ...(m.avoid !== undefined ? { avoid: m.avoid } : {}) }
   return out
 }
 

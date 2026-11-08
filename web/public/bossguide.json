@@ -554,29 +554,91 @@
    "phases": [
     {
      "hp": 97,
-     "name": "Phase",
-     "skill": 1802740,
-     "todo": true
+     "name": "Spucke-Debuff",
+     "skill": 1802740
+    },
+    {
+     "hp": 91,
+     "name": "Schwert – verteilen"
+    },
+    {
+     "hp": 66,
+     "name": "Schwert – verteilen"
+    },
+    {
+     "hp": 57,
+     "name": "Schwert – verteilen"
+    },
+    {
+     "hp": 50,
+     "name": "Arena teilen + Schwert"
+    },
+    {
+     "hp": 34,
+     "name": "Schwert – verteilen"
+    },
+    {
+     "hp": 26,
+     "name": "Schwert – verteilen"
     }
    ],
    "mechanics": [
     {
-     "name": "Soul Strike",
-     "skills": [],
-     "todo": true,
-     "cast": 3
+     "name": "Spucke-Debuff",
+     "kind": "info",
+     "text": "Debuff weitergeben",
+     "hint": "Bei ~97 % spuckt er einem Spieler einen Debuff ins Gesicht – reihum weitergeben.",
+     "skills": [
+      1802740
+     ],
+     "alert": true,
+     "avoid": false
     },
     {
-     "name": "Wheel of Torment",
-     "skills": [],
-     "todo": true,
-     "cast": 15
+     "name": "Auge – Spalte",
+     "kind": "stack",
+     "text": "Alle in die Spalte, Auge zuletzt",
+     "hint": "Einer bekommt ein Auge: alle in die Spalte, der mit dem Auge erst in letzter Sekunde.",
+     "skills": [
+      1802770
+     ],
+     "alert": true,
+     "avoid": false
     },
     {
-     "name": "Feeding Time",
-     "skills": [],
-     "todo": true,
-     "cast": 5
+     "name": "Arena teilen",
+     "kind": "dodge",
+     "text": "Alle in eine Hälfte",
+     "hint": "Bei ~50 % teilt er die Arena: alle zusammen in einen Teil.",
+     "skills": [
+      1802860
+     ],
+     "alert": true,
+     "avoid": false
+    },
+    {
+     "name": "Schwert – verteilen",
+     "kind": "spread",
+     "text": "Verteilen!",
+     "hint": "Hebt das Schwert und alle müssen sich weit verteilen; danach bleiben Pfützen liegen. Kommt nach HP (~90, 65, 57, 50, 33, 25 %) – Vorwarnung 5 % vorher.",
+     "skills": [
+      1802805
+     ],
+     "alert": true,
+     "avoid": false
+    },
+    {
+     "name": "Dreier-Angriff",
+     "kind": "info",
+     "text": "Großer Angriff",
+     "hint": "Kommt 3× im Kampf, fast genau alle 94 s (0:57, 2:35, 4:17) – anfangs die häufigste Todesursache. Timer-Balken + Vorwarnung 8 s.",
+     "skills": [
+      1802880
+     ],
+     "alert": true,
+     "warn": 8,
+     "bar": true,
+     "avoid": false
     }
    ]
   },
