@@ -559,15 +559,15 @@
     },
     {
      "hp": 91,
-     "name": "Schwert – verteilen"
+     "name": "Schwert – Suppe"
     },
     {
      "hp": 66,
-     "name": "Schwert – verteilen"
+     "name": "Schwert – Suppe"
     },
     {
      "hp": 57,
-     "name": "Schwert – verteilen"
+     "name": "Schwert – Suppe"
     },
     {
      "hp": 50,
@@ -575,11 +575,11 @@
     },
     {
      "hp": 34,
-     "name": "Schwert – verteilen, dann Adds"
+     "name": "Schwert – Suppe, dann Adds"
     },
     {
      "hp": 26,
-     "name": "Schwert – verteilen"
+     "name": "Schwert – Suppe"
     }
    ],
    "mechanics": [
@@ -627,10 +627,10 @@
      "avoid": false
     },
     {
-     "name": "Schwert – verteilen",
-     "kind": "spread",
-     "text": "Verteilen!",
-     "hint": "Hebt das Schwert und alle müssen sich weit verteilen; danach bleiben Pfützen liegen. Kommt nach HP (~90, 65, 57, 50, 33, 25 %) – Vorwarnung 5 % vorher.",
+     "name": "Schwert – Suppe",
+     "kind": "dodge",
+     "text": "Suppe ausweichen",
+     "hint": "Hebt das Schwert und verteilt Suppe: jeder Spieler wird anvisiert, 3–4 kleine Flächen ausweichen; sie bleiben eine Weile liegen. Kommt nach HP (~91, 66, 57, 50, 34, 26 %) – Vorwarnung 5 % vorher.",
      "skills": [
       1802805
      ],
