@@ -608,10 +608,13 @@
     {
      "name": "Auge – Spalte",
      "kind": "stack",
-     "hint": "Einer bekommt ein Auge: alle in die Spalte, der mit dem Auge erst in letzter Sekunde. Skill noch nicht gefunden (1802770 war falsch: der trifft den Tank direkt nach den Ringen).",
+     "hint": "1802805 (Animation) – 2,4 s später das Auge (Objekt 2920720, 8,7 s; in allen 87 Wellen): alle in die Spalte, der mit dem Auge erst in letzter Sekunde. Dieselbe Animation kündigt bei ~65 % stattdessen den Port an.",
      "skills": [],
      "avoid": false,
-     "todo": true
+     "text": "Auge, alle in die Spalte, Auge zuletzt",
+     "spawns": [
+      2920720
+     ]
     },
     {
      "name": "Arena teilen",
@@ -674,7 +677,7 @@
      "name": "Port-Phase",
      "kind": "stack",
      "text": "Port nach außen, im Kreis laufen, Schaden soaken",
-     "hint": "1802805 (Animation) – 2,4 s später das Objekt 2920722 in der Mitte, dann portet er alle außer dem Tank nach außen: im Kreis um den Boss laufen, den Schaden auf einer Person soaken. Bei ~65 %.",
+     "hint": "Bei ~65 %: 1802805 (Animation, dieselbe wie beim Auge) – 2,4 s später Objekt 2920722 in der Mitte, dann portet er alle außer dem Tank nach außen: im Kreis um den Boss laufen, den Schaden auf einer Person soaken (in allen 34 Fällen).",
      "skills": [],
      "spawns": [
       2920722
