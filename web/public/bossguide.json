@@ -574,12 +574,25 @@
     {
      "name": "Bombe",
      "kind": "info",
-     "text": "Bombe weitergeben",
-     "hint": "Bei ~97 % spuckt er einem Spieler eine Bombe ins Gesicht – immer reihum weitergeben. 3× verpatzt oder mit ihr gestorben: Strafe (1802720).",
+     "text": "Bombe",
+     "hint": "Bei ~97 % spuckt er einem Spieler eine Bombe ins Gesicht (1802740). Sie bleibt auf ihm; ~40 s später und dann alle 20 s geht sie an den nächsten (1802715) – der muss in Reichweite des Trägers stehen. 3× verpatzt oder Träger tot: Bomben-Wipe (1802720).",
      "skills": [
       1802740
      ],
      "alert": true,
+     "avoid": false
+    },
+    {
+     "name": "Bombe weitergeben",
+     "kind": "stack",
+     "text": "Bombe weitergeben, Partner in Reichweite",
+     "hint": "Alle 20 s (zuerst ~40 s nach der Bombe) springt die Bombe weiter (1802715): sie trifft die Spieler in Reichweite – in allen 50 Pulls genau 2, alter und neuer Träger – und liegt danach als DoT auf dem neuen Träger (dem Ziel des Casts). Timer-Balken + Vorwarnung 5 s; der neue Träger hört „auf dich“.",
+     "skills": [
+      1802715
+     ],
+     "alert": false,
+     "warn": 5,
+     "bar": true,
      "avoid": false
     },
     {
