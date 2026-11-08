@@ -15,7 +15,7 @@ import { AppSelect } from '@/components/AppSelect'
 import { CHIP, CHIP_ON, Empty, META, Page, Panel, ROW, ROW_CLICK, SUB, Seg, TITLE } from '@/components/kit'
 import { toggleWinEdit } from '@/features/pvp'
 import { KINDS, alertOn, avoidable, barOn, findBoss, isBig, kindCol, phaseHp, predictable, skillName, voiceOn, warnLead, type BossMods, type BossStat, type Kind, type Role, type SkillCfg, type SkillStat } from './logic'
-import { blameActive, blameOf, bossMode, canon, cfgs, guide, ownCfgs, role, stopTest, testPull, type BossMode, type FightLog } from './index'
+import { BLAME, blameActive, blameOf, bossMode, canon, cfgs, guide, ownCfgs, role, stopTest, testPull, type BossMode, type FightLog } from './index'
 
 const mods = () => G.bossMods as BossMods | undefined
 const dur = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
@@ -82,6 +82,7 @@ function Setup() {
 // ---------------------------------------------------------------- overview
 
 function BlameChips({ log, limit = 5 }: { log: FightLog; limit?: number }) {
+  if (!BLAME) return null
   const bl = blameOf(log)
   if (!blameActive(log.npc)) return <span className="text-[11.5px] text-dim" data-blame-off="">{t('bm.blameOff')}</span>
   if (!bl.length) return <span className="text-[11.5px] text-green">{t('bm.clean')}</span>
@@ -217,7 +218,7 @@ function SkillRow({ id, s, near }: { id: string; s: SkillStat; near?: number }) 
         <Chip on={voiceOn(cfg)} onClick={() => setCfg(id, { voice: !voiceOn(cfg) })}>{t('bm.voice')}</Chip>
         {predictable(s) && <Chip on={barOn(s, cfg)} onClick={() => setCfg(id, { bar: !barOn(s, cfg) })}>{t('bm.bar')}</Chip>}
         {predictable(s) && <Chip on={lead > 0} tip={t('bm.warn')} onClick={() => setCfg(id, { warn: lead > 0 ? 0 : 5 })}>{t('bm.warn')}{lead > 0 ? ` ${lead} s` : ''}</Chip>}
-        <Chip on={avoidable(s, cfg)} tip={t('bm.avoidTip')} onClick={() => setCfg(id, { avoid: !avoidable(s, cfg) })}>{t('bm.avoid')}</Chip>
+        {BLAME && <Chip on={avoidable(s, cfg)} tip={t('bm.avoidTip')} onClick={() => setCfg(id, { avoid: !avoidable(s, cfg) })}>{t('bm.avoid')}</Chip>}
       </div>
     </div>
   )
@@ -315,7 +316,7 @@ function Detail({ npc }: { npc: number }) {
           options={(['on', 'bars', 'off'] as BossMode[]).map(v => ({ value: v, label: t('bm.mode.' + v) }))} />
       </div>
       <div className="px-3 pb-2"><Timeline b={b} fight={shown} ids={lanes} /></div>
-      {shown && (
+      {shown && BLAME && (
         <div className="flex flex-wrap items-center gap-1 px-3 pb-2.5" data-bm-blame="">
           <span className={cn(META, 'mr-1')}>{outcome(shown)} · {t('bm.blame')}:</span>
           <BlameChips log={shown} limit={10} />

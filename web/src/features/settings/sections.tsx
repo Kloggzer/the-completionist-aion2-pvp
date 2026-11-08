@@ -18,6 +18,7 @@ import { nextRange, MIN_RANGE, MAX_RANGE, radarCfg, setRadarCfg, toggleMiniRadar
 import { pvpCfg, setPvpCfg, togglePvp, toggleWinEdit } from '@/features/pvp'
 import { cn } from '@/lib/utils'
 import { BossRecRow, BossRoleRow } from '@/features/bossmod/SettingsRow'
+import { BLAME } from '@/features/bossmod'
 
 const pct = (v: number) => Math.round(v * 100) + ' %'
 
@@ -296,7 +297,7 @@ export function Notify() {
       {U.bossMod && <>
         <BossRoleRow />
         <UToggle k="bossBars" /><UToggle k="bossCount" /><UToggle k="bossTargetMe" /><UToggle k="bossDangerOnly" />
-        <UToggle k="bossBlame" /><UToggle k="bossBlameLive" />
+        {BLAME && <><UToggle k="bossBlame" /><UToggle k="bossBlameLive" /></>}
       </>}
       <UToggle k="bossRec" sub={t('set.bossRec.sub', { key: hkText('bossMark') || '–' })} />
       <BossRecRow />

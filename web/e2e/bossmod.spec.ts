@@ -1,5 +1,6 @@
-// Boss helper: the page (last fights with the Petze, bosses, guide, skill editor) and the live outputs to the host
-// (centre callout 'bossCall', timer panel 'bossBars', Petze banner 'alert') from mocked boss events.
+// Boss helper: the page (last fights, bosses, guide, skill editor) and the live outputs to the host (centre callout
+// 'bossCall', timer panel 'bossBars', end-of-fight banner 'alert') from mocked boss events. The Petze is left out for now
+// (bossmod BLAME): no chips, no Petze switch, no Petze banner.
 import { expect, test } from '@playwright/test'
 import { hasCache, openApp } from './host'
 
@@ -12,12 +13,12 @@ const fightLog = {
   blame: [{ name: 'Testdaevi', me: false, hits: 2, skills: [{ skill: 1801450, name: 'Skill 1801450', n: 2 }] }],
 }
 
-test('page: last fights with the Petze, the guide and the skill editor', async ({ page }) => {
-  // the skill is marked avoidable (dodge): the Petze counts it
+test('page: last fights without the Petze, the guide and the skill editor', async ({ page }) => {
+  // the skill is marked avoidable (dodge), yet no Petze chips while it is left out
   const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true, bossSetupDone: true, bossFights: [fightLog], bossSkills: { 1801450: { kind: 'dodge' } } } })
   const row = page.locator('[data-fight="0"]')
   await expect(row).toContainText('Atiel')
-  await expect(row.locator('[data-blame="Testdaevi"]')).toContainText('2×')
+  await expect(row.locator('[data-blame]')).toHaveCount(0)
   await row.click()
   // timeline with the fight's casts and the marker, the guide with Frenzy and placeholder phases
   await expect(page.locator('[data-bm-timeline] circle').first()).toBeVisible()
@@ -31,7 +32,7 @@ test('page: last fights with the Petze, the guide and the skill editor', async (
   await page.screenshot({ path: 'e2e/.out/shots/bossmod-detail.png', fullPage: true })
 })
 
-test('live: callout, timer panel and the Petze after the fight', async ({ page }) => {
+test('live: callout, timer panel, and no Petze after the fight', async ({ page }) => {
   const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true, bossSkills: { 1801450: { name: 'Sprung', kind: 'dodge' } } } })
   await expect(page.locator('[data-bm-boss]').first()).toBeVisible() // timelines loaded
   const at = Date.now()
@@ -46,17 +47,16 @@ test('live: callout, timer panel and the Petze after the fight', async ({ page }
   const bars = (await h.posted('bossBars')).filter((m: { title?: string }) => m.title === 'Atiel').at(-1)
   expect(bars.frenzy).toBeGreaterThan(290) // Raserei from the guide
   expect(bars.hp).toBe(100)
-  // two players hit by the avoidable attack: Petze banner after the kill
+  // two players hit by the avoidable attack: no Petze banner after the kill
   await h.send({ type: 'bossHit', npc: ATIEL, ent: 7, skill: 1801450, tgt: 3, name: 'Testdaeva', me: true, flags: 0, at: at + 500 })
   await h.send({ type: 'bossHit', npc: ATIEL, ent: 7, skill: 1801450, tgt: 4, name: 'Testdaevi', me: false, flags: 0, at: at + 600 })
   await h.send({ type: 'bossHit', npc: ATIEL, ent: 7, skill: 1801540, tgt: 5, name: 'Other', me: false, flags: 0, at: at + 700 })
   await h.send({ type: 'bossGone', npc: ATIEL, ent: 7, died: true, at: at + 2000 })
-  await expect.poll(async () => (await h.posted('alert')).map((m: { title: string; sub: string }) => m.title + ' | ' + m.sub))
-    .toContainEqual(expect.stringMatching(/Atiel: Mechanik nicht gespielt \| (Testdaeva 1×, Testdaevi 1×|Testdaevi 1×, Testdaeva 1×)/))
   await expect(page.locator('[data-fight="0"]')).toContainText('Atiel')
+  expect((await h.posted('alert')).some((m: { title: string }) => m.title.includes('Mechanik nicht gespielt'))).toBe(false)
 })
 
-test('setup, per boss mode, honest Petze and a profile string', async ({ page, context }) => {
+test('setup, per boss mode, no Petze switch and a profile string', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true, tts: true, bossFights: [fightLog] } })
   // first visit: the setup card (role, voice, windows); the role goes to the settings
@@ -66,12 +66,10 @@ test('setup, per boss mode, honest Petze and a profile string', async ({ page, c
   expect((await h.posted('ui')).some((m: { patch: { bossRole?: string } }) => m.patch.bossRole === 'tank')).toBe(true)
   await page.locator('[data-bm-setup]').getByRole('button', { name: 'Fertig' }).click()
   await expect(page.locator('[data-bm-setup]')).toHaveCount(0)
-  // no skill marked avoidable yet: the Petze says so instead of "nobody hit"
-  await expect(page.locator('[data-fight="0"] [data-blame-off]')).toBeVisible()
   await page.locator('[data-fight="0"]').click()
-  // mark the skill avoidable: the kept fight's Petze is counted again with it
-  await page.locator('[data-bm-skill="1801450"]').getByRole('button', { name: 'Petze' }).click()
-  await page.locator('[data-bm-blame]').waitFor()
+  // the skill editor has no Petze switch, the fight no Petze line
+  await expect(page.locator('[data-bm-skill="1801450"]').getByRole('button', { name: 'Petze' })).toHaveCount(0)
+  await expect(page.locator('[data-bm-blame]')).toHaveCount(0)
   // bars only for this boss
   await page.locator('[data-bm-mode="bars"]').click()
   expect((await h.posted('ui')).some((m: { patch: { bossBoss?: Record<string, string> } }) => m.patch.bossBoss?.[ATIEL] === 'bars')).toBe(true)

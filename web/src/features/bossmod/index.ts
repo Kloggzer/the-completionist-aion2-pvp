@@ -154,13 +154,17 @@ export function onCast(npc: number, ent: number, skill: number, at: number, me =
   bump()
 }
 
+/** The Petze (who was hit by avoidable skills) is left out for now: no banner, voice, panel line, page chips or
+ *  settings. The code stays; true brings it back. */
+export const BLAME = false
+
 // live Petze: the hits of one cast collected, then one sentence (low priority: never over a callout)
 const pendingBlame = new Map<string, { names: Set<string>; skill: number }>()
 export function onHit(npc: number, ent: number, skill: number, tgt: number, name: string, me: boolean, at: number, seq?: number) {
   const f = fights.get(ent) || (on_() && bossMode(npc) !== 'off' ? fightOf(npc, ent, at) : null)
   if (!f || !addHit(f, { skill, tgt, name, me, at, ...(seq !== undefined ? { seq } : {}) })) return
   const cfg = cfgs()[skill]
-  if (!U.bossBlameLive || !name || !avoidable(boss(npc)?.skills[skill], cfg) || bossMode(npc) !== 'on') return
+  if (!BLAME || !U.bossBlameLive || !name || !avoidable(boss(npc)?.skills[skill], cfg) || bossMode(npc) !== 'on') return
   const key = `${ent}:${skill}:${seq ?? Math.floor(at / 3000)}`
   const p = pendingBlame.get(key)
   if (p) { p.names.add(name); return }
@@ -241,14 +245,15 @@ export function finish(f: Fight, test = false) {
     saveUi(['bossFights'])
   }
   if (bossMode(f.npc) === 'on') {
+    const tell = BLAME && opt('bossBlame') && bl.length > 0
     const wipe = !f.died && low !== undefined && low > 0
     const top = bl.slice(0, 3).map(x => `${x.name} ${x.hits}×`).join(', ')
     if (wipe) {
       const where = t('boss.wipe', { hp: low, phase: phase ? ' · ' + phase : '' })
-      host({ type: 'alert', title: `${log.name}: ${where}`, sub: bl.length && opt('bossBlame') ? top : '', seconds: 10, always: true })
-    } else if (opt('bossBlame') && bl.length)
+      host({ type: 'alert', title: `${log.name}: ${where}`, sub: tell ? top : '', seconds: 10, always: true })
+    } else if (tell)
       host({ type: 'alert', title: t('boss.blame', { name: log.name }), sub: top + (bl.length > 3 ? ' …' : ''), seconds: 10, always: true })
-    if (opt('bossBlame') && bl.length)
+    if (tell)
       say('bossmod', t('boss.sayBlame', { list: bl.slice(0, 3).map(x => t('boss.sayBlameOne', { name: x.name, n: x.hits })).join(', ') }))
   }
   bump()
@@ -311,6 +316,7 @@ setInterval(() => {
 // Petze for the panel: counted again only when new hits came (or the settings changed)
 const blameCache = new WeakMap<Fight, { n: number; c: Cfgs; res: Blame[] }>()
 function liveBlame(f: Fight, c: Cfgs): Blame[] {
+  if (!BLAME) return []
   const k = blameCache.get(f)
   if (k && k.n === f.hits.length && k.c === c) return k.res
   const res = blame(f, boss(f.npc), c)

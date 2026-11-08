@@ -554,7 +554,7 @@
    "phases": [
     {
      "hp": 97,
-     "name": "Spucke-Debuff",
+     "name": "Bombe",
      "skill": 1802740
     },
     {
@@ -575,7 +575,7 @@
     },
     {
      "hp": 34,
-     "name": "Schwert – verteilen"
+     "name": "Schwert – verteilen, dann Adds"
     },
     {
      "hp": 26,
@@ -584,14 +584,24 @@
    ],
    "mechanics": [
     {
-     "name": "Spucke-Debuff",
+     "name": "Bombe",
      "kind": "info",
-     "text": "Debuff weitergeben",
-     "hint": "Bei ~97 % spuckt er einem Spieler einen Debuff ins Gesicht – reihum weitergeben.",
+     "text": "Bombe weitergeben",
+     "hint": "Bei ~97 % spuckt er einem Spieler eine Bombe ins Gesicht – immer reihum weitergeben. 3× verpatzt oder mit ihr gestorben: Strafe (1802720).",
      "skills": [
       1802740
      ],
      "alert": true,
+     "avoid": false
+    },
+    {
+     "name": "Bomben-Wipe",
+     "kind": "info",
+     "hint": "Der Raid-Wipe, wenn die Bombe 3× nicht übergeben wurde oder ihr Träger stirbt: in allen 14 Fällen der letzte Cast des Pulls (14 von 49 Wipes).",
+     "skills": [
+      1802720
+     ],
+     "alert": false,
      "avoid": false
     },
     {
@@ -638,6 +648,17 @@
      "alert": true,
      "warn": 8,
      "bar": true,
+     "avoid": false
+    },
+    {
+     "name": "Adds – Schwert auf die Adds",
+     "kind": "info",
+     "text": "Adds! Schwert auf die Adds",
+     "hint": "Ab ~32 % spawnt er Adds; das Schwert auf die Adds richten. Erst 2× gesehen (Kill und 10-%-Pull).",
+     "skills": [
+      1802980
+     ],
+     "alert": true,
      "avoid": false
     }
    ]
