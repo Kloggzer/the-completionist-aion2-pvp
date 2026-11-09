@@ -118,9 +118,10 @@ sealed class AnnounceForm : Form
     {
         OverlayStyle.Prepare(g);
         float s = S;
-        using var ft = new Font("Segoe UI Semibold", 14f * s, GraphicsUnit.Pixel);
-        using var fd = new Font("Segoe UI", 12f * s, GraphicsUnit.Pixel);
-        using var fx = new Font("Segoe UI", 13f * s, GraphicsUnit.Pixel);
+        // heavier weights: per-pixel alpha windows get no ClearType, thin text looks washed out over the game
+        using var ft = new Font("Segoe UI", 14.5f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var fd = new Font("Segoe UI Semibold", 12f * s, GraphicsUnit.Pixel);
+        using var fx = new Font("Segoe UI", 13f * s, FontStyle.Bold, GraphicsUnit.Pixel);
         using var fg = new SolidBrush(OverlayStyle.Fg);
         using var muted = new SolidBrush(OverlayStyle.Muted);
         using var sf = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };

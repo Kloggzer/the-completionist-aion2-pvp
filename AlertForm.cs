@@ -51,8 +51,9 @@ sealed class AlertForm : Form
         }
     }
 
-    Font TitleFont() => new("Segoe UI Semibold", 13.5f * S, GraphicsUnit.Pixel);
-    Font SubFont() => new("Segoe UI", 11f * S, GraphicsUnit.Pixel);
+    // heavier weights: per-pixel alpha windows get no ClearType, thin text looks washed out over the game
+    Font TitleFont() => new("Segoe UI", 14f * S, FontStyle.Bold, GraphicsUnit.Pixel);
+    Font SubFont() => new("Segoe UI Semibold", 11.5f * S, GraphicsUnit.Pixel);
 
     Size Measure()
     {

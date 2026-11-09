@@ -135,8 +135,8 @@ sealed class BossBarsForm : Form
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         using var fh = new Font("Segoe UI Semibold", 13f * k, GraphicsUnit.Pixel);
-        using var fs = new Font("Segoe UI", 11f * k, GraphicsUnit.Pixel);
-        using var fb = new Font("Segoe UI Semibold", 12f * k, GraphicsUnit.Pixel);
+        using var fs = new Font("Segoe UI Semibold", 11f * k, GraphicsUnit.Pixel);
+        using var fb = new Font("Segoe UI", 12.5f * k, FontStyle.Bold, GraphicsUnit.Pixel);
         using var fbadge = new Font("Segoe UI", 9.5f * k, FontStyle.Bold, GraphicsUnit.Pixel);
         using var fnum = new Font("Segoe UI", 15f * k, FontStyle.Bold, GraphicsUnit.Pixel);
         using var left = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
