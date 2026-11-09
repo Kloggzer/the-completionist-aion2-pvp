@@ -5,15 +5,14 @@ using System.Drawing.Text;
 namespace PetOverlay;
 
 // Small always-on-top banner for important events (enemy alarm, an optional local module), shown even while the overlay
-// is hidden. A slim rounded pill with one centred line (an optional second, smaller one), per-pixel alpha like the PvP
-// list; danger banners (enemy alarm) red with a soft glow that flares a few times. Never takes focus; disappears on its
+// is hidden. A card in the overlays' look (OverlayStyle) with one centred line (an optional second, smaller one), per-pixel
+// alpha; danger banners (enemy alarm) with a red stripe and edge that flares a few times. Never takes focus; disappears on its
 // own, or when the page says the reason is gone (HideDanger: the enemy died / left). Locked (normal): click-through.
 // Edit mode (lock icon of the PvP list / hotkey, OverlayForm.SetWinEdit): a sample banner stays up, dashed outline,
 // dragged anywhere via WM_NCHITTEST -> HTCAPTION; the position (centre-top) is saved and restored onto a visible screen
 // (Placement). Without a saved position it sits centred near the top of the game's screen.
 sealed class AlertForm : Form
 {
-    static readonly Color Gold = Color.FromArgb(255, 210, 94), Red = Color.FromArgb(255, 86, 76), Fg = Color.FromArgb(242, 244, 248), Sub = Color.FromArgb(200, 206, 220);
     readonly System.Windows.Forms.Timer hideTimer = new(), blink = new() { Interval = 160 };
     string title = "", sub = "";
     bool edit, danger;
@@ -25,7 +24,7 @@ sealed class AlertForm : Form
     public event Action<Point>? Moved;
 
     float S => DeviceDpi / 96f;
-    float Margin => 10 * S; // room for the glow around the pill
+    float Margin => 2 * S;
 
     public AlertForm()
     {
@@ -131,33 +130,21 @@ sealed class AlertForm : Form
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-        var acc = danger ? Red : Gold;
+        var acc = danger ? OverlayStyle.Red : OverlayStyle.Gold;
         var pill = new RectangleF(Margin, Margin, w - 2 * Margin, h - 2 * Margin);
-        float rad = Math.Min(pill.Height / 2, 14 * S);
-        // soft glow: rings fading outwards, stronger while it flares
-        float hot = flare > 0 && flare % 2 == 0 ? 1f : 0.45f;
-        for (int i = 6; i >= 1; i--)
-        {
-            float gw = i * Margin / 6;
-            using var gp = PvpForm.Rounded(RectangleF.Inflate(pill, gw, gw), rad + gw);
-            using var gb = new SolidBrush(Color.FromArgb((int)(hot * 34 * (7 - i) / 6), acc));
-            g.FillPath(gb, gp);
-        }
-        using var path = PvpForm.Rounded(pill, rad);
-        using (var back = new LinearGradientBrush(pill, danger ? Color.FromArgb(232, 74, 16, 16) : Color.FromArgb(232, 44, 36, 14),
-            danger ? Color.FromArgb(232, 42, 10, 10) : Color.FromArgb(232, 26, 22, 10), LinearGradientMode.Vertical))
-            g.FillPath(back, path);
-        using (var edge = new Pen(Color.FromArgb(220, acc), 1.4f * S)) g.DrawPath(edge, path);
-        if (edit) using (var dash = new Pen(Color.FromArgb(230, 240, 240, 255), 1f) { DashPattern = [4, 3] }) g.DrawPath(dash, path);
+        // danger: the edge flares a few times, then stays red
+        bool hot = flare > 0 && flare % 2 == 0;
+        OverlayStyle.Card(g, pill, S, acc, danger ? Color.FromArgb(hot ? 255 : 170, acc) : null, danger ? (hot ? 2.5f : 1.5f) : 1f);
+        if (edit) OverlayStyle.EditFrame(g, pill, S);
 
         using var ft = TitleFont();
         using var fs = SubFont();
         using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
-        using var tb = new SolidBrush(danger ? Fg : Gold);
+        using var tb = new SolidBrush(danger ? OverlayStyle.Fg : OverlayStyle.Gold);
         if (sub.Length == 0) { g.DrawString(title, ft, tb, pill, center); return; }
         float th = g.MeasureString(title, ft).Height, sh = g.MeasureString(sub, fs).Height, top = pill.Top + (pill.Height - th - sh + 2 * S) / 2;
         g.DrawString(title, ft, tb, new RectangleF(pill.Left, top, pill.Width, th), center);
-        using var sb = new SolidBrush(Sub);
+        using var sb = new SolidBrush(OverlayStyle.Muted);
         g.DrawString(sub, fs, sb, new RectangleF(pill.Left, top + th - 2 * S, pill.Width, sh), center);
     }
 

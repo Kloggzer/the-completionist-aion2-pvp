@@ -1,27 +1,28 @@
+using System.Drawing.Imaging;
+
 namespace PetOverlay;
 
-// Upcoming-event announcer (world bosses, rifts, sieges ...): a small always-on-top stack of cards, each with a
-// live countdown and a close button. Never activated, so the game keeps the focus. Locked (normal): click-through.
-// Edit mode (lock icon of the PvP list / hotkey, OverlayForm.SetWinEdit): clickable, dashed frame, dragged anywhere
-// via WM_NCHITTEST -> HTCAPTION, a sample card while nothing is announced; the position is saved and restored onto a
-// visible screen (Placement). Cards are drawn by the form itself (child controls would take the hit test).
+// Upcoming-event announcer (world bosses, rifts, sieges ...): a small always-on-top stack of cards (OverlayStyle), each
+// with a live countdown and a close button. Never activated, so the game keeps the focus. Normally click-through, except
+// while the mouse is over a close button: then the window takes clicks, so ✕ works without the edit mode. Edit mode
+// (lock icon of the PvP list / hotkey, OverlayForm.SetWinEdit): clickable, dashed frame, dragged anywhere via
+// WM_NCHITTEST -> HTCAPTION, a sample card while nothing is announced; the position is saved and restored onto a
+// visible screen (Placement). Per-pixel alpha (UpdateLayeredWindow) like the other overlays.
 sealed class AnnounceForm : Form
 {
     sealed record Entry(string Key, string Title, string Detail, DateTime At);
 
-    static readonly Color Bg = Color.FromArgb(24, 28, 40), Gold = Color.FromArgb(255, 210, 94), Fg = Color.FromArgb(221, 226, 236),
-                          Red = Color.FromArgb(255, 120, 120), Key = Color.FromArgb(10, 12, 18);
     readonly List<Entry> entries = new();
-    readonly System.Windows.Forms.Timer tick = new() { Interval = 1000 };
+    readonly System.Windows.Forms.Timer tick = new() { Interval = 1000 }, hover = new() { Interval = 60 };
     readonly List<(RectangleF box, Entry e)> closers = new();
-    bool edit;
+    bool edit, hot; // hot: the mouse is over a close button (the window takes clicks)
     // Saved top-left corner (screen px); null = default spot (right side of the screen).
     public Point? SavedLocation { get; set; }
     public event Action<Point>? Moved;
 
     float S => DeviceDpi / 96f;
-    int CardW => (int)(340 * S);
-    int CardH => (int)(64 * S);
+    int CardW => (int)(320 * S);
+    int CardH => (int)(56 * S);
     int Gap => (int)(6 * S);
 
     public AnnounceForm()
@@ -31,10 +32,23 @@ sealed class AnnounceForm : Form
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
-        BackColor = Key;
-        TransparencyKey = Key; // gaps between the cards: see-through and click-through
-        DoubleBuffered = true;
         tick.Tick += (_, _) => Refresh_();
+        // click-through except over a close button: checked by the cursor position (a click-through window gets no mouse moves)
+        hover.Tick += (_, _) =>
+        {
+            var p = PointToClient(Cursor.Position);
+            bool over = closers.Any(c => c.box.Contains(p));
+            if (over == hot) return;
+            hot = over;
+            if (IsHandleCreated) UpdateStyles();
+            Render();
+        };
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) { tick.Dispose(); hover.Dispose(); }
+        base.Dispose(disposing);
     }
 
     protected override bool ShowWithoutActivation => true;
@@ -45,7 +59,7 @@ sealed class AnnounceForm : Form
         {
             var cp = base.CreateParams;
             cp.ExStyle |= Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE | Native.WS_EX_LAYERED;
-            if (!edit) cp.ExStyle |= Native.WS_EX_TRANSPARENT;
+            if (!edit && !hot) cp.ExStyle |= Native.WS_EX_TRANSPARENT;
             return cp;
         }
     }
@@ -91,52 +105,59 @@ sealed class AnnounceForm : Form
         if (Size != size) Size = size;
     }
 
-    protected override void OnPaint(PaintEventArgs e)
+    void Render()
     {
-        base.OnPaint(e);
-        var g = e.Graphics;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+        if (!IsHandleCreated || Width < 1 || Height < 1) return;
+        using var bmp = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(bmp)) Draw(g);
+        Native.SetLayeredBitmap(Handle, bmp, Location);
+    }
+
+    void Draw(Graphics g)
+    {
+        OverlayStyle.Prepare(g);
         float s = S;
-        using var ft = new Font("Segoe UI Semibold", 12f);
-        using var fd = new Font("Segoe UI", 10f);
-        using var bg = new SolidBrush(Bg);
-        using var fg = new SolidBrush(Fg);
+        using var ft = new Font("Segoe UI Semibold", 14f * s, GraphicsUnit.Pixel);
+        using var fd = new Font("Segoe UI", 12f * s, GraphicsUnit.Pixel);
+        using var fx = new Font("Segoe UI", 13f * s, GraphicsUnit.Pixel);
+        using var fg = new SolidBrush(OverlayStyle.Fg);
+        using var muted = new SolidBrush(OverlayStyle.Muted);
         using var sf = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         using var center = new StringFormat(sf) { Alignment = StringAlignment.Center };
         closers.Clear();
         var now = DateTime.UtcNow;
+        var mouse = PointToClient(Cursor.Position);
         var list = entries.Count > 0 ? entries
             : edit ? [new Entry("", L.T("Ankündigungen", "Announcements"), L.T("ziehen zum Verschieben", "drag to move"), DateTime.MinValue)] : [];
         for (int i = 0; i < list.Count; i++)
         {
             var en = list[i];
             float y = i * (CardH + Gap);
-            g.FillRectangle(bg, 0, y, CardW, CardH);
+            var card = new RectangleF(0.5f, y + 0.5f, CardW - 1, CardH - 1);
             var left = en.At - now;
             bool sample = en.At == DateTime.MinValue, soon = !sample && left.TotalSeconds <= 60;
-            using (var pen = new Pen(Gold, 2)) g.DrawRectangle(pen, 1, y + 1, CardW - 3, CardH - 3);
-            using (var tb = new SolidBrush(soon ? Red : Gold))
-                g.DrawString(en.Title, ft, tb, new RectangleF(12 * s, y + 5 * s, 288 * s, 26 * s), sf);
+            var acc = soon ? OverlayStyle.Red : OverlayStyle.Gold;
+            OverlayStyle.Card(g, card, s, acc, soon ? Color.FromArgb(200, OverlayStyle.Red) : null);
+            float tx = 16 * s, tw = CardW - tx - 40 * s;
+            using (var tb = new SolidBrush(acc)) g.DrawString(en.Title, ft, tb, new RectangleF(tx, y + 6 * s, tw, 22 * s), sf);
             string when = sample ? en.Detail
                 : (left.TotalSeconds > 0 ? $"in {(int)left.TotalMinutes}:{left.Seconds:00}" : L.T("läuft jetzt!", "starting now!")) + " · " + en.Detail;
-            g.DrawString(when, fd, fg, new RectangleF(12 * s, y + 32 * s, 300 * s, 24 * s), sf);
+            g.DrawString(when, fd, muted, new RectangleF(tx, y + 28 * s, tw, 20 * s), sf);
             if (sample) continue;
-            var box = new RectangleF(CardW - 36 * s, y + 5 * s, 30 * s, 28 * s);
-            g.DrawString("✕", fd, fg, box, center);
+            var box = new RectangleF(CardW - 36 * s, y + (CardH - 28 * s) / 2, 28 * s, 28 * s);
+            if (box.Contains(mouse))
+                using (var hb = new SolidBrush(Color.FromArgb(40, 255, 255, 255)))
+                using (var hp = PvpForm.Rounded(box, 6 * s))
+                    g.FillPath(hb, hp);
+            g.DrawString("✕", fx, fg, box, center);
             closers.Add((box, en));
         }
-        if (edit)
-        {
-            // Edit mode: dashed frame around the whole stack as the "you can move this" handle.
-            using var dash = new Pen(Color.FromArgb(240, 240, 255), 1f) { DashPattern = [4, 3] };
-            g.DrawRectangle(dash, 0, 0, Width - 1, Height - 1);
-        }
+        if (edit) OverlayStyle.EditFrame(g, new RectangleF(0.5f, 0.5f, Width - 1, Height - 1), s);
     }
-
-    const int HTCLIENT = 1;
 
     protected override void WndProc(ref Message m)
     {
+        const int HTCLIENT = 1;
         if (m.Msg == Native.WM_NCHITTEST && edit)
         {
             var p = PointToClient(new Point((short)(m.LParam.ToInt64() & 0xFFFF), (short)((m.LParam.ToInt64() >> 16) & 0xFFFF)));
@@ -167,8 +188,15 @@ sealed class AnnounceForm : Form
     {
         var now = DateTime.UtcNow;
         entries.RemoveAll(e => e.At - now < TimeSpan.FromMinutes(-2)); // started a while ago: done
-        if (Cards == 0) { tick.Stop(); Hide(); return; }
+        if (Cards == 0)
+        {
+            tick.Stop(); hover.Stop();
+            if (hot) { hot = false; if (IsHandleCreated) UpdateStyles(); }
+            Hide();
+            return;
+        }
         Layout_();
-        Invalidate();
+        if (edit) hover.Stop(); else hover.Start();
+        Render();
     }
 }

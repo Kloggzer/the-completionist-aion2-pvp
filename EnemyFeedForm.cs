@@ -11,7 +11,7 @@ namespace PetOverlay;
 // Per-pixel alpha (UpdateLayeredWindow) like the PvP list; never activated.
 sealed class EnemyFeedForm : Form
 {
-    static readonly Color Pill = Color.FromArgb(200, 14, 16, 22), Fg = Color.FromArgb(240, 242, 248), Muted = Color.FromArgb(160, 168, 186);
+    static readonly Color Pill = OverlayStyle.Panel, Fg = OverlayStyle.Fg, Muted = OverlayStyle.Muted; // the overlays' look
     readonly Settings s;
     PvpForm.Row[] rows = [];
     int urgency;

@@ -15,8 +15,7 @@ sealed class BossBarsForm : Form
     /// One bar: name, left / full (seconds, or HP % with Unit "%"), mechanic colour, badge (short "what to do", e.g. "RAUS").
     public sealed record Bar(string Name, double Left, double Total, Color Col, string Badge, string Unit = "");
 
-    static readonly Color Panel = Color.FromArgb(232, 20, 23, 31), Fg = Color.FromArgb(236, 238, 244), Muted = Color.FromArgb(150, 158, 176),
-                          Track = Color.FromArgb(255, 38, 42, 54), HpCol = Color.FromArgb(255, 205, 70, 60), Red = Color.FromArgb(255, 255, 110, 100),
+    static readonly Color Panel = OverlayStyle.Panel, Fg = OverlayStyle.Fg, Muted = OverlayStyle.Muted, Track = OverlayStyle.Track, HpCol = Color.FromArgb(255, 205, 70, 60), Red = Color.FromArgb(255, 255, 110, 100),
                           Gold = Color.FromArgb(232, 200, 114);
     readonly Settings s;
     readonly System.Windows.Forms.Timer tick = new() { Interval = 100 };
@@ -149,9 +148,7 @@ sealed class BossBarsForm : Form
         double gone = sample ? 0 : (DateTime.UtcNow - at).TotalSeconds;
 
         // edit mode: a dashed frame to grab
-        if (edit)
-            using (var p = PvpForm.Rounded(new RectangleF(0.5f, 0.5f, w - 1, h - 1), 6 * k))
-            using (var pe = new Pen(Color.FromArgb(220, 240, 240, 255), 1f) { DashPattern = [4, 3] }) g.DrawPath(pe, p);
+        if (edit) OverlayStyle.EditFrame(g, new RectangleF(0.5f, 0.5f, w - 1, h - 1), k);
         float x0 = 4 * k, x1 = w - 4 * k;
 
         // timer bars

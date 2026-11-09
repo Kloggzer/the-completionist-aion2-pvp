@@ -13,7 +13,6 @@ namespace PetOverlay;
 // Per-pixel alpha (UpdateLayeredWindow) like the enemy feed; never activated.
 sealed class BossCallForm : Form
 {
-    static readonly Color Back = Color.FromArgb(225, 12, 14, 20), Fg = Color.FromArgb(246, 247, 250), Sub = Color.FromArgb(205, 210, 222);
     readonly Settings s;
     readonly System.Windows.Forms.Timer tick = new() { Interval = 40 };
     string title = "", sub = "";
@@ -123,11 +122,8 @@ sealed class BossCallForm : Form
         bool pulse = (danger || sample) && Environment.TickCount64 / 220 % 2 == 0;
 
         var r = new RectangleF(3 * k, 3 * k, w - 6 * k, h - 6 * k);
-        using var path = PvpForm.Rounded(r, 14 * k);
-        using (var back = new SolidBrush(Back)) g.FillPath(back, path);
-        using (var glow = new Pen(Color.FromArgb(pulse ? 255 : 170, c), (pulse ? 3f : 2f) * k)) g.DrawPath(glow, path);
-        // colour stripe left
-        using (var stripe = new SolidBrush(c)) g.FillRectangle(stripe, r.X + 10 * k, r.Y + 12 * k, 5 * k, r.Height - 24 * k);
+        // the overlays' card: stripe and edge in the mechanic's colour, the edge pulses for danger
+        OverlayStyle.Card(g, r, k, c, Color.FromArgb(pulse ? 255 : 170, c), pulse ? 3f : 2f);
 
         using var ft = new Font("Segoe UI", 24f * k, FontStyle.Bold, GraphicsUnit.Pixel);
         using var fs = new Font("Segoe UI Semibold", 12.5f * k, GraphicsUnit.Pixel);
@@ -135,8 +131,8 @@ sealed class BossCallForm : Form
         using var left0 = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         using var right = new StringFormat(left0) { Alignment = StringAlignment.Far };
         float tx = r.X + 26 * k, numW = seconds > 0 || sample ? 64 * k : 0;
-        using (var fg = new SolidBrush(Fg)) g.DrawString(t, ft, fg, new RectangleF(tx, r.Y + 6 * k, r.Right - tx - numW - 10 * k, 32 * k), left0);
-        using (var sb = new SolidBrush(Sub)) g.DrawString(st, fs, sb, new RectangleF(tx, r.Y + 38 * k, r.Right - tx - numW - 10 * k, 18 * k), left0);
+        using (var fg = new SolidBrush(OverlayStyle.Fg)) g.DrawString(t, ft, fg, new RectangleF(tx, r.Y + 6 * k, r.Right - tx - numW - 10 * k, 32 * k), left0);
+        using (var sb = new SolidBrush(OverlayStyle.Muted)) g.DrawString(st, fs, sb, new RectangleF(tx, r.Y + 38 * k, r.Right - tx - numW - 10 * k, 18 * k), left0);
         if (numW > 0)
             using (var nb = new SolidBrush(c))
                 g.DrawString(left >= 10 ? $"{left:0}" : left.ToString("0.0", System.Globalization.CultureInfo.CurrentUICulture), fn, nb, new RectangleF(r.Right - numW - 12 * k, r.Y, numW, r.Height - 8 * k), right);
@@ -147,9 +143,7 @@ sealed class BossCallForm : Form
             using (var tr = new SolidBrush(Color.FromArgb(70, 255, 255, 255))) g.FillRectangle(tr, bar);
             using (var fb = new SolidBrush(c)) g.FillRectangle(fb, bar.X, bar.Y, bar.Width * (float)Math.Clamp(frac, 0, 1), bar.Height);
         }
-        if (edit)
-            using (var dash = new Pen(Color.FromArgb(220, 240, 240, 255), 1f) { DashPattern = [4, 3] })
-                g.DrawRectangle(dash, 0, 0, w - 1, h - 1);
+        if (edit) OverlayStyle.EditFrame(g, new RectangleF(0.5f, 0.5f, w - 1, h - 1), k);
     }
 
     protected override void WndProc(ref Message m)
