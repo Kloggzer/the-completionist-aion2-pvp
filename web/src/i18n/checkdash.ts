@@ -2,7 +2,7 @@
 export default {
   de: {
     'chk.title': 'Alle Charaktere und Server', 'chk.serverEdit': 'Server-Einträge bearbeiten', 'chk.serverEditSub': 'von Hand zählen, Vorräte eintragen',
-    'card.today': 'Heute', 'card.week': 'Woche', 'card.stock': 'Vorrat', 'card.full': 'VOLL', 'card.playing': 'spielt gerade', 'card.played': 'vor {ago}',
+    'card.today': 'Heute', 'card.kinah': 'Kinah heute', 'card.kinahTip': 'Kinah von Monstern und Quests heute – Tageslimit 1 Mio. (aus dem Spiel, ab dem nächsten Login)', 'card.week': 'Woche', 'card.stock': 'Vorrat', 'card.full': 'VOLL', 'card.playing': 'spielt gerade', 'card.played': 'vor {ago}',
     'card.justNow': 'gerade eben', 'card.agoMin': '{n} min', 'card.agoH': '{n} h', 'card.agoD': '{n} T', 'card.lv': 'Level {n}', 'card.il': 'Gegenstandsstufe',
     'card.noInfo': 'Infos nach dem nächsten Login', 'card.cls.2': 'Gladiator', 'card.cls.3': 'Templer', 'card.cls.4': 'Jäger', 'card.cls.5': 'Assassine',
     'card.cls.6': 'Beschwörer', 'card.cls.7': 'Zauberer', 'card.cls.8': 'Kleriker', 'card.cls.9': 'Kantor', 'chk.back': 'Alle Charaktere', 'chk.openN': '{n} offen',
@@ -22,7 +22,7 @@ export default {
   },
   en: {
     'chk.title': 'All characters and server', 'chk.serverEdit': 'Edit server entries', 'chk.serverEditSub': 'count by hand, enter charges',
-    'card.today': 'Today', 'card.week': 'Week', 'card.stock': 'Stock', 'card.full': 'FULL', 'card.playing': 'playing now', 'card.played': '{ago} ago',
+    'card.today': 'Today', 'card.kinah': 'Kinah today', 'card.kinahTip': 'Kinah from monsters and quests today – daily cap 1M (from the game, from the next login)', 'card.week': 'Week', 'card.stock': 'Stock', 'card.full': 'FULL', 'card.playing': 'playing now', 'card.played': '{ago} ago',
     'card.justNow': 'just now', 'card.agoMin': '{n} min', 'card.agoH': '{n} h', 'card.agoD': '{n} d', 'card.lv': 'level {n}', 'card.il': 'item level',
     'card.noInfo': 'Info after the next login', 'card.cls.2': 'Gladiator', 'card.cls.3': 'Templar', 'card.cls.4': 'Ranger', 'card.cls.5': 'Assassin',
     'card.cls.6': 'Spiritmaster', 'card.cls.7': 'Sorcerer', 'card.cls.8': 'Cleric', 'card.cls.9': 'Chanter', 'chk.back': 'All characters', 'chk.openN': '{n} open',

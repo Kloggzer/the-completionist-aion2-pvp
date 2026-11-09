@@ -1200,6 +1200,11 @@ sealed class OverlayForm : Form
             daeBoards = boards;
             PostDaevanion();
         });
+        source.KinahDayReceived += (v, login) => BeginInvoke(() =>
+        {
+            if (login) Log($"Kinah heute: {v}");
+            HoldLogin(() => Post(new { type = "kinahDay", v }));
+        });
         source.OdyleReceived += (energy, bonus) => BeginInvoke(() =>
         {
             Log($"Odyle-Energie: {energy} + {bonus} Bonus");

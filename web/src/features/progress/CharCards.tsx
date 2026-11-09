@@ -2,19 +2,19 @@
 // row of chips, then one card per character side by side – name, class · level, CP / item level, playing now / last
 // played; the Odyle energy as a bar with "full at …"; rings for today / this week; then compact chips: STOCK (Nightmare
 // tickets), TODAY, WEEK – what is done stays in place, struck through. A click on a card opens the character's page.
-import { Check } from 'lucide-react'
+import { Check, Coins } from 'lucide-react'
 import { V, bump } from '@/core/state'
 import { t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
 import { GameIcon, META } from '@/components/kit'
 import { CHARGES, chargeFullIn, chargeNow, chargesOf, type ChargeDef } from './charges'
 import { CHECK, CHECK_GAME, CHECK_ICON, CHECK_ICON_DEFAULT, checkCount, progressOf, resetIn, type Kind, type Per } from './checklist'
-import { charInfo, playingNow } from './charinfo'
+import { KINAH_CAP, charInfo, kinahToday, playingNow } from './charinfo'
 import { ownerLevel } from './alerts'
 import { CHARGE_GAME, CHARGE_ICON } from './ChargeRows'
 
 const charName = (name: string) => (name === 'Standard' ? t('chk.unknownChar') : name)
-const fmtK = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n))
+const fmtK = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n))
 
 /** "vor 13 h" / "vor 2 T" / "gerade eben". */
 function ago(ms: number) {
@@ -67,6 +67,19 @@ function ChargeChip({ d, char }: { d: ChargeDef; char?: string }) {
       <span className="truncate">{t('charge.' + d.id)}</span>
       <b className={cn('flex-none font-semibold tabular-nums', full ? 'text-red' : 'text-foreground')}>{v ?? '–'}<span className="font-normal text-dim">/{cap}</span></b>
       {full && <span className="flex-none text-[10px] font-semibold">{t('card.full')}</span>}
+    </span>
+  )
+}
+
+/** Kinah earned today toward the daily cap; done (struck through) at the cap. */
+function KinahChip({ name }: { name: string }) {
+  const v = kinahToday(name), done = v != null && v >= KINAH_CAP
+  return (
+    <span data-chip="kinah" data-done={done || undefined} data-tip={t('card.kinahTip')}
+      className={cn('inline-flex max-w-full min-w-0 items-center gap-1 rounded-md border bg-background px-1.5 py-0.5 text-[11.5px]', done && 'border-transparent bg-transparent text-dim')}>
+      {done ? <Check className="size-3 flex-none text-green" /> : <GameIcon name="kinah" fallback={Coins} className="size-3.5 flex-none" fallbackClass="size-3 flex-none text-muted-foreground" />}
+      <span className={cn('truncate', done && 'line-through')}>{t('card.kinah')}</span>
+      {!done && <b className="flex-none font-semibold tabular-nums text-gold">{v == null ? '–' : fmtK(v)}<span className="font-normal text-dim">/{fmtK(KINAH_CAP)}</span></b>}
     </span>
   )
 }
@@ -130,7 +143,7 @@ function CharCard({ name, onOpen }: { name: string; onOpen: () => void }) {
       </div>
       <div className="flex flex-col gap-0.5 border-t border-border/50 pt-1.5">
         {stock.length > 0 && <Sect label={t('card.stock')}>{stock.map(x => <ChargeChip key={x.id} d={x} char={name} />)}</Sect>}
-        <Sect label={t('card.today')}>{d.map(([id, c, m]) => <EntryChip key={id} id={id} c={c} max={m} />)}</Sect>
+        <Sect label={t('card.today')}><KinahChip name={name} />{d.map(([id, c, m]) => <EntryChip key={id} id={id} c={c} max={m} />)}</Sect>
         <Sect label={t('card.week')}>{w.map(([id, c, m]) => <EntryChip key={id} id={id} c={c} max={m} />)}</Sect>
       </div>
     </button>

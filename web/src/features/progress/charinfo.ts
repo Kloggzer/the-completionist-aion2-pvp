@@ -1,7 +1,9 @@
 // What the checklist cards show about a character besides its lists: class, level, item level, CP (from the login data
-// of the logged-in character, host 'pvp' own) and when it was last played. Kept per character name in U.charInfo.
-import { S, U, saveUi, type Any } from '@/core/state'
+// of the logged-in character, host 'pvp' own) and when it was last played (U.charInfo); the kinah earned today toward the
+// daily cap (host 'kinahDay', game 0xa5ff / 0xa6ff; U.kinahDay). Kept per character name.
+import { S, U, bump, saveUi, type Any } from '@/core/state'
 import { classOf } from '@/features/pvp/logic'
+import { lastReset } from './checklist'
 
 export type CharInfo = { cls: number; lv: number; il: number; cp: number; seen: number }
 
@@ -22,12 +24,34 @@ export function noteOwn(own: Any) {
   saveUi(['charInfo'])
 }
 
-/** Move a character's info to another name, or drop it (checklist rename / remove). */
+/** Daily cap of the kinah earned from monsters and quests. */
+export const KINAH_CAP = 1_000_000
+
+/** Kinah earned today by a character (0 after the daily reset), null when never read. */
+export function kinahToday(name: string): number | null {
+  const r = U.kinahDay?.[name] as { v: number; at: number } | undefined
+  if (!r) return null
+  return r.at >= lastReset('d').getTime() ? r.v : 0
+}
+
+let kinahSavedAt = 0
+/** The logged-in character's kinah today from the host: kept every time, saved at most every 30 s (it comes per kill). */
+export function noteKinah(v: number) {
+  const name = S.state.charName
+  if (!name) return
+  U.kinahDay = { ...U.kinahDay, [name]: { v, at: Date.now() } }
+  if (Date.now() - kinahSavedAt > 30e3 || v >= KINAH_CAP) { kinahSavedAt = Date.now(); saveUi(['kinahDay']) }
+  bump()
+}
+
+/** Move a character's info and kinah to another name, or drop them (checklist rename / remove). */
 export function moveCharInfo(from: string, to?: string) {
-  if (!U.charInfo?.[from]) return
-  const all = { ...U.charInfo }
-  if (to) all[to] = all[from]
-  delete all[from]
-  U.charInfo = all
-  saveUi(['charInfo'])
+  for (const k of ['charInfo', 'kinahDay'] as const) {
+    if (!U[k]?.[from]) continue
+    const all = { ...U[k] }
+    if (to) all[to] = all[from]
+    delete all[from]
+    U[k] = all
+    saveUi([k])
+  }
 }

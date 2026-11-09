@@ -309,3 +309,16 @@ test('header: fits at 360 px with every button, click-through always there, opac
   await page.keyboard.up('Control')
   await expect.poll(async () => (await app.posted('opacity')).length).toBe(1)
 })
+
+test('checklist cards: kinah today from the game, class and CP from the login', async ({ page }) => {
+  const app = await openApp(page, { ui: { tab: 'check', checklist: CHK } })
+  await page.getByRole('button', { name: 'Alle Charaktere' }).click()
+  await app.send({ type: 'pvp', own: { name: 'Testchar', srv: 2306, pc: 12, race: 2, lv: 45, il: 3077, cp: 194023 }, players: [] })
+  await app.send({ type: 'kinahDay', v: 412345 })
+  const card = page.locator('[data-char="Testchar"]')
+  await expect(card.locator('[data-chip="kinah"]')).toContainText('412k/1M')
+  await expect(card).toContainText('Templer')
+  await expect(card).toContainText('194k')
+  await app.send({ type: 'kinahDay', v: 1000000 })
+  await expect(card.locator('[data-chip="kinah"]')).toHaveAttribute('data-done', 'true')
+})

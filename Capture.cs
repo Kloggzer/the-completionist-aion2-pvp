@@ -38,6 +38,9 @@ abstract class PetSource : IDisposable
     public event Action<uint, List<(uint id, bool alive, float x, float z, long ts)>>? BossTable;
     // Weekly usage counters at login (0xacff): id -> used this period; id 2 = daily dungeon entries (14 per week).
     public event Action<Dictionary<byte, uint>, long>? UsageReceived;
+    // Kinah earned today toward the daily cap of 1 000 000 (0xa5ff at login, 0xa6ff on every gain): u64 value, u64 time (ms).
+    // Verified on research-packets 2026-11-03: rises by the loot of each kill, stops at exactly 1 000 000, per character.
+    public event Action<long, bool>? KinahDayReceived; // value, at login
     // Odyle energy (0x0c61 type 0c/01): regenerating energy and the bonus pool from Odyle items.
     public event Action<int, int>? OdyleReceived;
     // Entry charges (0x0c61 type 04): u32 content id, u8 charges left, u8 ? (2 / 3, not the bonus entries: those only come
@@ -248,6 +251,8 @@ abstract class PetSource : IDisposable
             MerchantReceived?.Invoke(merch.tab, merch.items);
         else if (op == 0x2ce3 && body.Length > 100 && PetFrames.PvpHistory(body) is { Count: > 0 } matches)
             PvpHistoryReceived?.Invoke(matches);
+        else if ((op == 0xa5ff || op == 0xa6ff) && body.Length == 16)
+            KinahDayReceived?.Invoke((long)BitConverter.ToUInt64(body, 0), op == 0xa5ff);
         else if (op == 0x0b61 && PetFrames.ParseEntryCharges(body) is { } entries)
             EntryChargesReceived?.Invoke(entries);
         else if (op == 0x0c61 && body.Length == 8 && body[1] == 0x04)
