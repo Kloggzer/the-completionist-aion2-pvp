@@ -12,9 +12,9 @@ import { alertKey, type Alert } from './alerts'
 export const LIGHT_DOT: Record<Light | 'red' | 'yellow', string> = {
   red: 'bg-red shadow-[0_0_6px_var(--red)]', yellow: 'bg-gold', green: 'bg-green', none: 'bg-dim',
 }
-const CHARGE_ICON: Record<string, LucideIcon> = { odyle: Zap, nightmare: Moon, shugo: KeyRound, invasion: Key }
+export const CHARGE_ICON: Record<string, LucideIcon> = { odyle: Zap, nightmare: Moon, shugo: KeyRound, invasion: Key }
 /** Game icon per charge (public/icons); the lucide icon is the fallback. */
-const CHARGE_GAME: Record<string, string> = { odyle: 'odyle', nightmare: 'nightmare', shugo: 'shugo', invasion: 'invasion' }
+export const CHARGE_GAME: Record<string, string> = { odyle: 'odyle', nightmare: 'nightmare', shugo: 'shugo', invasion: 'invasion' }
 const LIGHT_TONE: Record<Light, BoxTone> = { red: 'red', yellow: 'gold', green: 'green', none: 'dim' }
 const LIGHT_TXT: Record<Light, string> = { red: TONE.bad, yellow: TONE.warn, green: 'text-muted-foreground', none: 'text-muted-foreground' }
 

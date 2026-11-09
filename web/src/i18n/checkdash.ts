@@ -1,7 +1,11 @@
 // Checklist dashboard (server progress, characters).
 export default {
   de: {
-    'chk.title': 'Alle Charaktere und Server', 'chk.back': 'Alle Charaktere', 'chk.openN': '{n} offen',
+    'chk.title': 'Alle Charaktere und Server', 'chk.serverEdit': 'Server-Einträge bearbeiten', 'chk.serverEditSub': 'von Hand zählen, Vorräte eintragen',
+    'card.today': 'Heute', 'card.week': 'Woche', 'card.stock': 'Vorrat', 'card.full': 'VOLL', 'card.playing': 'spielt gerade', 'card.played': 'vor {ago}',
+    'card.justNow': 'gerade eben', 'card.agoMin': '{n} min', 'card.agoH': '{n} h', 'card.agoD': '{n} T', 'card.lv': 'Level {n}', 'card.il': 'Gegenstandsstufe',
+    'card.noInfo': 'Infos nach dem nächsten Login', 'card.cls.2': 'Gladiator', 'card.cls.3': 'Templer', 'card.cls.4': 'Jäger', 'card.cls.5': 'Assassine',
+    'card.cls.6': 'Beschwörer', 'card.cls.7': 'Zauberer', 'card.cls.8': 'Kleriker', 'card.cls.9': 'Kantor', 'chk.back': 'Alle Charaktere', 'chk.openN': '{n} offen',
     'chk.server': 'Server', 'chk.serverSub': 'gilt für alle Charaktere',
     'chk.chars': 'Charaktere', 'chk.noChars': 'Charaktere erscheinen hier nach dem ersten Login mit laufender App.',
     'chk.live': 'Gerade eingeloggt', 'chk.unknownChar': 'Unbekannt',
@@ -17,7 +21,11 @@ export default {
     'chk.hint': 'Reset: täglich {hh} Uhr, wöchentlich mittwochs {hh} Uhr. „A" = zählt automatisch mit (nur beim eingeloggten Charakter). Prozent = Durchschnitt aller Einträge.',
   },
   en: {
-    'chk.title': 'All characters and server', 'chk.back': 'All characters', 'chk.openN': '{n} open',
+    'chk.title': 'All characters and server', 'chk.serverEdit': 'Edit server entries', 'chk.serverEditSub': 'count by hand, enter charges',
+    'card.today': 'Today', 'card.week': 'Week', 'card.stock': 'Stock', 'card.full': 'FULL', 'card.playing': 'playing now', 'card.played': '{ago} ago',
+    'card.justNow': 'just now', 'card.agoMin': '{n} min', 'card.agoH': '{n} h', 'card.agoD': '{n} d', 'card.lv': 'level {n}', 'card.il': 'item level',
+    'card.noInfo': 'Info after the next login', 'card.cls.2': 'Gladiator', 'card.cls.3': 'Templar', 'card.cls.4': 'Ranger', 'card.cls.5': 'Assassin',
+    'card.cls.6': 'Spiritmaster', 'card.cls.7': 'Sorcerer', 'card.cls.8': 'Cleric', 'card.cls.9': 'Chanter', 'chk.back': 'All characters', 'chk.openN': '{n} open',
     'chk.server': 'Server', 'chk.serverSub': 'shared by all characters',
     'chk.chars': 'Characters', 'chk.noChars': 'Characters appear here after logging in once with the app running.',
     'chk.live': 'Logged in now', 'chk.unknownChar': 'Unknown',

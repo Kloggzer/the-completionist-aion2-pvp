@@ -4,7 +4,7 @@ namespace PetOverlay;
 
 // Upcoming-event announcer (world bosses, rifts, sieges ...): a small always-on-top stack of cards (OverlayStyle), each
 // with a live countdown and a close button. Never activated, so the game keeps the focus. Normally click-through, except
-// while the mouse is over a close button: then the window takes clicks, so ✕ works without the edit mode. Edit mode
+// while the mouse is over a card: then it takes clicks – ✕ closes, anywhere else drags the stack (no edit mode needed). Edit mode
 // (lock icon of the PvP list / hotkey, OverlayForm.SetWinEdit): clickable, dashed frame, dragged anywhere via
 // WM_NCHITTEST -> HTCAPTION, a sample card while nothing is announced; the position is saved and restored onto a
 // visible screen (Placement). Per-pixel alpha (UpdateLayeredWindow) like the other overlays.
@@ -15,7 +15,8 @@ sealed class AnnounceForm : Form
     readonly List<Entry> entries = new();
     readonly System.Windows.Forms.Timer tick = new() { Interval = 1000 }, hover = new() { Interval = 60 };
     readonly List<(RectangleF box, Entry e)> closers = new();
-    bool edit, hot; // hot: the mouse is over a close button (the window takes clicks)
+    readonly List<RectangleF> cards = new();
+    bool edit, hot; // hot: the mouse is over a card (the window takes clicks: ✕ closes, the rest drags)
     // Saved top-left corner (screen px); null = default spot (right side of the screen).
     public Point? SavedLocation { get; set; }
     public event Action<Point>? Moved;
@@ -33,11 +34,11 @@ sealed class AnnounceForm : Form
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         tick.Tick += (_, _) => Refresh_();
-        // click-through except over a close button: checked by the cursor position (a click-through window gets no mouse moves)
+        // click-through except over a card: checked by the cursor position (a click-through window gets no mouse moves)
         hover.Tick += (_, _) =>
         {
             var p = PointToClient(Cursor.Position);
-            bool over = closers.Any(c => c.box.Contains(p));
+            bool over = cards.Any(c => c.Contains(p));
             if (over == hot) return;
             hot = over;
             if (IsHandleCreated) UpdateStyles();
@@ -125,6 +126,7 @@ sealed class AnnounceForm : Form
         using var sf = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         using var center = new StringFormat(sf) { Alignment = StringAlignment.Center };
         closers.Clear();
+        cards.Clear();
         var now = DateTime.UtcNow;
         var mouse = PointToClient(Cursor.Position);
         var list = entries.Count > 0 ? entries
@@ -137,8 +139,9 @@ sealed class AnnounceForm : Form
             var left = en.At - now;
             bool sample = en.At == DateTime.MinValue, soon = !sample && left.TotalSeconds <= 60;
             var acc = soon ? OverlayStyle.Red : OverlayStyle.Gold;
-            OverlayStyle.Card(g, card, s, acc, soon ? Color.FromArgb(200, OverlayStyle.Red) : null);
-            float tx = 16 * s, tw = CardW - tx - 40 * s;
+            OverlayStyle.Card(g, card, s, acc, Color.FromArgb(soon ? 210 : 150, acc));
+            if (!sample) cards.Add(card);
+            float tx = 14 * s, tw = CardW - tx - 40 * s;
             using (var tb = new SolidBrush(acc)) g.DrawString(en.Title, ft, tb, new RectangleF(tx, y + 6 * s, tw, 22 * s), sf);
             string when = sample ? en.Detail
                 : (left.TotalSeconds > 0 ? $"in {(int)left.TotalMinutes}:{left.Seconds:00}" : L.T("läuft jetzt!", "starting now!")) + " · " + en.Detail;
@@ -158,7 +161,7 @@ sealed class AnnounceForm : Form
     protected override void WndProc(ref Message m)
     {
         const int HTCLIENT = 1;
-        if (m.Msg == Native.WM_NCHITTEST && edit)
+        if (m.Msg == Native.WM_NCHITTEST && (edit || hot))
         {
             var p = PointToClient(new Point((short)(m.LParam.ToInt64() & 0xFFFF), (short)((m.LParam.ToInt64() >> 16) & 0xFFFF)));
             m.Result = closers.Any(c => c.box.Contains(p)) ? HTCLIENT : Native.HTCAPTION;

@@ -4,6 +4,7 @@
 import { S, U, saveUi, bump, manual, type Any } from '@/core/state'
 import { t } from '@/core/i18n'
 import { host } from '@/core/host'
+import { moveCharInfo } from './charinfo'
 import { Trophy, Users, Castle, ClipboardList, Crown, DoorOpen, FlaskConical, FlaskRound, Gem, Mountain, Package, PackageOpen, ScrollText, Store, Swords, type LucideIcon } from 'lucide-react'
 
 export type Kind = 'd' | 'w'
@@ -203,6 +204,7 @@ function moveCharData(from: string, to?: string) {
     if (m) for (const k of Object.keys(m)) if (k.endsWith('|' + from)) { if (to != null) m[k.slice(0, -from.length) + to] = m[k]; delete m[k] }
   }
   saveUi(['checklist', 'checkBaselines', ...PER_CHAR])
+  moveCharInfo(from, to)
 }
 
 /** Forget a character: its list, baselines, charge readings, bonus entries and PvP wins (e.g. a deleted character). */

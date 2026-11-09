@@ -74,12 +74,12 @@ test('checklist: own character page -> all characters -> other character -> back
   await expect(back).toBeVisible()
   await expect(page.locator('[data-char]')).toHaveCount(0)
   await back.click()
-  await expect(page.getByText('Charaktere', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-cards]')).toBeVisible()
   await page.getByRole('button', { name: /Zweitchar/ }).click()
   await expect(page.getByText('nicht eingeloggt')).toBeVisible()
   await shot(page, 'check-char')
   await page.getByRole('button', { name: 'Alle Charaktere' }).click()
-  await expect(page.getByText('Charaktere', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-cards]')).toBeVisible()
 })
 
 test('charges: odyle about to overflow shows a red warning with a CTA', async ({ page }) => {

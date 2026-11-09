@@ -3,7 +3,7 @@
 // charges are tiles: icon column left, name, bar + footer, −/+ column at the right edge; the explanation of an entry
 // is in its tooltip, the explanation of the page in a closed "how it works".
 import { useEffect, useState } from 'react'
-import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw, RotateCcw, Server, Sun, Trash2, UserCheck } from 'lucide-react'
+import { CalendarDays, CheckCheck, ChevronLeft, Pencil, Plus, RefreshCw, RotateCcw, Server, Sun, Trash2, UserCheck } from 'lucide-react'
 import { entryBonusKey } from './charges'
 import { S, U, V, bump, manual, useApp } from '@/core/state'
 import { t, hm } from '@/core/i18n'
@@ -11,9 +11,10 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CHECK, CHECK_GAME, CHECK_ICON, lastReset, CHECK_ICON_DEFAULT, TIER, TIER_TONE, resetIn, checkAuto, checkCount, checkSet, characters, nextReset, progressOf, removeChar, setAll, addChar, renameChar, selectChar, type Kind, type Per } from './checklist'
 import { AppSelect } from '@/components/AppSelect'
-import { ACCENT, AutoBadge, BOX, Bar, BarInfo, BarRight, Columns, HowTo, Kpi, KpiRow, META, Note, Page, Panel, ROW, ROW_CLICK, ROWS, SECT_BTN, SUB, Sect, StepCol, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_TITLE, TILE, TILE_P, TONE, TextEntry, TileIcon, TopN, grid, DoneMark } from '@/components/kit'
+import { ACCENT, AutoBadge, Disclosure, BOX, Bar, BarInfo, BarRight, Columns, HowTo, Kpi, KpiRow, Note, Page, Panel, ROW, ROWS, SECT_BTN, SUB, Sect, StepCol, T_BODY, T_FOOT, T_META, T_PORTRAIT, T_TITLE, TILE, TILE_P, TONE, TextEntry, TileIcon, TopN, grid, DoneMark } from '@/components/kit'
 import { alertKey, alerts, ownerAlertsOf, ownerLevel } from './alerts'
 import { AlertList, AlertRow, Charges, LIGHT_DOT } from './ChargeRows'
+import { CharCards, ServerRow } from './CharCards'
 
 const pct = (f: number) => Math.round(f * 100) + ' %'
 const GRID = grid('row')
@@ -86,17 +87,6 @@ function RingBox({ frac, level, live, icon: I }: { frac: number; level: 'red' | 
   )
 }
 
-/** Small completion ring of a list row. */
-function MiniRing({ frac }: { frac: number }) {
-  const size = 20, r = 7.5, c = 2 * Math.PI * r, col = frac >= 1 ? 'var(--green)' : frac > 0 ? 'var(--gold)' : 'var(--dim)'
-  return (
-    <svg width={size} height={size} className="flex-none -rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="stroke-foreground/10" strokeWidth="3" />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${c * frac} ${c}`} />
-    </svg>
-  )
-}
-
 /** Owner tile body (character page head): name (live dot, alert dot), status, daily/weekly split, open entries. */
 function OwnerBody({ name, live, level, per, char, right }: { name: string; live?: boolean; level: 'red' | 'yellow' | null; per: Per; char?: string; right?: React.ReactNode }) {
   const d = progressOf(per, char, 'd'), w = progressOf(per, char, 'w'), open = openList(per, char)
@@ -128,25 +118,6 @@ const openOf = (per: Per, kind: Kind, char?: string) =>
   CHECK.filter(([k]) => k === kind).flatMap(([, items]) => items).filter(([id, max, p]) => p === per && checkCount(id, p, kind, char) < max).length
 
 const charName = (name: string) => (name === 'Standard' ? t('chk.unknownChar') : name)
-
-// Character row on the dashboard: small completion ring, name + status dots, split, open count. Opens the character's page.
-function CharRow({ name, live }: { name: string; live: boolean }) {
-  const open = openList('char', name), lvl = ownerLevel('char', name)
-  return (
-    <button data-char={name} data-tip={open.length ? `${t('chk.open')}: ${open.join(', ')}` : t('chk.everything')} onClick={() => { V.chkPage = name; bump(); document.querySelector('[data-list]')?.scrollTo(0, 0) }}
-      className={cn('group w-full text-left', ROW, ROW_CLICK, lvl === 'red' && 'bg-red/[0.06]')}>
-      <MiniRing frac={progressOf('char', name)} />
-      <span className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="truncate font-semibold">{charName(name)}</span>
-        {live && <i className="size-1.5 flex-none rounded-full bg-green shadow-[0_0_5px_var(--green)]" data-tip={t(manual() ? 'chk.active' : 'chk.live')} />}
-        {lvl && <i className={cn('size-2 flex-none rounded-full', LIGHT_DOT[lvl])} data-tip={t('alert.' + lvl)} />}
-      </span>
-      <span className={cn(META, 'hidden flex-none @min-[480px]:inline')}>{t('progress.sect.d')} {pct(progressOf('char', name, 'd'))} · {t('progress.sect.w')} {pct(progressOf('char', name, 'w'))}</span>
-      <span className={cn('w-16 flex-none text-right text-[12px] tabular-nums', open.length ? TONE.warn : TONE.ok)}>{open.length ? t('chk.openN', { n: open.length }) : <DoneMark />}</span>
-      <ChevronRight className="size-4 flex-none text-dim transition-colors group-hover:text-gold" />
-    </button>
-  )
-}
 
 // Two clicks instead of a confirm() dialog (dialogs need an activated window, the overlay never takes focus).
 function RemoveButton({ name }: { name: string }) {
@@ -256,15 +227,24 @@ export function CheckTab() {
             <div className={ROWS}><TopN id="chk.alerts" items={warn} n={3} more={more} render={a => <AlertRow key={alertKey(a)} a={a} flat />} /></div>
           </Panel>
         )}
-        <Panel title={t('chk.chars')} right={man && !adding && <button data-add-char className={SECT_BTN} data-tip={t('chk.addTip')} onClick={() => setAdding(true)}><Plus />{t('chk.add')}</button>} data-chars>
-          <div className={ROWS}>
-            {adding && <div className={cn(ROW, 'py-1')}><NameEntry onDone={addChar} onCancel={() => setAdding(false)} /></div>}
-            {chars.map(c => <CharRow key={c} name={c} live={c === live} />)}
+        {/* the server's shared entries and keys in one row, then one card per character (click: its page) */}
+        <ServerRow />
+        <div data-chars="">
+          <CharCards chars={chars} />
+          {(man || !chars.length) && <div className="flex flex-wrap items-center gap-2 px-2.5 pt-2.5">
             {!chars.length && !adding && <Note>{t(man ? 'chk.noCharsManual' : 'chk.noChars')}</Note>}
-          </div>
-        </Panel>
-        <ServerHead />
-        <Columns><div><Lists per="server" only="d" /><Charges per="server" /></div><Lists per="server" only="w" /></Columns>
+            {man && (adding
+              ? <div className={cn(ROW, 'flex-1 rounded-lg border bg-card py-1')}><NameEntry onDone={addChar} onCancel={() => setAdding(false)} /></div>
+              : <button data-add-char className={SECT_BTN} data-tip={t('chk.addTip')} onClick={() => setAdding(true)}><Plus />{t('chk.add')}</button>)}
+          </div>}
+        </div>
+        {/* counting the server entries by hand (manual mode, corrections): closed by default */}
+        <div className="pt-2.5"><Panel className="pb-1.5">
+          <Disclosure id="chk.serverEdit" title={t('chk.serverEdit')} sub={t('chk.serverEditSub')}>
+            <ServerHead />
+            <Columns><div><Lists per="server" only="d" /><Charges per="server" /></div><Lists per="server" only="w" /></Columns>
+          </Disclosure>
+        </Panel></div>
       </>}
       <div className="pt-2"><HowTo id="chk.how" title={t('chk.how')}>{t(man ? 'chk.hintManual' : 'chk.hint', { hh: hm(nextReset('d')) })}</HowTo></div>
     </Page>
