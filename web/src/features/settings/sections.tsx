@@ -1,4 +1,5 @@
-// Contents of the settings categories.
+// Contents of the settings categories: General (display, window), Overlays (edit mode, PvP list, enemy feed, enemy
+// alarm), Map & pets (map, pet list), Sound & voice, Boss helper, Hotkeys, Connection & data (mode, game data, about, quit).
 import { useEffect, useReducer } from 'react'
 import { Box, Monitor, Moon, Star, Sun } from 'lucide-react'
 import { DEF_UI, G, S, U, V, saveUi, bump, type Any } from '@/core/state'
@@ -74,15 +75,10 @@ export function General() {
         <Button size="sm" variant="outline" onClick={() => { close(); host({ type: 'site', on: true, map: U.map }) }}>{t('set.site.btn')}</Button>
       </Row>
     </Group>
-    <Group title={t('set.g.app')}>
-      <Row label={t('set.quit')}>
-        <Button size="sm" variant="destructive" onClick={() => host({ type: 'quit' })}>{t('set.quit.btn')}</Button>
-      </Row>
-    </Group>
   </>
 }
 
-// ---------------------------------------------------------------- map
+// ---------------------------------------------------------------- map & pets
 
 export function MapSettings() {
   // The cube layer explains its two symbols (tokens close to the fixed map colours in engine.ts).
@@ -101,68 +97,24 @@ export function MapSettings() {
       {['spawns', 'spots', 'cubes', 'labels'].map(layer)}
       <UToggle k="autoMap" />
     </Group>
-    <PvpOverlay />
+    <Group title={t('set.g.pets')}>
+      <Row label={t('set.sort')}>
+        <AppSelect value={U.sort} options={SORT_KEYS.map(k => ({ value: k, label: t('set.sort.' + k) }))} className="w-40"
+          onChange={v => { U.sort = v; saveUi(['sort']); emit('recompute'); bump() }} />
+      </Row>
+      <UToggle k="hideNamed" />
+      <UToggle k="showLv3" />
+      <Stepper label={t('set.lvMin')} value={U.lvMin} onStep={d => stepLv('lvMin', d)} minus={U.lvMin > 1} plus={U.lvMin < 60} />
+      <Stepper label={t('set.lvMax')} value={U.lvMax} onStep={d => stepLv('lvMax', d)} minus={U.lvMax > 1} plus={U.lvMax < 60} />
+      <Row label={t('set.reset')} sub={t('set.reset.sub')}>
+        <Button size="sm" variant="outline" onClick={() => {
+          Object.assign(U, { sort: DEF_UI.sort, hideNamed: DEF_UI.hideNamed, showLv3: DEF_UI.showLv3, lvMin: DEF_UI.lvMin, lvMax: DEF_UI.lvMax })
+          saveUi(['sort', 'hideNamed', 'showLv3', 'lvMin', 'lvMax']); emit('recompute'); bump()
+        }}>{t('set.reset.btn')}</Button>
+      </Row>
+    </Group>
   </>
 }
-
-/** Edit mode of the small overlay windows (PvP list, event announcer, alert banner). */
-function WinEdit() {
-  const c = pvpCfg(), hk = hkText('winEdit')
-  return (
-    <Row label={t('set.winEdit')} sub={t('set.winEdit.sub') + (hk ? ` · ${hk}` : '')}>
-      <Button size="sm" variant="outline" data-win-edit={c.locked ? 'locked' : 'edit'} onClick={toggleWinEdit}>{t(c.locked ? 'set.winEdit.unlock' : 'set.winEdit.lock')}</Button>
-    </Row>
-  )
-}
-
-function PvpOverlay() {
-  const c = pvpCfg(), team = c.team ?? true
-  return (
-    <Group title={t('set.g.pvp')}>
-      <Toggle label={t('set.pvp')} sub={t('set.pvp.sub') + (hkText('pvp') ? ` · ${hkText('pvp')}` : '')} on={!!c.on} onChange={togglePvp} />
-      <Toggle label={t('set.feed')} sub={t('set.feed.sub')} on={c.feed !== false} onChange={() => setPvpCfg({ feed: c.feed === false })} />
-      <Toggle label={t('set.pvpAuto')} sub={t('set.pvpAuto.sub')} on={!!c.auto} onChange={() => setPvpCfg({ auto: !c.auto })} />
-      <Toggle label={t('set.pvpAll')} sub={t('set.pvpAll.sub')} on={!!c.all} onChange={() => setPvpCfg({ all: !c.all })} />
-      <Row label={t('set.pvpFaction')} sub={t('set.pvpFaction.sub')}>
-        <AppSelect value={String(c.faction ?? 0)} options={['0', '1', '2'].map(k => ({ value: k, label: t('set.pvpFaction.' + k) }))} className="w-40"
-          onChange={v => setPvpCfg({ faction: Number(v) })} />
-      </Row>
-      <Toggle label={t('set.pvpAlarm')} sub={t('set.pvpAlarm.sub')} on={c.alarm !== false} onChange={() => setPvpCfg({ alarm: c.alarm === false })} />
-      <Toggle label={t('set.pvpTeam')} sub={t('set.pvpTeam.sub')} on={team} onChange={() => setPvpCfg({ team: !team })} />
-      <WinEdit />
-      <Fine id="set.pvp.fine" sub={t('set.pvp.fineSub')}>
-        <Toggle label={t('set.pvpCompact')} sub={t('set.pvpCompact.sub')} on={!!c.compact} onChange={() => setPvpCfg({ compact: !c.compact })} />
-        <Stepper label={t('set.pvpLimit')} sub={t('set.pvpLimit.sub')} value={String(c.limit)} minus={c.limit > 1} plus={c.limit < 30}
-          onStep={d => setPvpCfg({ limit: Math.max(1, Math.min(30, c.limit + d)) })} />
-        {team && <Toggle label={t('set.pvpSelf')} sub={t('set.pvpSelf.sub')} on={!!c.self} onChange={() => setPvpCfg({ self: !c.self })} />}
-        {team && <Stepper label={t('set.pvpTeamLimit')} sub={t('set.pvpTeamLimit.sub')} value={String(c.teamLimit ?? 6)}
-          minus={(c.teamLimit ?? 6) > 1} plus={(c.teamLimit ?? 6) < 30}
-          onStep={d => setPvpCfg({ teamLimit: Math.max(1, Math.min(30, (c.teamLimit ?? 6) + d)) })} />}
-        {!!c.auto && <Row label={t('set.pvpIdle')} sub={t('set.pvpIdle.sub')}>
-          <AppSelect value={c.idle || 'bar'} options={['bar', 'dim', 'hide'].map(k => ({ value: k, label: t('set.pvpIdle.' + k) }))} className="w-44"
-            onChange={v => setPvpCfg({ idle: v })} />
-        </Row>}
-        {c.alarm !== false && <>
-          <Toggle label={t('set.pvpAlarmSound')} sub={t('set.pvpAlarmSound.sub')} on={c.alarmSound !== false} onChange={() => setPvpCfg({ alarmSound: c.alarmSound === false })} />
-          <Stepper label={t('set.pvpAlarmRange')} sub={t('set.pvpAlarmRange.sub')} value={(c.alarmRange ?? 60) + ' m'} minus={(c.alarmRange ?? 60) > 10} plus={(c.alarmRange ?? 60) < 200}
-            onStep={d => setPvpCfg({ alarmRange: Math.max(10, Math.min(200, (c.alarmRange ?? 60) + d * 10)) })} />
-        </>}
-        {c.feed !== false && <>
-          <Stepper label={t('set.feedLimit')} value={String(c.feedLimit ?? 5)} minus={(c.feedLimit ?? 5) > 1} plus={(c.feedLimit ?? 5) < 10}
-            onStep={d => setPvpCfg({ feedLimit: Math.max(1, Math.min(10, (c.feedLimit ?? 5) + d)) })} />
-          <Stepper label={t('set.feedScale')} value={pct(c.feedScale ?? 1)} minus={(c.feedScale ?? 1) > 0.6} plus={(c.feedScale ?? 1) < 2}
-            onStep={d => setPvpCfg({ feedScale: stepVal(c.feedScale ?? 1, d, 0.05, 0.6, 2) })} />
-        </>}
-        <Stepper label={t('set.pvpScale')} value={pct(c.scale ?? 1)} minus={(c.scale ?? 1) > 0.6} plus={(c.scale ?? 1) < 2}
-          onStep={d => setPvpCfg({ scale: stepVal(c.scale ?? 1, d, 0.05, 0.6, 2) })} />
-        <Stepper label={t('set.pvpAlpha')} value={pct(c.alpha ?? 0.9)} minus={(c.alpha ?? 0.9) > 0.2} plus={(c.alpha ?? 0.9) < 1}
-          onStep={d => setPvpCfg({ alpha: stepVal(c.alpha ?? 0.9, d, 0.05, 0.2, 1) })} />
-      </Fine>
-    </Group>
-  )
-}
-
-// ---------------------------------------------------------------- targets & filters
 
 const SORT_KEYS = ['prio', 'near', 'spawns', 'name']
 
@@ -175,32 +127,70 @@ function stepLv(k: 'lvMin' | 'lvMax', d: number) {
   saveUi(['lvMin', 'lvMax']); emit('recompute'); bump()
 }
 
-export function Filters() {
+// ---------------------------------------------------------------- overlays
+
+/** Edit mode of the small overlay windows (PvP list, event announcer, alert banner). */
+function WinEdit() {
+  const c = pvpCfg(), hk = hkText('winEdit')
+  return (
+    <Row label={t('set.winEdit')} sub={t('set.winEdit.sub') + (hk ? ` · ${hk}` : '')}>
+      <Button size="sm" variant="outline" data-win-edit={c.locked ? 'locked' : 'edit'} onClick={toggleWinEdit}>{t(c.locked ? 'set.winEdit.unlock' : 'set.winEdit.lock')}</Button>
+    </Row>
+  )
+}
+
+export function Overlays() {
+  const c = pvpCfg(), team = c.team ?? true
   return <>
-    <Group title={t('set.g.list')}>
-      <Row label={t('set.sort')}>
-        <AppSelect value={U.sort} options={SORT_KEYS.map(k => ({ value: k, label: t('set.sort.' + k) }))} className="w-40"
-          onChange={v => { U.sort = v; saveUi(['sort']); emit('recompute'); bump() }} />
+    <Group><WinEdit /></Group>
+    <Group title={t('set.g.pvp')}>
+      <Toggle label={t('set.pvp')} sub={t('set.pvp.sub') + (hkText('pvp') ? ` · ${hkText('pvp')}` : '')} on={!!c.on} onChange={togglePvp} />
+      <Toggle label={t('set.pvpAuto')} sub={t('set.pvpAuto.sub')} on={!!c.auto} onChange={() => setPvpCfg({ auto: !c.auto })} />
+      <Toggle label={t('set.pvpAll')} sub={t('set.pvpAll.sub')} on={!!c.all} onChange={() => setPvpCfg({ all: !c.all })} />
+      <Row label={t('set.pvpFaction')} sub={t('set.pvpFaction.sub')}>
+        <AppSelect value={String(c.faction ?? 0)} options={['0', '1', '2'].map(k => ({ value: k, label: t('set.pvpFaction.' + k) }))} className="w-40"
+          onChange={v => setPvpCfg({ faction: Number(v) })} />
       </Row>
-      <UToggle k="hideNamed" />
-      <UToggle k="showLv3" />
+      <Toggle label={t('set.pvpTeam')} sub={t('set.pvpTeam.sub')} on={team} onChange={() => setPvpCfg({ team: !team })} />
+      <Fine id="set.pvp.fine" sub={t('set.pvp.fineSub')}>
+        <Toggle label={t('set.pvpCompact')} sub={t('set.pvpCompact.sub')} on={!!c.compact} onChange={() => setPvpCfg({ compact: !c.compact })} />
+        <Stepper label={t('set.pvpLimit')} sub={t('set.pvpLimit.sub')} value={String(c.limit)} minus={c.limit > 1} plus={c.limit < 30}
+          onStep={d => setPvpCfg({ limit: Math.max(1, Math.min(30, c.limit + d)) })} />
+        {team && <Toggle label={t('set.pvpSelf')} sub={t('set.pvpSelf.sub')} on={!!c.self} onChange={() => setPvpCfg({ self: !c.self })} />}
+        {team && <Stepper label={t('set.pvpTeamLimit')} sub={t('set.pvpTeamLimit.sub')} value={String(c.teamLimit ?? 6)}
+          minus={(c.teamLimit ?? 6) > 1} plus={(c.teamLimit ?? 6) < 30}
+          onStep={d => setPvpCfg({ teamLimit: Math.max(1, Math.min(30, (c.teamLimit ?? 6) + d)) })} />}
+        {!!c.auto && <Row label={t('set.pvpIdle')} sub={t('set.pvpIdle.sub')}>
+          <AppSelect value={c.idle || 'bar'} options={['bar', 'dim', 'hide'].map(k => ({ value: k, label: t('set.pvpIdle.' + k) }))} className="w-44"
+            onChange={v => setPvpCfg({ idle: v })} />
+        </Row>}
+        <Stepper label={t('set.pvpScale')} value={pct(c.scale ?? 1)} minus={(c.scale ?? 1) > 0.6} plus={(c.scale ?? 1) < 2}
+          onStep={d => setPvpCfg({ scale: stepVal(c.scale ?? 1, d, 0.05, 0.6, 2) })} />
+        <Stepper label={t('set.pvpAlpha')} value={pct(c.alpha ?? 0.9)} minus={(c.alpha ?? 0.9) > 0.2} plus={(c.alpha ?? 0.9) < 1}
+          onStep={d => setPvpCfg({ alpha: stepVal(c.alpha ?? 0.9, d, 0.05, 0.2, 1) })} />
+      </Fine>
     </Group>
-    <Group title={t('set.g.level')}>
-      <Stepper label={t('set.lvMin')} value={U.lvMin} onStep={d => stepLv('lvMin', d)} minus={U.lvMin > 1} plus={U.lvMin < 60} />
-      <Stepper label={t('set.lvMax')} value={U.lvMax} onStep={d => stepLv('lvMax', d)} minus={U.lvMax > 1} plus={U.lvMax < 60} />
+    <Group title={t('set.g.feed')}>
+      <Toggle label={t('set.feed')} sub={t('set.feed.sub')} on={c.feed !== false} onChange={() => setPvpCfg({ feed: c.feed === false })} />
+      {c.feed !== false && <>
+        <Stepper label={t('set.feedLimit')} value={String(c.feedLimit ?? 5)} minus={(c.feedLimit ?? 5) > 1} plus={(c.feedLimit ?? 5) < 10}
+          onStep={d => setPvpCfg({ feedLimit: Math.max(1, Math.min(10, (c.feedLimit ?? 5) + d)) })} />
+        <Stepper label={t('set.feedScale')} value={pct(c.feedScale ?? 1)} minus={(c.feedScale ?? 1) > 0.6} plus={(c.feedScale ?? 1) < 2}
+          onStep={d => setPvpCfg({ feedScale: stepVal(c.feedScale ?? 1, d, 0.05, 0.6, 2) })} />
+      </>}
     </Group>
-    <Group>
-      <Row label={t('set.reset')} sub={t('set.reset.sub')}>
-        <Button size="sm" variant="outline" onClick={() => {
-          Object.assign(U, { sort: DEF_UI.sort, hideNamed: DEF_UI.hideNamed, showLv3: DEF_UI.showLv3, lvMin: DEF_UI.lvMin, lvMax: DEF_UI.lvMax })
-          saveUi(['sort', 'hideNamed', 'showLv3', 'lvMin', 'lvMax']); emit('recompute'); bump()
-        }}>{t('set.reset.btn')}</Button>
-      </Row>
+    <Group title={t('set.g.alarm')}>
+      <Toggle label={t('set.pvpAlarm')} sub={t('set.pvpAlarm.sub')} on={c.alarm !== false} onChange={() => setPvpCfg({ alarm: c.alarm === false })} />
+      {c.alarm !== false && <>
+        <Toggle label={t('set.pvpAlarmSound')} sub={t('set.pvpAlarmSound.sub')} on={c.alarmSound !== false} onChange={() => setPvpCfg({ alarmSound: c.alarmSound === false })} />
+        <Stepper label={t('set.pvpAlarmRange')} sub={t('set.pvpAlarmRange.sub')} value={(c.alarmRange ?? 60) + ' m'} minus={(c.alarmRange ?? 60) > 10} plus={(c.alarmRange ?? 60) < 200}
+          onStep={d => setPvpCfg({ alarmRange: Math.max(10, Math.min(200, (c.alarmRange ?? 60) + d * 10)) })} />
+      </>}
     </Group>
   </>
 }
 
-// ---------------------------------------------------------------- notifications
+// ---------------------------------------------------------------- sound & voice
 
 /** Re-render when the Windows voices arrive (getVoices() is empty at first). */
 function useVoices() {
@@ -219,9 +209,6 @@ export function Notify() {
   const voiceOpts = vs.map(v => ({ value: v.name, label: v.name.replace(/^Microsoft /, '').replace(/ - .*$/, '') }))
   const voice = vs.find(v => v.name === U.ttsVoice)?.name ?? vs[0]?.name ?? ''
   return <>
-    <Group title={t('set.g.windows')}>
-      <WinEdit />
-    </Group>
     <Group title={t('set.g.sound')}>
       {ext.features.has('liveCubes') && <UToggle k="soundCube" />}
       <UToggle k="soundTimer" />
@@ -254,19 +241,28 @@ export function Notify() {
         ))}
       </Group>
     )}
-    <Group title={t('set.g.bossMod')}>
+    <Group title={t('set.g.timer')}>
+      <Stepper label={t('set.timerLead')} sub={t('set.timerLead.sub')} value={lead + ' min'} minus={lead > 1} plus={lead < 30}
+        onStep={d => { U.timerLead = Math.min(30, Math.max(1, lead + d)); saveUi(['timerLead']); bump() }} />
+    </Group>
+  </>
+}
+
+// ---------------------------------------------------------------- boss helper
+
+export function Boss() {
+  return <>
+    <Group>
       <UToggle k="bossMod" />
       {U.bossMod && <>
         <BossRoleRow />
         <UToggle k="bossBars" /><UToggle k="bossCount" /><UToggle k="bossTargetMe" /><UToggle k="bossDangerOnly" />
         {BLAME && <><UToggle k="bossBlame" /><UToggle k="bossBlameLive" /></>}
       </>}
+    </Group>
+    <Group title={t('set.g.bossRec')}>
       <UToggle k="bossRec" sub={t('set.bossRec.sub', { key: hkText('bossMark') || '–' })} />
       <BossRecRow />
-    </Group>
-    <Group title={t('set.g.timer')}>
-      <Stepper label={t('set.timerLead')} sub={t('set.timerLead.sub')} value={lead + ' min'} minus={lead > 1} plus={lead < 30}
-        onStep={d => { U.timerLead = Math.min(30, Math.max(1, lead + d)); saveUi(['timerLead']); bump() }} />
     </Group>
   </>
 }
@@ -295,12 +291,12 @@ export function Hotkeys() {
   return <Group>{HK_IDS.map(id => <HotkeyRow key={id} id={id} />)}</Group>
 }
 
-// ---------------------------------------------------------------- live tracking
+// ---------------------------------------------------------------- connection & data
 
-export function Live() {
+function Live() {
   const st = S.settings, mode = st.mode === 'manual' ? 'manual' : 'auto', noNpcap = st.npcap === false
   return (
-    <Group>
+    <Group title={t('set.g.live')}>
       <Row label={t('set.mode')} sub={noNpcap ? <span className="text-gold">{rich(t('set.mode.noNpcap'), { link: <NpcapLink /> })}</span>
         : mode === 'auto' ? t('set.mode.sub.auto', { proc: st.processName || '' }) : t('set.mode.sub.manual')}>
         <AppSelect value={mode} options={['auto', 'manual'].map(v => ({ value: v, label: t('set.mode.' + v) }))} className="w-60 max-w-full"
@@ -314,8 +310,6 @@ export function Live() {
   )
 }
 
-// ---------------------------------------------------------------- data
-
 // "Lädt …" on the refresh button until the host reports the data again.
 let refreshing = false
 onHost('dataReady', () => { refreshing = false; bump() })
@@ -323,7 +317,8 @@ onHost('dataReady', () => { refreshing = false; bump() })
 export function Data() {
   const st = S.settings
   return <>
-    <Group>
+    <Live />
+    <Group title={t('set.g.data')}>
       <Toggle label={t('set.online')} sub={t('set.online.sub')} on={!!st.onlineUpdates}
         onChange={() => { st.onlineUpdates = !st.onlineUpdates; host({ type: 'online', on: st.onlineUpdates }); bump() }} />
       <Row label={t('set.refresh')} sub={t('set.refresh.sub')}>
@@ -335,6 +330,9 @@ export function Data() {
     </Group>
     <Group title={t('set.g.about')}>
       <Row label={t('set.version')} sub={`The Completionist ${st.version || '–'}`} />
+      <Row label={t('set.quit')}>
+        <Button size="sm" variant="destructive" onClick={() => host({ type: 'quit' })}>{t('set.quit.btn')}</Button>
+      </Row>
     </Group>
     <Group title={t('set.credit.title')}>
       <div className={cn(SUB, 'px-3 pt-2 pb-2.5 leading-relaxed')}>

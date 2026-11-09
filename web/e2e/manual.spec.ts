@@ -143,10 +143,10 @@ test('map and bosses: prominent kill button', async ({ page }) => {
 test('settings: mode switch and version', async ({ page }) => {
   const app = await manual(page)
   await page.locator('[data-tip="Einstellungen"]').click()
-  await page.locator('nav [data-tip="Live-Tracking"]').click()
+  await page.locator('nav [data-tip="Verbindung & Daten"]').click()
   await page.getByRole('combobox').filter({ hasText: 'Manuell (ohne Npcap)' }).click()
   await page.getByRole('option', { name: 'Automatisch (Npcap mitlesen)' }).click()
   await expect.poll(async () => (await app.posted('mode')).at(-1)?.mode).toBe('auto')
-  await page.locator('nav [data-tip="Daten & Über"]').click()
+  await page.locator('nav [data-tip="Verbindung & Daten"]').click()
   await expect(page.getByText('The Completionist 1.1.0')).toBeVisible()
 })

@@ -1,20 +1,20 @@
 // Settings overlay below the header: category nav left (the Sidebar look; icons only on narrow windows), content
 // right in a form-width Page; centred with a max width on big windows.
-import { ArrowLeft, Bell, Database, Keyboard, Map as MapIcon, Radio, Settings, SlidersHorizontal, Target } from 'lucide-react'
+import { ArrowLeft, Database, Keyboard, Layers, Map as MapIcon, Settings, SlidersHorizontal, Swords, Volume2 } from 'lucide-react'
 import { S, U, V, saveUi, bump, useApp } from '@/core/state'
 import { t } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
 import { BAR, Page } from '@/components/kit'
-import { General, MapSettings, Filters, Notify, Hotkeys, Live, Data } from './sections'
+import { General, Overlays, MapSettings, Notify, Boss, Hotkeys, Data } from './sections'
 import { cn } from '@/lib/utils'
 
 const CATS = [
   ['general', SlidersHorizontal, General],
+  ['overlays', Layers, Overlays],
   ['map', MapIcon, MapSettings],
-  ['filters', Target, Filters],
-  ['notify', Bell, Notify],
+  ['notify', Volume2, Notify],
+  ['boss', Swords, Boss],
   ['hotkeys', Keyboard, Hotkeys],
-  ['live', Radio, Live],
   ['data', Database, Data],
 ] as const
 
@@ -24,7 +24,9 @@ const ON = 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground hover
 
 export function SettingsPanel() {
   useApp()
-  const cat = CATS.find(c => c[0] === U.setCat) || CATS[0]
+  // categories of older versions: Targets & filters is part of Map & pets now, Live tracking of Connection & data
+  const key = ({ filters: 'map', live: 'data' } as Record<string, string>)[U.setCat] ?? U.setCat
+  const cat = CATS.find(c => c[0] === key) || CATS[0]
   const Body = cat[2]
   return (
     <div className="@container absolute inset-x-0 top-10 bottom-0 z-30 flex flex-col bg-background">

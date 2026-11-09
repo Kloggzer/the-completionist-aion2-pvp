@@ -347,7 +347,7 @@ sealed class OverlayForm : Form
         {
             if (siteMode) SetSiteMode(false, null, null);
             if (!Visible) ToggleVisible();
-            Post(new { type = "openSettings", cat = "map" });
+            Post(new { type = "openSettings", cat = "overlays" });
         };
         return pvp;
     }

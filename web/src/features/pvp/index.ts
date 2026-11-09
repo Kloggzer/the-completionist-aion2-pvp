@@ -169,7 +169,7 @@ export function pvpMessage() {
   }
 }
 
-onHost('openSettings', m => { V.settingsOpen = true; U.setCat = m.cat || 'map'; saveUi(['setCat']); bump() })
+onHost('openSettings', m => { V.settingsOpen = true; U.setCat = m.cat || 'overlays'; saveUi(['setCat']); bump() })
 
 // ---------------------------------------------------------------- enemy alarm (alarm.ts)
 

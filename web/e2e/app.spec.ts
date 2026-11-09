@@ -124,9 +124,10 @@ test('spots: ranking explanation toggles', async ({ page }) => {
 test('settings: every category opens, closes again', async ({ page }) => {
   await openApp(page)
   await page.locator('[data-tip="Einstellungen"]').click()
-  for (const c of ['Allgemein', 'Karte', 'Ziele & Filter', 'Benachrichtigungen', 'Hotkeys', 'Live-Tracking', 'Daten & Über']) {
-    await page.locator(`nav [data-tip="${c}"]`).click()
-    await expect(page.locator(`nav [data-tip="${c}"]`)).toHaveAttribute('data-on', 'on')
+  for (const c of ['Allgemein', 'Overlays', 'Karte & Pets', 'Töne & Sprache', 'Boss-Helfer', 'Hotkeys', 'Verbindung & Daten']) {
+    // scoped to the settings nav: the sidebar has a page "Boss-Helfer" too
+    await page.locator(`nav[aria-label="Einstellungen"] [data-tip="${c}"]`).click()
+    await expect(page.locator(`nav[aria-label="Einstellungen"] [data-tip="${c}"]`)).toHaveAttribute('data-on', 'on')
   }
   await shot(page, 'settings')
   await page.locator('[data-settings-close]').click()
@@ -142,7 +143,7 @@ test('no radar: neither the map mode nor the mini radar (the position is too rou
   expect(await app.posted('radar2')).toHaveLength(0)
   // settings: the map category has no radar groups, the hotkeys no radar actions
   await page.locator('[data-tip="Einstellungen"]').click()
-  await page.locator('nav [data-tip="Karte"]').click()
+  await page.locator('nav [data-tip="Karte & Pets"]').click()
   await expect(page.getByText('Mini-Radar', { exact: false })).toHaveCount(0)
   await page.locator('nav [data-tip="Hotkeys"]').click()
   await expect(page.getByText('Radar', { exact: false })).toHaveCount(0)
@@ -265,7 +266,7 @@ for (const [w, h] of [[640, 800], [2000, 1100]]) {
     await page.waitForTimeout(300)
     await shot(page, `map-style-map-${w}`)
     await page.locator('[data-tip="Einstellungen"]').click()
-    await page.locator('nav [data-tip="Karte"]').click()
+    await page.locator('nav [data-tip="Karte & Pets"]').click()
     await page.locator('div.flex-wrap', { hasText: 'Kartenstil' }).last().getByRole('combobox').click()
     await page.getByRole('option', { name: 'Relief' }).click()
     expect((await app.posted('ui')).at(-1)).toMatchObject({ patch: { mapStyle: 'relief' } })

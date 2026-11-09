@@ -3,7 +3,6 @@ export default {
   de: {
     'tab.bossmod': 'Boss-Helfer', 'tab.bossmod.tip': 'Dungeon-Bosse: Ansagen, Timer-Balken, wer die Mechanik nicht gespielt hat',
     // settings
-    'set.g.bossMod': 'Boss-Helfer',
     'set.bossMod': 'Boss-Helfer', 'set.bossMod.sub': 'Dungeon-Bosse: Ansage in der Bildschirmmitte und per Sprache, Timer-Balken, Petze',
     'set.bossRole': 'Deine Rolle', 'set.bossRole.sub': 'Tank: keine „Du bist Ziel“-Ansagen, Tank-Mechaniken nur für dich; Automatisch = wer den Boss am längsten hält',
     'set.bossBars': 'Timer-Balken', 'set.bossBars.sub': 'Eigenes Fenster mit Boss, Phase, Raserei und den nächsten Angriffen (verschieben: Fenster bearbeiten)',
@@ -63,7 +62,6 @@ export default {
   },
   en: {
     'tab.bossmod': 'Boss helper', 'tab.bossmod.tip': 'Dungeon bosses: callouts, timer bars, who did not play the mechanic',
-    'set.g.bossMod': 'Boss helper',
     'set.bossMod': 'Boss helper', 'set.bossMod.sub': 'Dungeon bosses: callout in the middle of the screen and by voice, timer bars, blame',
     'set.bossRole': 'Your role', 'set.bossRole.sub': 'Tank: no "you are the target" callouts, tank mechanics only for you; automatic = who holds the boss longest',
     'set.bossBars': 'Timer bars', 'set.bossBars.sub': 'Own window with boss, phase, frenzy and the next attacks (move: edit windows)',

@@ -51,7 +51,7 @@ for (const [w, h] of SIZES) {
     // Settings.
     await page.locator('[data-tip="Einstellungen"]').click()
     await check(page, w, 'Settings')
-    await page.locator('nav [data-tip="Benachrichtigungen"]').click()
+    await page.locator('nav [data-tip="Töne & Sprache"]').click()
     await check(page, w, 'Settings-notify')
   })
 }

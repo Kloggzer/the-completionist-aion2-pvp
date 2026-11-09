@@ -2,10 +2,11 @@
 export default {
   de: {
     'set.title': 'Einstellungen',
-    'set.cat.general': 'Allgemein', 'set.cat.map': 'Karte', 'set.cat.filters': 'Ziele & Filter', 'set.cat.notify': 'Benachrichtigungen',
-    'set.cat.hotkeys': 'Hotkeys', 'set.cat.live': 'Live-Tracking', 'set.cat.data': 'Daten & Über',
+    'set.cat.general': 'Allgemein', 'set.cat.overlays': 'Overlays', 'set.cat.map': 'Karte & Pets', 'set.cat.notify': 'Töne & Sprache', 'set.cat.boss': 'Boss-Helfer',
+    'set.cat.hotkeys': 'Hotkeys', 'set.cat.data': 'Verbindung & Daten',
 
-    'set.g.display': 'Anzeige', 'set.g.window': 'Fenster', 'set.g.app': 'Programm',
+    'set.g.display': 'Anzeige', 'set.g.window': 'Fenster', 'set.g.feed': 'Gegner-Feed', 'set.g.alarm': 'Gegner-Alarm', 'set.g.pets': 'Pet-Liste',
+    'set.g.bossRec': 'Aufnahme', 'set.g.live': 'Verbindung', 'set.g.data': 'Spieldaten',
     'set.theme': 'Farbschema', 'set.theme.sub': 'Hell (Aion Ember), Dunkel (Nacht-Indigo) oder wie Windows', 'set.theme.light': 'Hell', 'set.theme.dark': 'Dunkel', 'set.theme.system': 'System',
     'set.lang': 'Sprache', 'set.lang.auto': 'System ({lang})', 'set.lang.de': 'Deutsch', 'set.lang.en': 'English',
     'set.opacity': 'Deckkraft', 'set.opacity.sub': 'Auch mit Strg + Mausrad über der Kopfleiste', 'set.zoom': 'Skalierung',
@@ -23,16 +24,11 @@ export default {
     'dock.opt.auto': 'Automatisch', 'dock.opt.overlay': 'Immer Overlay', 'dock.opt.window': 'Immer Fenster',
     'dock.isWindow': 'Fenster-Modus: andockbar, nicht im Vordergrund – Klick: Overlay', 'dock.isOverlay': 'Overlay: immer im Vordergrund – Klick: Fenster-Modus',
     'dock.auto': 'Automatisch nach Bildschirm (Spiel-Bildschirm = Overlay)', 'dock.manual': 'Von Hand festgelegt – Automatik in den Einstellungen',
-    
     'set.autoMap': 'Karte automatisch wechseln', 'set.autoMap.sub': 'Folgt Teleports und Kartenwechseln im Spiel',
     
     
     
-    
-    
-    
 
-    'set.g.list': 'Liste', 'set.g.level': 'Mob-Lv',
     'set.sort': 'Sortierung',
     'set.sort.prio': 'Priorität', 'set.sort.near': 'Fast fertig', 'set.sort.spawns': 'Meiste Spawns', 'set.sort.name': 'Name',
     'set.hideNamed': 'Named-, Held- und Elite-Mobs ausblenden', 'set.showLv3': 'Pets auf Lv 3 trotzdem zeigen',
@@ -65,10 +61,11 @@ export default {
   },
   en: {
     'set.title': 'Settings',
-    'set.cat.general': 'General', 'set.cat.map': 'Map', 'set.cat.filters': 'Targets & filters', 'set.cat.notify': 'Notifications',
-    'set.cat.hotkeys': 'Hotkeys', 'set.cat.live': 'Live tracking', 'set.cat.data': 'Data & about',
+    'set.cat.general': 'General', 'set.cat.overlays': 'Overlays', 'set.cat.map': 'Map & pets', 'set.cat.notify': 'Sound & voice', 'set.cat.boss': 'Boss helper',
+    'set.cat.hotkeys': 'Hotkeys', 'set.cat.data': 'Connection & data',
 
-    'set.g.display': 'Display', 'set.g.window': 'Window', 'set.g.app': 'App',
+    'set.g.display': 'Display', 'set.g.window': 'Window', 'set.g.feed': 'Enemy feed', 'set.g.alarm': 'Enemy alarm', 'set.g.pets': 'Pet list',
+    'set.g.bossRec': 'Recording', 'set.g.live': 'Connection', 'set.g.data': 'Game data',
     'set.theme': 'Colour scheme', 'set.theme.sub': 'Light (Aion Ember), dark (Night Indigo) or like Windows', 'set.theme.light': 'Light', 'set.theme.dark': 'Dark', 'set.theme.system': 'System',
     'set.lang': 'Language', 'set.lang.auto': 'System ({lang})', 'set.lang.de': 'Deutsch', 'set.lang.en': 'English',
     'set.opacity': 'Opacity', 'set.opacity.sub': 'Also Ctrl + mouse wheel over the header', 'set.zoom': 'Scale',
@@ -86,16 +83,11 @@ export default {
     'dock.opt.auto': 'Automatic', 'dock.opt.overlay': 'Always overlay', 'dock.opt.window': 'Always window',
     'dock.isWindow': 'Window mode: dockable, not on top – click: overlay', 'dock.isOverlay': 'Overlay: always on top – click: window mode',
     'dock.auto': 'Automatic by screen (game screen = overlay)', 'dock.manual': 'Set by hand – automatic in the settings',
-    
     'set.autoMap': 'Switch map automatically', 'set.autoMap.sub': 'Follows teleports and map changes in the game',
     
     
     
-    
-    
-    
 
-    'set.g.list': 'List', 'set.g.level': 'Mob level',
     'set.sort': 'Sort order',
     'set.sort.prio': 'Priority', 'set.sort.near': 'Almost done', 'set.sort.spawns': 'Most spawns', 'set.sort.name': 'Name',
     'set.hideNamed': 'Hide named, hero and elite mobs', 'set.showLv3': 'Show pets at Lv 3 anyway',
