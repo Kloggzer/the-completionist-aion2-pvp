@@ -10,7 +10,7 @@ export default {
     'welcome.auto.ok': '✓ Npcap ist installiert',
     'welcome.auto.missing': 'Npcap ist nicht installiert – kostenlos auf {link} herunterladen und die App neu starten.',
     'welcome.manual': 'Manuell (ohne Npcap)',
-    'welcome.manual.text': 'Du trägst Pet-Seelen, Erfolge und deinen Charakter selbst ein. Karte, Spawns, Farmspots, Checkliste, Vorräte, Timer und Boss-Respawns (ab deinem Kill) funktionieren genauso – nur Radar, Position und Live-Cubes brauchen den automatischen Modus.',
+    'welcome.manual.text': 'Du trägst Pet-Seelen, Erfolge und deinen Charakter selbst ein. Karte, Spawns, Farmspots, Checkliste, Vorräte, Timer und Boss-Respawns (ab deinem Kill) funktionieren genauso – nur Position und Live-Cubes brauchen den automatischen Modus.',
     'welcome.pick': 'Auswählen',
     'welcome.later': 'Jederzeit änderbar unter Einstellungen → Live-Tracking.',
 
@@ -19,7 +19,7 @@ export default {
 
     'set.mode': 'Modus', 'set.mode.auto': 'Automatisch (Npcap mitlesen)', 'set.mode.manual': 'Manuell (ohne Npcap)',
     'set.mode.sub.auto': 'Passiv: liest nur Kopien der Pakete von {proc}, kein Eingriff ins Spiel.',
-    'set.mode.sub.manual': 'Pets, Erfolge und Charakter trägst du selbst ein. Radar, Position und Live-Cubes sind aus.',
+    'set.mode.sub.manual': 'Pets, Erfolge und Charakter trägst du selbst ein. Position und Live-Cubes sind aus.',
     'set.mode.noNpcap': 'Npcap ist nicht installiert – ohne Npcap läuft die App immer manuell. Download: {link}',
     'set.g.about': 'Über', 'set.version': 'Version',
 
@@ -31,8 +31,7 @@ export default {
     'pets.age.manualNone': 'Manuell – Seelen über + und Lv auf den Kacheln eintragen',
     'pets.age.manualTip': 'Manueller Modus: nichts wird aus dem Spiel gelesen.',
 
-    'map.radarManual': 'Radar braucht den automatischen Modus (Npcap) – im manuellen Modus gibt es keine Live-Position.',
-    'map.manual': 'Manuell · keine Live-Position',
+    
 
     'ach.manualHint': '**Manueller Modus:** Erfolg antippen, dann den Zähler mit −/+ setzen oder Stufen abhaken.',
     'ach.faction': 'Fraktion', 'ach.faction.all': 'Beide Fraktionen', 'ach.faction.Elyos': 'Elyos', 'ach.faction.Asmodian': 'Asmodier',
@@ -58,7 +57,7 @@ export default {
     'welcome.auto.ok': '✓ Npcap is installed',
     'welcome.auto.missing': 'Npcap is not installed – download it for free from {link} and restart the app.',
     'welcome.manual': 'Manual (without Npcap)',
-    'welcome.manual.text': 'You enter pet souls, achievements and your character yourself. Map, spawns, farm spots, checklist, supplies, timers and boss respawns (from your kill) work the same – only radar, position and live cubes need the automatic mode.',
+    'welcome.manual.text': 'You enter pet souls, achievements and your character yourself. Map, spawns, farm spots, checklist, supplies, timers and boss respawns (from your kill) work the same – only position and live cubes need the automatic mode.',
     'welcome.pick': 'Choose',
     'welcome.later': 'You can change this any time under Settings → Live tracking.',
 
@@ -67,7 +66,7 @@ export default {
 
     'set.mode': 'Mode', 'set.mode.auto': 'Automatic (read with Npcap)', 'set.mode.manual': 'Manual (without Npcap)',
     'set.mode.sub.auto': 'Passive: only reads copies of the packets of {proc}, never touches the game.',
-    'set.mode.sub.manual': 'You enter pets, achievements and character yourself. Radar, position and live cubes are off.',
+    'set.mode.sub.manual': 'You enter pets, achievements and character yourself. Position and live cubes are off.',
     'set.mode.noNpcap': 'Npcap is not installed – without Npcap the app always runs manually. Download: {link}',
     'set.g.about': 'About', 'set.version': 'Version',
 
@@ -79,8 +78,7 @@ export default {
     'pets.age.manualNone': 'Manual – enter souls with + and Lv on the tiles',
     'pets.age.manualTip': 'Manual mode: nothing is read from the game.',
 
-    'map.radarManual': 'The radar needs the automatic mode (Npcap) – manual mode has no live position.',
-    'map.manual': 'Manual · no live position',
+    
 
     'ach.manualHint': '**Manual mode:** tap an achievement, then set its counter with −/+ or tick tiers.',
     'ach.faction': 'Faction', 'ach.faction.all': 'Both factions', 'ach.faction.Elyos': 'Elyos', 'ach.faction.Asmodian': 'Asmodian',

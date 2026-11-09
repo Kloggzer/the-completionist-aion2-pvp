@@ -24,19 +24,6 @@ sealed class Settings
     // Alert banner (AlertForm): saved centre-top point (int.MinValue = centred near the top of the screen).
     public int AlertX { get; set; } = int.MinValue;
     public int AlertY { get; set; } = int.MinValue;
-    // Mini radar (RadarForm): separate always-on-top window. X/Y = top-left corner (int.MinValue = centre it on the
-    // character on first show), Size = edge length in px, Range in metres, Disc = opacity of the dark disc (0 = dots only),
-    // Rim = opacity of the gold rim (the dashed half-range ring follows it), Alpha = opacity of the whole window (20-100 %), OffsetY = logical px below the game window's centre that "centre on character" uses (the feet sit lower).
-    public bool RadarVisible { get; set; }
-    public int RadarX { get; set; } = int.MinValue;
-    public int RadarY { get; set; } = int.MinValue;
-    public int RadarSize { get; set; } = -1;
-    public int RadarRange { get; set; } = 100;
-    public double RadarDisc { get; set; } = 0.15;
-    public double RadarRim { get; set; } = 0.2;
-    public double RadarAlpha { get; set; } = 1.0;
-    public bool RadarArrow { get; set; } = true;
-    public int RadarOffsetY { get; set; }
     // PvP overlay (PvpForm): list of nearby enemy players. On = window enabled (hotkey), Auto = only shown while enemies
     // are listed, X/Y = top-left corner (int.MinValue = left edge of the game's screen on first show), Width in px
     // (-1 = default), Scale = size factor, Alpha = window opacity, Collapsed = header only, Limit = max rows,
@@ -99,9 +86,9 @@ sealed class Settings
     public static readonly Dictionary<string, string> DefaultHotkeys = new()
     {
         // Ctrl+Alt: plain Alt+letter combos are partly game shortcuts (Alt+C wings, Alt+V, Alt+H, ...).
-        ["toggle"] = "Ctrl+Alt+M", ["click"] = "Ctrl+Alt+C", ["radar"] = "Ctrl+Alt+R", ["site"] = "Ctrl+Alt+W",
+        ["toggle"] = "Ctrl+Alt+M", ["click"] = "Ctrl+Alt+C", ["site"] = "Ctrl+Alt+W",
         ["opaUp"] = "Ctrl+Alt+PageUp", ["opaDown"] = "Ctrl+Alt+PageDown", ["zoomIn"] = "Ctrl+Alt+Oemplus", ["zoomOut"] = "Ctrl+Alt+OemMinus",
-        ["radarLock"] = "Ctrl+Alt+E", ["pvp"] = "Ctrl+Alt+P", ["winEdit"] = "Ctrl+Alt+L", ["bossMark"] = "Ctrl+Alt+B",
+        ["pvp"] = "Ctrl+Alt+P", ["winEdit"] = "Ctrl+Alt+L", ["bossMark"] = "Ctrl+Alt+B",
     };
 
     public static string DataDir { get; } = Path.Combine(
@@ -119,6 +106,7 @@ sealed class Settings
         try { s = File.Exists(FilePath) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath)) ?? new() : FromInstaller(); }
         catch { s = new(); }
         foreach (var (k, v) in DefaultHotkeys) s.Hotkeys.TryAdd(k, v);
+        foreach (var k in s.Hotkeys.Keys.Except(DefaultHotkeys.Keys).ToList()) s.Hotkeys.Remove(k); // dropped actions (radar, radar lock)
         return s;
     }
 

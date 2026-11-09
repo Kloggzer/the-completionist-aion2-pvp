@@ -1,4 +1,4 @@
-// Map canvas, radar, player position and zone/instance handling.
+// Map canvas, player position and zone/instance handling.
 // The painting stays imperative: MapView hands over its canvas (attachCanvas), everything else works on module state.
 import { G, S, U, V, saveUi, bump, selIds, type Any } from '@/core/state'
 import { host, onHost } from '@/core/host'
@@ -60,8 +60,6 @@ function selection(): number[][] | null {
 let fitPending = false // fit() while the canvas had no size (list-only view): redo once it has one
 export function fit() {
   fitPending = view.w <= 1
-  if (U.radar && S.pos && !selIds().size && !V.spot && !V.cube && !(U.tab === 'farm' && V.farmSpot)) { V.follow = V.radarView = true; view.cx = S.pos.x; view.cz = S.pos.z; view.s = U.radarS; draw(); return }
-  if (U.radar && S.pos) V.follow = false
   const pts = selection()
   if (!pts?.length || view.w <= 1) return
   let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9
@@ -160,12 +158,10 @@ function paint() {
     }
     ctx.globalAlpha = 1
   }
-  // Hidden cubes. Candidate spots: Lucide cube icon at every zoom level (smaller when zoomed out); not in the radar
-  // (there only a cube reported live by a local module matters).
+  // Hidden cubes. Candidate spots: Lucide cube icon at every zoom level (smaller when zoomed out).
   if (U.layers.cubes || V.cube || V.live.size) {
     const near = view.s >= 0.35, live = new Map<string, Any>([...V.live.values()].map((l: Any) => [l.c.key, l]))
-    if (!U.radar || U.radarCubes || V.cube)
-      for (const c of m.cubes) {
+    for (const c of m.cubes) {
         if (V.cube && V.cube !== c.key) continue
         if (!U.layers.cubes && !V.cube) break
         const known = live.has(c.key) // real spot known: the other candidates fade out
@@ -224,7 +220,7 @@ function paintFarm() {
   }
 }
 
-// ---------------------------------------------------------------- radar
+// ---------------------------------------------------------------- position
 
 export function onPos(p: Any, quiet?: boolean) {
   const now = Date.now()
@@ -261,10 +257,7 @@ setInterval(() => {
 
 let listAt = 0
 function posMoved(full: boolean) {
-  const p = S.pos
   if (S.instance) return
-  if (U.radar && !V.follow && Date.now() - (V.panAt || 0) > 6000 && !selIds().size && !V.spot && !V.cube) V.follow = true
-  if (U.radar && V.follow) { view.cx = p.x; view.cz = p.z; if (!V.radarView) { view.s = U.radarS; V.radarView = true } }
   draw()
   // Lists and distances are heavier: at most every 1.5 s.
   if (!full && Date.now() - listAt < 1500) return
@@ -315,22 +308,6 @@ function paintPlayer() {
   if (S.instance) return
   if (!onMap(m, p)) return
   const x = sx(p.x), y = sz(p.z), stale = posAge() > 120
-  if (U.radar) {
-    ctx.strokeStyle = '#ffffff22'; ctx.lineWidth = 1; ctx.setLineDash([3, 4])
-    ctx.font = '10px "Segoe UI"'; ctx.fillStyle = '#ffffff66'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'
-    for (const r of [100, 250, 500]) {
-      const rr = r * view.s
-      if (rr < 25 || rr > Math.max(view.w, view.h)) continue
-      ctx.beginPath(); ctx.arc(x, y, rr, 0, 7); ctx.stroke(); ctx.fillText(r + ' m', x + rr * 0.71 + 2, y - rr * 0.71)
-    }
-    ctx.setLineDash([])
-    const n = V.near
-    if (n?.mob) {
-      ctx.strokeStyle = n.mob.t.col; ctx.globalAlpha = 0.85; ctx.lineWidth = 1.5
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(sx(n.mob.x), sz(n.mob.z)); ctx.stroke()
-      ctx.beginPath(); ctx.arc(sx(n.mob.x), sz(n.mob.z), 7, 0, 7); ctx.stroke(); ctx.globalAlpha = 1
-    }
-  }
   ctx.globalAlpha = stale ? 0.55 : 1
   if (p.est) { // estimated (filter: 1-σ radius p.sigma; dead reckoning: ~30 m): dashed uncertainty ring
     ctx.strokeStyle = '#5fd0e0aa'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4])
@@ -344,17 +321,6 @@ function paintPlayer() {
   } else { ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, 7) }
   ctx.fillStyle = '#5fd0e0'; ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2; ctx.stroke(); ctx.fill()
   ctx.restore(); ctx.globalAlpha = 1
-}
-
-// The radar HUD is rendered by MapView; refresh the "position x ago" line.
-setInterval(() => { if (U.radar && S.pos) { bump(); draw() } }, 5000)
-
-export function setRadar(on: boolean) {
-  U.radar = on; saveUi(['radar'])
-  V.follow = true
-  if (on && S.pos) { view.cx = S.pos.x; view.cz = S.pos.z; view.s = U.radarS; V.sel = V.spot = V.cube = null }
-  else if (!on) fit()
-  updateNear(); bump(); draw()
 }
 
 // ---------------------------------------------------------------- pan / zoom / hover / click
@@ -372,7 +338,7 @@ export function pointerMove(e: PointerEvent) {
   if (drag) {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y
     if (Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; if (cv) cv.style.cursor = 'grabbing'; tipFn(null) }
-    if (drag.moved) { view.cx = drag.cx - dx / view.s; view.cz = drag.cz - dy / view.s; if (U.radar) { V.follow = false; V.panAt = Date.now() } draw() }
+    if (drag.moved) { view.cx = drag.cx - dx / view.s; view.cz = drag.cz - dy / view.s; draw() }
     return
   }
   hover(e)
@@ -389,11 +355,9 @@ export const zoomIn = () => zoomAt(view.w / 2, view.h / 2, 1.5)
 export const zoomOut = () => zoomAt(view.w / 2, view.h / 2, 1 / 1.5)
 
 function zoomAt(px: number, py: number, f: number) {
-  if (U.radar && V.follow && S.pos) { px = view.w / 2; py = view.h / 2 }
   const x = wx(px), z = wz(py)
   view.s = Math.min(3, Math.max(0.02, view.s * f))
   view.cx = x - (px - view.w / 2) / view.s; view.cz = z - (py - view.h / 2) / view.s
-  if (U.radar) { U.radarS = view.s; saveUi(['radarS']) }
   draw()
 }
 
@@ -456,7 +420,7 @@ export function mergeSiteCubes(cubes: Any) {
 
 // ---------------------------------------------------------------- map changes
 // 0x0140 tells the current map id on login, teleport and instance entry. aion2maps maps have a map_id
-// (1110 = Altgard); instances/dungeons have other ids and no map, so the radar pauses there.
+// (1110 = Altgard); instances/dungeons have other ids and no map, so the position pauses there.
 export function onZone(id: number) {
   S.zone = id
   if (!G.maps.length) return // loadBase emits 'zoneCheck' again

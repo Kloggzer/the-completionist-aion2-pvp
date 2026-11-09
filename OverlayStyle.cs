@@ -5,7 +5,7 @@ namespace PetOverlay;
 // One look for the small overlay windows (event banner, alert banner, boss callout, boss bars, enemy feed; the PvP list
 // is the model): a dark translucent card with a hairline edge and rounded corners, an optional accent stripe on the left
 // (gold, red or the mechanic's colour), light title text with a muted second line, a red pulsing edge for danger, and
-// the same dashed frame in the edit mode. The radar keeps its own look (a ring on the ground, not a card).
+// the same dashed frame in the edit mode.
 static class OverlayStyle
 {
     public static readonly Color Panel = Color.FromArgb(232, 20, 23, 31), Edge = Color.FromArgb(46, 255, 255, 255),

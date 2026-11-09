@@ -24,7 +24,6 @@ sealed class OverlayForm : Form
     EnemyFeedForm? feedForm;
     AnnounceForm? announce;
     BoardOverlay? board;
-    RadarForm? radar;
     PvpForm? pvp;
     // PvP overlay data (PlayerFrames via PetSource), sent to the UI as 'pvp' snapshots at most 4x per second.
     readonly Dictionary<uint, PvpPlayer> pvpPlayers = new();
@@ -135,7 +134,6 @@ sealed class OverlayForm : Form
         {
             ApplyWindowMode();
             if (Visible && !windowMode) Native.KeepOnTop(Handle);
-            if (radar is { Visible: true }) Native.KeepOnTop(radar.Handle);
             if (pvp is { Visible: true }) Native.KeepOnTop(pvp.Handle);
         };
         pvpTimer.Tick += (_, _) =>
@@ -191,7 +189,6 @@ sealed class OverlayForm : Form
         KeepOnScreen();
         RegisterHotkeys();
         topTimer.Start();
-        if (settings.RadarVisible) Radar(); // shows itself once the UI sends a position
         pvpTimer.Start();
         if (!settings.Visible && replayDir == null) BeginInvoke(Hide);
 
@@ -273,62 +270,14 @@ sealed class OverlayForm : Form
     {
         settings.Opacity, settings.Zoom, settings.OnlineUpdates, settings.ProcessName, settings.Dock,
         StatePath = statePath, settings.Hotkeys, HotkeyOk = hotkeyOk, settings.Ui, settings.Mode, Npcap = npcap, Version,
-        Radar = RadarView(), Pvp = PvpView(),
+        Pvp = PvpView(),
     };
-
-    // ---------------------------------------------------------------- mini radar (RadarForm)
-
-    object RadarView() => new
-    {
-        on = settings.RadarVisible, locked = radar?.Locked ?? true, range = settings.RadarRange,
-        disc = settings.RadarDisc, rim = settings.RadarRim, alpha = settings.RadarAlpha, size = radar?.Width ?? settings.RadarSize, arrow = settings.RadarArrow, offY = settings.RadarOffsetY,
-    };
-
-    void PostRadar() => Post(new { type = "radarWin", radar = RadarView() });
-
-    RadarForm Radar()
-    {
-        if (radar != null) return radar;
-        radar = new RadarForm(settings);
-        radar.Changed += () => { SaveSoon(); PostRadar(); };
-        return radar;
-    }
-
-    void ShowRadar(bool on)
-    {
-        settings.RadarVisible = on;
-        if (!on) Radar().SetLocked(true);
-        Radar().Apply();
-        SaveSoon();
-        PostRadar();
-    }
-
-    void ToggleRadarLock()
-    {
-        // Unlocking a hidden radar shows it (that is what the hotkey is for: move it into place).
-        if (!settings.RadarVisible) { settings.RadarVisible = true; Radar().SetLocked(false); SaveSoon(); }
-        else Radar().SetLocked(!Radar().Locked);
-        Radar().Apply();
-        PostRadar();
-    }
 
     static Color HexColor(string? hex)
     {
         try { if (hex is { Length: 7 } && hex[0] == '#') return Color.FromArgb(Convert.ToInt32(hex[1..], 16) | unchecked((int)0xFF000000)); }
         catch { }
         return Color.FromArgb(95, 208, 224);
-    }
-
-    static PointF? Pt(JsonNode? n) => n is JsonArray a && a.Count >= 2 ? new PointF((float?)a[0] ?? 0, (float?)a[1] ?? 0) : null;
-
-    void OnRadarData(JsonNode m)
-    {
-        if (radar == null && !settings.RadarVisible) return;
-        bool ok = (bool?)m["ok"] ?? false;
-        var dots = (m["dots"] as JsonArray ?? []).OfType<JsonArray>().Where(a => a.Count >= 3).Take(400)
-            .Select(a => new RadarForm.Dot((float?)a[0] ?? 0, (float?)a[1] ?? 0, HexColor((string?)a[2]), ((int?)a.ElementAtOrDefault(3) ?? 0) != 0)).ToArray();
-        var cubes = (m["cubes"] as JsonArray ?? []).Select(Pt).OfType<PointF>().Take(50).ToArray();
-        Radar().SetData(ok, (float?)m["heading"], dots, cubes, Pt(m["nearest"]), (float?)m["sigma"]);
     }
 
     // ---------------------------------------------------------------- PvP overlay (PvpForm)
@@ -917,7 +866,6 @@ sealed class OverlayForm : Form
                 Announcer().Announce((string?)m["key"] ?? "", (string?)m["title"] ?? "", (string?)m["sub"] ?? "",
                     DateTimeOffset.FromUnixTimeMilliseconds((long?)m["at"] ?? 0).UtcDateTime, Screen.FromControl(this));
                 break;
-            case "radar2": OnRadarData(m); break;
             case "pvp2": OnPvpData(m); break;
             case "pvpWin": ShowPvp((bool?)m["on"] ?? !settings.PvpOn); break;
             case "winEdit": SetWinEdit((bool?)m["on"] ?? !winEdit); break;
@@ -954,31 +902,6 @@ sealed class OverlayForm : Form
             case "abyss": Abyss((int?)m["id"] ?? 0, (string?)m["file"]); break;
             case "pvpLookup":
                 if ((string?)m["name"] is { Length: > 0 } lname && (int?)m["srv"] is int lsrv) PvpLookup(lname, lsrv);
-                break;
-            case "radarWin": ShowRadar((bool?)m["on"] ?? !settings.RadarVisible); break;
-            case "radarLock":
-                if ((bool?)m["locked"] is bool lk && settings.RadarVisible) { Radar().SetLocked(lk); PostRadar(); }
-                else ToggleRadarLock();
-                break;
-            case "radarCenter":
-                if (!settings.RadarVisible) ShowRadar(true);
-                Radar().CenterOnCharacter();
-                break;
-            case "radarCfg":
-                if ((int?)m["range"] is int rng) settings.RadarRange = Math.Clamp(rng, RadarForm.MinRange, RadarForm.MaxRange);
-                if ((double?)m["alpha"] is double alpha) settings.RadarAlpha = Math.Clamp(Math.Round(alpha, 2), 0.2, 1);
-                if ((int?)m["size"] is int side) Radar().SetSide(side);
-                if ((double?)m["disc"] is double disc) settings.RadarDisc = Math.Clamp(Math.Round(disc, 2), 0, 0.9);
-                if ((double?)m["rim"] is double rim) settings.RadarRim = Math.Clamp(Math.Round(rim, 2), 0, 1);
-                if ((bool?)m["arrow"] is bool arrow) settings.RadarArrow = arrow;
-                if ((int?)m["offY"] is int offY)
-                {
-                    settings.RadarOffsetY = Math.Clamp(offY, -400, 400);
-                    if (radar != null) radar.CenterOnCharacter(); // the offset only means something relative to the centre
-                }
-                radar?.Apply();
-                SaveSoon();
-                PostRadar();
                 break;
             case "alertHide": alert?.HideDanger(); break;
             case "daeOverlay":
@@ -1617,12 +1540,6 @@ sealed class OverlayForm : Form
             case "toggle": ToggleVisible(); break;
             case "click": ToggleClickThrough(); break;
             case "site": SetSiteMode(!siteMode, (string?)settings.Ui["map"], null); break;
-            case "radar":
-                if (siteMode) SetSiteMode(false, null, null);
-                if (!Visible) ToggleVisible();
-                Post(new { type = "radar" });
-                break;
-            case "radarLock": ToggleRadarLock(); break;
             case "pvp": ShowPvp(!settings.PvpOn); break;
             case "winEdit": SetWinEdit(!winEdit); break;
             case "bossMark": BossMark(); break;

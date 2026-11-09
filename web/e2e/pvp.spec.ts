@@ -83,7 +83,7 @@ test('arena: both teams, own party fills CP of mates out of range; team section 
   expect(m.rows.find((r: Any) => r.n === 'Kanapenia').f).toBeCloseTo(0.879, 3)
 
   await page.locator('[data-tip="Einstellungen"]').click()
-  await page.locator('nav [data-tip="Karte & Radar"]').click()
+  await page.locator('nav [data-tip="Karte"]').click()
   await page.locator('[data-disclosure="set.pvp.fine"] button[aria-expanded]').click()
   const teamLimit = page.locator('div.flex-wrap', { hasText: 'Team-Zeilen' }).last()
   await expect(teamLimit).toContainText('6')
@@ -135,7 +135,7 @@ test('open world: other faction only, zone title, empty list, settings: all play
   expect((await lastRows(app)).rows[0]).toMatchObject({ c: 'Kle', sub: 'Ariel', il: '940', d: '75 m', col: '#7ee0a0' })
 
   await page.locator('[data-tip="Einstellungen"]').click()
-  await page.locator('nav [data-tip="Karte & Radar"]').click()
+  await page.locator('nav [data-tip="Karte"]').click()
   await expect(page.getByText('PvP-Liste anzeigen')).toBeVisible()
   await page.locator('div.flex-wrap', { hasText: 'Alle Spieler' }).last().getByRole('switch').click()
   expect((await app.posted('pvpCfg')).at(-1)).toMatchObject({ all: true })
@@ -180,7 +180,7 @@ test('overlay windows: edit mode from the settings (PvP list, announcer, alert b
   await btn.click()
   await expect(btn).toHaveText('Lösen')
   // the same switch in the PvP group
-  await page.locator('nav [data-tip="Karte & Radar"]').click()
+  await page.locator('nav [data-tip="Karte"]').click()
   await expect(page.locator('[data-win-edit]')).toHaveText('Lösen')
   await expect(page.getByText('Fenster verschieben').first()).toBeVisible()
 })
@@ -189,13 +189,13 @@ test('settings button of the window opens the PvP settings', async ({ page }) =>
   const app = await openApp(page)
   await app.send({ type: 'openSettings', cat: 'map' })
   await expect(page.getByText('PvP-Liste anzeigen')).toBeVisible()
-  await expect(page.locator('nav [data-tip="Karte & Radar"]')).toHaveAttribute('data-on', 'on')
+  await expect(page.locator('nav [data-tip="Karte"]')).toHaveAttribute('data-on', 'on')
 })
 
 test('list and enemy feed switched off: no more rows are posted', async ({ page }) => {
   const app = await openApp(page)
   await page.locator('[data-tip="Einstellungen"]').click()
-  await page.locator('nav [data-tip="Karte & Radar"]').click()
+  await page.locator('nav [data-tip="Karte"]').click()
   await page.locator('div.flex-wrap', { hasText: 'PvP-Liste anzeigen' }).last().getByRole('switch').click()
   expect((await app.posted('pvpWin')).at(-1)).toMatchObject({ on: false })
   await page.locator('div.flex-wrap', { hasText: 'Gegner-Feed (Widget)' }).last().getByRole('switch').click()

@@ -20,7 +20,7 @@ for (const theme of ['light', 'dark'] as const) test('theme ' + theme, async ({ 
     await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-${p}.png` })
   }
   await page.locator('[data-tip="Einstellungen"]').click()
-  await page.locator('nav [data-tip="Karte & Radar"]').click()
+  await page.locator('nav [data-tip="Karte"]').click()
   await page.waitForTimeout(250) // colour transition of the nav item
   await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-Settings.png` })
   await page.locator('[data-tip="Einstellungen"]').click()

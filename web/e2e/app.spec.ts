@@ -124,7 +124,7 @@ test('spots: ranking explanation toggles', async ({ page }) => {
 test('settings: every category opens, closes again', async ({ page }) => {
   await openApp(page)
   await page.locator('[data-tip="Einstellungen"]').click()
-  for (const c of ['Allgemein', 'Karte & Radar', 'Ziele & Filter', 'Benachrichtigungen', 'Hotkeys', 'Live-Tracking', 'Daten & Über']) {
+  for (const c of ['Allgemein', 'Karte', 'Ziele & Filter', 'Benachrichtigungen', 'Hotkeys', 'Live-Tracking', 'Daten & Über']) {
     await page.locator(`nav [data-tip="${c}"]`).click()
     await expect(page.locator(`nav [data-tip="${c}"]`)).toHaveAttribute('data-on', 'on')
   }
@@ -133,52 +133,19 @@ test('settings: every category opens, closes again', async ({ page }) => {
   await expect(page.getByText('Einstellungen', { exact: true })).toHaveCount(0)
 })
 
-test('mini radar: toggle, lock, centre, content goes to the host', async ({ page }) => {
+test('no radar: neither the map mode nor the mini radar (the position is too rough for it)', async ({ page }) => {
   const app = await openApp(page, { ui: { tab: 'targets', view: 'both' } })
-  const btn = page.locator('[data-mini-radar]')
-  await expect(btn).toHaveAttribute('data-mini-radar', 'off')
-  await btn.click()
-  await expect(btn).toHaveAttribute('data-mini-radar', 'on')
-  expect((await app.posted('radarWin')).at(-1)).toMatchObject({ on: true })
-  // No position yet: the window gets an empty frame (hidden while locked).
-  await expect.poll(async () => (await app.posted('radar2')).at(-1)?.ok).toBe(false)
   await app.send({ type: 'pos', pos: { x: 0, z: 0, y: 0, at: new Date().toISOString() } })
-  await expect.poll(async () => (await app.posted('radar2')).at(-1)?.ok).toBe(true)
-  const r2 = (await app.posted('radar2')).at(-1)
-  expect(r2.range).toBe(100)
-  for (const [dx, dz] of r2.dots) expect(Math.hypot(dx, dz)).toBeLessThanOrEqual(100.5)
-  expect(r2.sigma).toBeNull()
-  // A spawn-centroid estimate within 20 s of a real fix is ignored (the fix + dead reckoning is better).
-  await app.send({ type: 'pos', pos: { x: 30, z: 0, y: 0, at: new Date().toISOString(), est: true, sigma: 25 } })
   await page.waitForTimeout(600)
-  expect((await app.posted('radar2')).at(-1)?.sigma).toBeNull()
-  // Unlock (move / resize), centre on the character, lock again.
-  const lock = page.locator('[data-mini-lock]')
-  await lock.click()
-  await expect(lock).toHaveAttribute('data-mini-lock', 'unlocked')
-  await page.locator('[data-mini-center]').click()
-  expect(await app.posted('radarCenter')).toHaveLength(1)
-  await lock.click()
-  await expect(lock).toHaveAttribute('data-mini-lock', 'locked')
-  await shot(page, 'mini-radar')
-  // Settings: range and disc opacity go to the host, the payload follows the new range.
+  await expect(page.getByRole('button', { name: 'Radar' })).toHaveCount(0)
+  await expect(page.locator('[data-mini-radar]')).toHaveCount(0)
+  expect(await app.posted('radar2')).toHaveLength(0)
+  // settings: the map category has no radar groups, the hotkeys no radar actions
   await page.locator('[data-tip="Einstellungen"]').click()
-  await page.locator('nav [data-tip="Karte & Radar"]').click()
-  await expect(page.getByText('Mini-Radar anzeigen')).toBeVisible()
-  const range = page.locator('div.flex-wrap', { hasText: 'Reichweite (Zoom)' }).last()
-  await range.getByRole('button').last().click()
-  await expect.poll(async () => (await app.posted('radar2')).at(-1)?.range).toBe(125)
-  // appearance rows wait in the closed fine-tuning block
-  await expect(page.getByText('Deckkraft gesamt')).toHaveCount(0)
-  await page.locator('[data-disclosure="set.mini.fine"] button[aria-expanded]').click()
-  const alpha = page.locator('div.flex-wrap', { hasText: 'Deckkraft gesamt' }).last()
-  await alpha.getByRole('button').first().click()
-  expect((await app.posted('radarCfg')).at(-1)).toMatchObject({ alpha: 0.95 })
-  const rim = page.locator('div.flex-wrap', { hasText: 'Goldener Rand' }).last()
-  await expect(rim).toContainText('20 %')
-  await rim.getByRole('button').last().click()
-  expect((await app.posted('radarCfg')).at(-1)).toMatchObject({ rim: 0.25 })
-  await shot(page, 'mini-radar-settings')
+  await page.locator('nav [data-tip="Karte"]').click()
+  await expect(page.getByText('Mini-Radar', { exact: false })).toHaveCount(0)
+  await page.locator('nav [data-tip="Hotkeys"]').click()
+  await expect(page.getByText('Radar', { exact: false })).toHaveCount(0)
 })
 
 test('language switch de -> en', async ({ page }) => {
@@ -298,7 +265,7 @@ for (const [w, h] of [[640, 800], [2000, 1100]]) {
     await page.waitForTimeout(300)
     await shot(page, `map-style-map-${w}`)
     await page.locator('[data-tip="Einstellungen"]').click()
-    await page.locator('nav [data-tip="Karte & Radar"]').click()
+    await page.locator('nav [data-tip="Karte"]').click()
     await page.locator('div.flex-wrap', { hasText: 'Kartenstil' }).last().getByRole('combobox').click()
     await page.getByRole('option', { name: 'Relief' }).click()
     expect((await app.posted('ui')).at(-1)).toMatchObject({ patch: { mapStyle: 'relief' } })

@@ -28,8 +28,7 @@ export function settings(ui: Any = {}, extra: Any = {}): Any {
   return {
     mode: 'auto', npcap: true, version: '1.1.0', ...extra,
     opacity: 0.92, zoom: 1, onlineUpdates: true, processName: 'AION2.exe', statePath: 'C:\test\pet_state.json',
-    hotkeys: { toggle: 'Ctrl+Alt+M', click: 'Ctrl+Alt+C', radar: 'Ctrl+Alt+R', site: 'Ctrl+Alt+W', opaUp: 'Ctrl+Alt+PageUp', opaDown: 'Ctrl+Alt+PageDown', zoomIn: 'Ctrl+Alt+Oemplus', zoomOut: 'Ctrl+Alt+OemMinus', radarLock: 'Ctrl+Alt+E', pvp: 'Ctrl+Alt+P', winEdit: 'Ctrl+Alt+L' },
-    radar: { on: false, locked: true, range: 100, disc: 0.15, rim: 0.2, alpha: 1, size: 240, arrow: true, offY: 0 },
+    hotkeys: { toggle: 'Ctrl+Alt+M', click: 'Ctrl+Alt+C', site: 'Ctrl+Alt+W', opaUp: 'Ctrl+Alt+PageUp', opaDown: 'Ctrl+Alt+PageDown', zoomIn: 'Ctrl+Alt+Oemplus', zoomOut: 'Ctrl+Alt+OemMinus', pvp: 'Ctrl+Alt+P', winEdit: 'Ctrl+Alt+L' },
     pvp: { on: true, locked: true, auto: true, scale: 1, alpha: 0.9, limit: 8, all: false, team: true, teamLimit: 6, self: true }, // tests list oneself in the team
     hotkeyOk: {}, ui: { map: 'World_D_A', welcomed: 1, ...ui },
   }
@@ -106,14 +105,6 @@ export async function openApp(page: Page, o: HostOpts = {}) {
             }
             st.updatedAt = new Date().toISOString()
             reply({ type: 'state', state: structuredClone(st) })
-          } else if (m.type === 'radarWin' || m.type === 'radarLock' || m.type === 'radarCfg' || m.type === 'radarCenter') {
-            // RadarForm (OverlayForm.ShowRadar / ToggleRadarLock / radarCfg): answers with the window state
-            const r = init.settings.radar
-            if (m.type === 'radarWin') { r.on = m.on; if (!m.on) r.locked = true }
-            else if (m.type === 'radarLock') { if (!r.on) { r.on = true; r.locked = false } else r.locked = !r.locked }
-            else if (m.type === 'radarCenter') r.on = true
-            else for (const k of ['range', 'size', 'alpha', 'disc', 'rim', 'arrow', 'offY']) if (k in m) r[k] = m[k]
-            reply({ type: 'radarWin', radar: structuredClone(r) })
           } else if (m.type === 'pvpWin' || m.type === 'winEdit' || m.type === 'pvpCfg') {
             // PvpForm (OverlayForm.ShowPvp / SetWinEdit / pvpCfg): answers with the window state
             const v = init.settings.pvp

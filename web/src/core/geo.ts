@@ -1,4 +1,4 @@
-// Position helpers shared by the map/radar and the lists.
+// Position helpers shared by the map and the lists.
 import { S } from './state'
 import { lang, t } from './i18n'
 

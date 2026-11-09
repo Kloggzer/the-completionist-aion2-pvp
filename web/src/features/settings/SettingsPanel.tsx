@@ -5,12 +5,12 @@ import { S, U, V, saveUi, bump, useApp } from '@/core/state'
 import { t } from '@/core/i18n'
 import { Button } from '@/components/ui/button'
 import { BAR, Page } from '@/components/kit'
-import { General, MapRadar, Filters, Notify, Hotkeys, Live, Data } from './sections'
+import { General, MapSettings, Filters, Notify, Hotkeys, Live, Data } from './sections'
 import { cn } from '@/lib/utils'
 
 const CATS = [
   ['general', SlidersHorizontal, General],
-  ['map', MapIcon, MapRadar],
+  ['map', MapIcon, MapSettings],
   ['filters', Target, Filters],
   ['notify', Bell, Notify],
   ['hotkeys', Keyboard, Hotkeys],

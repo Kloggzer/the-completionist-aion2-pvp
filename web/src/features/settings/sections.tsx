@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import { Fine, Group, Row, Toggle, Stepper } from './parts'
 import { NpcapLink, SUB, Seg, rich } from '@/components/kit'
 import { applyTheme } from '@/core/theme'
-import { nextRange, MIN_RANGE, MAX_RANGE, radarCfg, setRadarCfg, toggleMiniRadar, toggleRadarLock, centerRadar } from '@/features/map/miniRadar'
 import { pvpCfg, setPvpCfg, togglePvp, toggleWinEdit } from '@/features/pvp'
 import { cn } from '@/lib/utils'
 import { BossRecRow, BossRoleRow } from '@/features/bossmod/SettingsRow'
@@ -83,9 +82,9 @@ export function General() {
   </>
 }
 
-// ---------------------------------------------------------------- map & radar
+// ---------------------------------------------------------------- map
 
-export function MapRadar() {
+export function MapSettings() {
   // The cube layer explains its two symbols (tokens close to the fixed map colours in engine.ts).
   const cubeSub = <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
     {ext.features.has('liveCubes') && <span className="inline-flex items-center gap-1"><Star className="size-3.5 fill-cube text-cube" />{t('set.l.cubes.real')}</span>}
@@ -100,15 +99,8 @@ export function MapRadar() {
           onChange={v => { U.mapStyle = v; saveUi(['mapStyle']); loadMapArt(U.map); emit('draw'); bump() }} />
       </Row>
       {['spawns', 'spots', 'cubes', 'labels'].map(layer)}
-    </Group>
-    <Group title={t('set.g.radar')}>
-      <Toggle label={t('set.radarCubes')} sub={t('set.radarCubes.sub')} on={!!U.radarCubes}
-        onChange={() => { U.radarCubes = !U.radarCubes; saveUi(['radarCubes']); emit('draw'); bump() }} />
-      <Toggle label={t('set.radarHud')} sub={t('set.radarHud.sub')} on={!!U.radarHud}
-        onChange={() => { U.radarHud = !U.radarHud; saveUi(['radarHud']); emit('recompute'); emit('draw'); bump() }} />
       <UToggle k="autoMap" />
     </Group>
-    <MiniRadar />
     <PvpOverlay />
   </>
 }
@@ -165,36 +157,6 @@ function PvpOverlay() {
           onStep={d => setPvpCfg({ scale: stepVal(c.scale ?? 1, d, 0.05, 0.6, 2) })} />
         <Stepper label={t('set.pvpAlpha')} value={pct(c.alpha ?? 0.9)} minus={(c.alpha ?? 0.9) > 0.2} plus={(c.alpha ?? 0.9) < 1}
           onStep={d => setPvpCfg({ alpha: stepVal(c.alpha ?? 0.9, d, 0.05, 0.2, 1) })} />
-      </Fine>
-    </Group>
-  )
-}
-
-function MiniRadar() {
-  const r = radarCfg(), hk = hkText('radarLock')
-  return (
-    <Group title={t('set.g.mini')}>
-      <Toggle label={t('set.mini')} sub={t('set.mini.sub')} on={!!r.on} onChange={toggleMiniRadar} />
-      <Row label={t('set.miniLock')} sub={t('set.miniLock.sub') + (hk ? ` · ${hk}` : '')}>
-        <Button size="sm" variant="outline" onClick={toggleRadarLock}>{t(r.on && !r.locked ? 'set.miniLock.lock' : 'set.miniLock.unlock')}</Button>
-      </Row>
-      <Row label={t('set.miniCenter')} sub={t('set.miniCenter.sub')}>
-        <Button size="sm" variant="outline" onClick={centerRadar}>{t('set.miniCenter.btn')}</Button>
-      </Row>
-      <Stepper label={t('set.miniRange')} sub={t('set.miniRange.sub')} value={r.range + ' m'} minus={r.range > MIN_RANGE} plus={r.range < MAX_RANGE}
-        onStep={d => setRadarCfg({ range: nextRange(r.range, d) })} />
-      <Fine id="set.mini.fine" sub={t('set.mini.fineSub')}>
-        <Stepper label={t('set.miniSize')} sub={t('set.miniSize.sub')} value={r.size > 0 ? r.size + ' px' : '–'}
-          onStep={d => setRadarCfg({ size: Math.round((r.size > 0 ? r.size : 240) * (d > 0 ? 1.1 : 1 / 1.1)) })} />
-        <Stepper label={t('set.miniAlpha')} sub={t('set.miniAlpha.sub')} value={pct(r.alpha ?? 1)} minus={(r.alpha ?? 1) > 0.2} plus={(r.alpha ?? 1) < 1}
-          onStep={d => setRadarCfg({ alpha: stepVal(r.alpha ?? 1, d, 0.05, 0.2, 1) })} />
-        <Stepper label={t('set.miniDisc')} sub={t('set.miniDisc.sub')} value={pct(r.disc)} minus={r.disc > 0} plus={r.disc < 0.9}
-          onStep={d => setRadarCfg({ disc: stepVal(r.disc, d, 0.05, 0, 0.9) })} />
-        <Stepper label={t('set.miniRim')} sub={t('set.miniRim.sub')} value={pct(r.rim ?? 0.2)} minus={(r.rim ?? 0.2) > 0} plus={(r.rim ?? 0.2) < 1}
-          onStep={d => setRadarCfg({ rim: stepVal(r.rim ?? 0.2, d, 0.05, 0, 1) })} />
-        <Toggle label={t('set.miniArrow')} sub={t('set.miniArrow.sub')} on={!!r.arrow} onChange={() => setRadarCfg({ arrow: !r.arrow })} />
-        <Stepper label={t('set.miniOff')} sub={t('set.miniOff.sub')} value={(r.offY > 0 ? '+' : '') + r.offY + ' px'} minus={r.offY > -400} plus={r.offY < 400}
-          onStep={d => setRadarCfg({ offY: Math.max(-400, Math.min(400, r.offY + 10 * d)) })} />
       </Fine>
     </Group>
   )

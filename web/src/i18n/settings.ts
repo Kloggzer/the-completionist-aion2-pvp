@@ -2,14 +2,14 @@
 export default {
   de: {
     'set.title': 'Einstellungen',
-    'set.cat.general': 'Allgemein', 'set.cat.map': 'Karte & Radar', 'set.cat.filters': 'Ziele & Filter', 'set.cat.notify': 'Benachrichtigungen',
+    'set.cat.general': 'Allgemein', 'set.cat.map': 'Karte', 'set.cat.filters': 'Ziele & Filter', 'set.cat.notify': 'Benachrichtigungen',
     'set.cat.hotkeys': 'Hotkeys', 'set.cat.live': 'Live-Tracking', 'set.cat.data': 'Daten & Über',
 
     'set.g.display': 'Anzeige', 'set.g.window': 'Fenster', 'set.g.app': 'Programm',
     'set.theme': 'Farbschema', 'set.theme.sub': 'Hell (Aion Ember), Dunkel (Nacht-Indigo) oder wie Windows', 'set.theme.light': 'Hell', 'set.theme.dark': 'Dunkel', 'set.theme.system': 'System',
     'set.lang': 'Sprache', 'set.lang.auto': 'System ({lang})', 'set.lang.de': 'Deutsch', 'set.lang.en': 'English',
     'set.opacity': 'Deckkraft', 'set.opacity.sub': 'Auch mit Strg + Mausrad über der Kopfleiste', 'set.zoom': 'Skalierung',
-    'set.fine': 'Darstellung & Feinheiten', 'set.mini.fineSub': 'Größe, Deckkraft, Scheibe, Rand, Pfeil, Versatz',
+    'set.fine': 'Darstellung & Feinheiten',
     'set.toasts': 'Hinweis bei neuer Seele / Level-up',
     'set.click': 'Click-through', 'set.click.sub': 'Klicks gehen durchs Overlay ins Spiel · {key} zum Beenden', 'set.click.btn': 'Einschalten',
     'set.site': 'aion2maps.com-Ansicht', 'set.site.btn': 'Öffnen',
@@ -17,27 +17,20 @@ export default {
 
     'set.mapStyle': 'Kartenstil', 'set.mapStyle.sub': 'Karte: farbig wie die 3D-Karte von aion2maps (einmaliger Download, bis ca. 25 MB je Karte) · Relief: schlichte Höhenschattierung',
     'set.mapStyle.map': 'Karte', 'set.mapStyle.relief': 'Relief',
-    'set.g.layers': 'Kartenebenen', 'set.g.radar': 'Radar & Kartenwechsel',
+    'set.g.layers': 'Kartenebenen',
     'set.l.spawns': 'Spawns der Ziel-Mobs', 'set.l.spots': 'Farmspots', 'set.l.cubes': 'Versteckte Würfel', 'set.l.cubes.spot': 'möglicher Spawn-Punkt', 'set.l.labels': 'Gebietsnamen',
     'set.windowMode': 'Overlay oder Fenster', 'set.windowMode.sub': 'Fenster: wie ein normales Fenster andocken (Bildschirmrand/-hälfte, Win+Pfeile), Taskleiste, nicht immer im Vordergrund. Automatisch: Overlay auf dem Spiel-Bildschirm, sonst Fenster.',
     'dock.opt.auto': 'Automatisch', 'dock.opt.overlay': 'Immer Overlay', 'dock.opt.window': 'Immer Fenster',
     'dock.isWindow': 'Fenster-Modus: andockbar, nicht im Vordergrund – Klick: Overlay', 'dock.isOverlay': 'Overlay: immer im Vordergrund – Klick: Fenster-Modus',
     'dock.auto': 'Automatisch nach Bildschirm (Spiel-Bildschirm = Overlay)', 'dock.manual': 'Von Hand festgelegt – Automatik in den Einstellungen',
-    'set.radarCubes': 'Radar: mögliche Cubes', 'set.radarCubes.sub': 'Würfel-Symbole der möglichen Fundorte auch im Radar zeigen',
-    'set.radarHud': 'Radar: Infobox', 'set.radarHud.sub': 'Nächster Mob / Spot / Cube',
+    
     'set.autoMap': 'Karte automatisch wechseln', 'set.autoMap.sub': 'Folgt Teleports und Kartenwechseln im Spiel',
-    'set.g.mini': 'Mini-Radar',
-    'set.mini': 'Mini-Radar anzeigen', 'set.mini.sub': 'Kleines rundes Radar direkt auf deinem Charakter – bleibt sichtbar, wenn das Overlay ausgeblendet ist',
-    'set.miniLock': 'Verschieben & Größe', 'set.miniLock.sub': 'Gelöst: ziehen zum Verschieben, Ecke für die Größe. Fixiert ist es click-through.',
-    'set.miniLock.unlock': 'Lösen', 'set.miniLock.lock': 'Fixieren',
-    'set.miniCenter': 'Auf Charakter zentrieren', 'set.miniCenter.sub': 'Mitte des Spielfensters (plus Höhenversatz)', 'set.miniCenter.btn': 'Zentrieren',
-    'set.miniRange': 'Reichweite (Zoom)', 'set.miniRange.sub': 'Auch gelöst mit Strg+Mausrad oder − / + im Titel',
-    'set.miniSize': 'Größe', 'set.miniSize.sub': 'Auch gelöst mit dem Mausrad oder der Ecke',
-    'set.miniAlpha': 'Deckkraft gesamt', 'set.miniAlpha.sub': 'Punkte, Rand, Scheibe und Pfeil zusammen',
-    'set.miniDisc': 'Scheibe', 'set.miniDisc.sub': '0 % = nur Punkte und ein feiner Rand, der Charakter bleibt frei sichtbar',
-    'set.miniRim': 'Rand', 'set.miniRim.sub': 'Goldener Rand und gestrichelter Ring bei halber Reichweite – 0 % = aus',
-    'set.miniArrow': 'Pfeil in der Mitte', 'set.miniArrow.sub': 'Deine Laufrichtung – aus, wenn er den Charakter verdeckt',
-    'set.miniOff': 'Höhenversatz', 'set.miniOff.sub': 'Die Füße stehen meist etwas unter der Bildmitte: verschiebt das Zentrieren nach unten',
+    
+    
+    
+    
+    
+    
 
     'set.g.list': 'Liste', 'set.g.level': 'Mob-Lv',
     'set.sort': 'Sortierung',
@@ -72,14 +65,14 @@ export default {
   },
   en: {
     'set.title': 'Settings',
-    'set.cat.general': 'General', 'set.cat.map': 'Map & radar', 'set.cat.filters': 'Targets & filters', 'set.cat.notify': 'Notifications',
+    'set.cat.general': 'General', 'set.cat.map': 'Map', 'set.cat.filters': 'Targets & filters', 'set.cat.notify': 'Notifications',
     'set.cat.hotkeys': 'Hotkeys', 'set.cat.live': 'Live tracking', 'set.cat.data': 'Data & about',
 
     'set.g.display': 'Display', 'set.g.window': 'Window', 'set.g.app': 'App',
     'set.theme': 'Colour scheme', 'set.theme.sub': 'Light (Aion Ember), dark (Night Indigo) or like Windows', 'set.theme.light': 'Light', 'set.theme.dark': 'Dark', 'set.theme.system': 'System',
     'set.lang': 'Language', 'set.lang.auto': 'System ({lang})', 'set.lang.de': 'Deutsch', 'set.lang.en': 'English',
     'set.opacity': 'Opacity', 'set.opacity.sub': 'Also Ctrl + mouse wheel over the header', 'set.zoom': 'Scale',
-    'set.fine': 'Appearance & fine-tuning', 'set.mini.fineSub': 'Size, opacity, disc, rim, arrow, offset',
+    'set.fine': 'Appearance & fine-tuning',
     'set.toasts': 'Notice on new soul / level-up',
     'set.click': 'Click-through', 'set.click.sub': 'Clicks pass through the overlay into the game · {key} to end', 'set.click.btn': 'Turn on',
     'set.site': 'aion2maps.com view', 'set.site.btn': 'Open',
@@ -87,27 +80,20 @@ export default {
 
     'set.mapStyle': 'Map style', 'set.mapStyle.sub': 'Map: coloured like the aion2maps 3D map (one-time download, up to about 25 MB per map) · Relief: plain hill shading',
     'set.mapStyle.map': 'Map', 'set.mapStyle.relief': 'Relief',
-    'set.g.layers': 'Map layers', 'set.g.radar': 'Radar & map switching',
+    'set.g.layers': 'Map layers',
     'set.l.spawns': 'Target mob spawns', 'set.l.spots': 'Farming spots', 'set.l.cubes': 'Hidden cubes', 'set.l.cubes.spot': 'possible spawn spot', 'set.l.labels': 'Area names',
     'set.windowMode': 'Overlay or window', 'set.windowMode.sub': 'Window: dock like a normal window (screen edges/halves, Win+arrows), taskbar, not always on top. Automatic: overlay on the game screen, window elsewhere.',
     'dock.opt.auto': 'Automatic', 'dock.opt.overlay': 'Always overlay', 'dock.opt.window': 'Always window',
     'dock.isWindow': 'Window mode: dockable, not on top – click: overlay', 'dock.isOverlay': 'Overlay: always on top – click: window mode',
     'dock.auto': 'Automatic by screen (game screen = overlay)', 'dock.manual': 'Set by hand – automatic in the settings',
-    'set.radarCubes': 'Radar: possible cubes', 'set.radarCubes.sub': 'Show the cube icons of possible spots in the radar too',
-    'set.radarHud': 'Radar: info box', 'set.radarHud.sub': 'Nearest mob / spot / cube',
+    
     'set.autoMap': 'Switch map automatically', 'set.autoMap.sub': 'Follows teleports and map changes in the game',
-    'set.g.mini': 'Mini radar',
-    'set.mini': 'Show mini radar', 'set.mini.sub': 'Small round radar right on your character – stays visible when the overlay is hidden',
-    'set.miniLock': 'Move & resize', 'set.miniLock.sub': 'Unlocked: drag to move, corner to resize. Locked it is click-through.',
-    'set.miniLock.unlock': 'Unlock', 'set.miniLock.lock': 'Lock',
-    'set.miniCenter': 'Centre on character', 'set.miniCenter.sub': 'Centre of the game window (plus height offset)', 'set.miniCenter.btn': 'Centre',
-    'set.miniRange': 'Range (zoom)', 'set.miniRange.sub': 'Unlocked also with Ctrl+wheel or − / + in the title',
-    'set.miniSize': 'Size', 'set.miniSize.sub': 'Unlocked also with the mouse wheel or the corner',
-    'set.miniAlpha': 'Overall opacity', 'set.miniAlpha.sub': 'Dots, rim, disc and arrow together',
-    'set.miniDisc': 'Disc', 'set.miniDisc.sub': '0 % = only dots and a faint rim, the character stays fully visible',
-    'set.miniRim': 'Rim', 'set.miniRim.sub': 'Gold rim and the dashed ring at half the range – 0 % = off',
-    'set.miniArrow': 'Arrow in the centre', 'set.miniArrow.sub': 'Your walking direction – turn off if it covers the character',
-    'set.miniOff': 'Height offset', 'set.miniOff.sub': 'The feet are usually a bit below the screen centre: moves the centring down',
+    
+    
+    
+    
+    
+    
 
     'set.g.list': 'List', 'set.g.level': 'Mob level',
     'set.sort': 'Sort order',

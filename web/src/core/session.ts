@@ -1,6 +1,6 @@
 // Session messages from the host: init, settings, pet state, capture status, window modes.
 import { host, onHost } from './host'
-import { DEF_UI, S, U, V, setU, bump, manual, type Any } from './state'
+import { DEF_UI, S, V, setU, bump, manual, type Any } from './state'
 import { emit } from './bus'
 import { setStartView } from './data'
 import { lang, t } from './i18n'
@@ -47,9 +47,9 @@ export function setMode(mode: 'auto' | 'manual') {
   host({ type: 'mode', mode }); emit('recompute'); bump()
 }
 
-/** Manual mode: no position, radar or live objects (they all come from the traffic). The radar choice stays saved. */
+/** Manual mode: no position or live objects (they all come from the traffic). */
 function leaveLive() {
-  S.pos = null; U.radar = false; V.near = null; V.live.clear()
+  S.pos = null; V.near = null; V.live.clear()
   emit('draw')
 }
 onHost('state', m => { S.state = norm(m.state); emit('state'); emit('recompute'); bump() })
@@ -68,7 +68,7 @@ onHost('siteMode', m => { S.site = m.on; bump(); if (!m.on) requestAnimationFram
 
 // ---------------------------------------------------------------- hotkeys (display text)
 
-export const HK_IDS = ['toggle', 'click', 'radar', 'site', 'opaUp', 'opaDown', 'zoomIn', 'zoomOut', 'radarLock', 'pvp', 'winEdit', 'bossMark'] as const
+export const HK_IDS = ['toggle', 'click', 'site', 'opaUp', 'opaDown', 'zoomIn', 'zoomOut', 'pvp', 'winEdit', 'bossMark'] as const
 const KEY_DE: Record<string, string> = { PageUp: 'Bild ↑', PageDown: 'Bild ↓', Home: 'Pos1', End: 'Ende', Insert: 'Einfg', Delete: 'Entf', Oemplus: '+', OemMinus: '−' }
 const KEY_EN: Record<string, string> = { PageUp: 'PgUp', PageDown: 'PgDn', Home: 'Home', End: 'End', Insert: 'Ins', Delete: 'Del', Oemplus: '+', OemMinus: '−' }
 const MOD_DE: Record<string, string> = { Ctrl: 'Strg', 'Ctrl+Alt': 'Strg+Alt', 'Ctrl+Shift': 'Strg+Shift' }

@@ -35,7 +35,6 @@ test('auto mode stays uncluttered: no manual controls', async ({ page }) => {
   await openApp(page, { ui: { tab: 'targets', view: 'list' } })
   await expect(page.locator('[data-pet]').first()).toBeVisible()
   await expect(page.locator('[data-manual]')).toHaveCount(0)
-  await expect(page.locator('[data-radar-off]')).toHaveCount(0)
 })
 
 test('pets: +1 soul on the tile, unlock at 5', async ({ page }) => {
@@ -129,10 +128,8 @@ test('achievements: counter and tier ticks by hand', async ({ page }) => {
   await shot(page, 'manual-ach')
 })
 
-test('map and bosses: radar off with a note, prominent kill button', async ({ page }) => {
+test('map and bosses: prominent kill button', async ({ page }) => {
   await manual(page, { tab: 'targets', view: 'both' })
-  await expect(page.locator('[data-radar-off]')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Radar' })).toHaveCount(0)
   await goPage(page, 'Bosse')
   await expect(page.getByText('Manuell: nach dem Kill')).toBeVisible()
   const kill = page.locator('[data-kill]')

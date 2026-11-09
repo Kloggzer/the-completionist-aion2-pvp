@@ -8,7 +8,7 @@ namespace PetOverlay;
 // (arena / zone + count), lock; unlocked also settings and close. Two sections: enemies, then (optional) the own team (arena team / party, self marked). Rows: tinted bars
 // (fill = CP relative to the strongest listed / own CP; enemies: colour = weaker / similar / stronger than you, team:
 // blue), large class emblem (embedded res/classes, text badge for unknown classes), name (+ server), item level, CP,
-// distance. Team list and alarm sound are switched in the settings. Footer: own character (without the team section) + website lookup status. Per-pixel alpha via UpdateLayeredWindow (like the mini radar RadarForm), always on top, never
+// distance. Team list and alarm sound are switched in the settings. Footer: own character (without the team section) + website lookup status. Per-pixel alpha via UpdateLayeredWindow (like the other overlays), always on top, never
 // activated. Locked: click-through except the lock icon (cursor polling, no input hook, like the main overlay's
 // header). Unlocked = edit mode of all small overlay windows (OverlayForm.SetWinEdit, also the announcer and the alert
 // banner): drag anywhere to move (WM_NCHITTEST -> HTCAPTION), right edge for the width, mouse wheel for the size;

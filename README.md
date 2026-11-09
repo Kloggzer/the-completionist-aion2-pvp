@@ -4,7 +4,7 @@
 > ## ⚠️ USE AT YOUR OWN RISK – YOUR ACCOUNT MAY GET BANNED ⚠️
 >
 > **This is the unofficial traffic-reading edition.** It passively reads copies of the game's network packets (via Npcap)
-> to show **other players' class, item level, CP and distance** (PvP list, enemy feed, mini radar, enemy alarm).
+> to show **other players' class, item level, CP and distance** (PvP list, enemy feed, enemy alarm).
 >
 > - This very likely **violates the Aion 2 Terms of Service**. NCSoft can **suspend or permanently ban** accounts using it.
 > - It is **not affiliated with or endorsed by NCSoft**. No support, no warranty, no guarantees (see LICENSE).
@@ -31,7 +31,7 @@ dailies/weeklies, bosses and events. German and English.
 `TheCompletionist-Setup-x.y.z.exe` (installer: asks for the tracking mode, checks WebView2/Npcap, start menu entry,
 uninstall via Windows settings) or the portable `TheCompletionist.exe` (no installation).
 
-> Deutsch: Overlay für Aion 2 – Seelen-Pets, Farmspots, Radar, Hidden-Cube-Fundorte, Erfolge, Daily/Weekly-Checkliste pro
+> Deutsch: Overlay für Aion 2 – Seelen-Pets, Farmspots, Hidden-Cube-Fundorte, Erfolge, Daily/Weekly-Checkliste pro
 > Charakter, Feld- und Abyss-Bosse, Event-Kalender mit Ansagen. Liest nur passiv den eigenen Netzwerkverkehr mit,
 > kein Eingriff ins Spiel. Download: siehe Releases.
 
@@ -40,7 +40,7 @@ uninstall via Windows settings) or the portable `TheCompletionist.exe` (no insta
 - **Overview** – what's next (bosses, rifts, events), what's still open today, where to farm, achievements that are almost done, and "do now" warnings.
 - **Soul pets** – which pets you still need on the current map, from which mobs, with live soul counting; select several pets and let the app find the best spot for exactly those.
 - **Farm spots** – spawn clusters ranked by the souls *you* still need (explained in the app).
-- **Map & radar** – own position, nearby needed mobs, possible Hidden Cube spots; instance maps inside dungeons. Map style: a coloured map rendered from aion2maps' voxel blocks (one-time download per map) or a plain hill-shaded relief.
+- **Map** – own position, nearby needed mobs, possible Hidden Cube spots; instance maps inside dungeons. Map style: a coloured map rendered from aion2maps' voxel blocks (one-time download per map) or a plain hill-shaded relief.
 - **Achievements** – all account achievements sorted from easy to hard, with live progress.
 - **Checklist** – dailies and weeklies per character and per server, partly counted automatically; charges (Odyle energy, Nightmare attempts, Invasion keys) with a traffic light before they overflow.
 - **Bosses** – field and Abyss bosses with the exact respawn times the server sends.
@@ -63,7 +63,7 @@ pet and achievement progress is sent by the server at login.
 - **Automatic (Npcap)** – pets, achievements, character, position, bosses and charges come from the game's traffic.
 - **Manual (no Npcap)** – since v1.1. Without Npcap the app always starts this way. Souls via **+** on a target tile,
   level/souls via **Lv**; achievements: tap a tile and set the counter or tick tiers; characters: Checklist → **+ Character**;
-  bosses: **killed** starts the respawn estimate. Radar, position and "nearby" need the automatic mode; map, spawns,
+  bosses: **killed** starts the respawn estimate. Position and "nearby" need the automatic mode; map, spawns,
   spots and cube spots stay. Choose in the welcome card or under Settings → Live tracking.
 
 ## Is it safe?
@@ -78,9 +78,7 @@ you can read it and build the exe yourself.
 |---|---|
 | Ctrl+Alt+M | Show / hide |
 | Ctrl+Alt+C | Click-through on / off |
-| Ctrl+Alt+R | Radar |
 | Ctrl+Alt+W | aion2maps view |
-| Ctrl+Alt+E | Mini radar: unlock (move / resize / range) and lock again (click-through) |
 | Ctrl+Alt+B | Boss marker: mark a moment in a dungeon fight (for naming the boss's skills later) |
 | Ctrl+Alt+PageUp / PageDown | Opacity (also mouse wheel over the header) |
 | Ctrl+Alt+Plus / Minus | Scale |

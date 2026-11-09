@@ -1,6 +1,6 @@
 // PvP overlay: a separate native window of the host (PvpForm.cs) listing nearby enemy players and the own team. The
 // host sends the decoded players, arena roster and own party ('pvp'); the page picks, sorts and formats the rows (logic.ts) and posts them as 'pvp2' a few times
-// per second – only when something changed. Settings: S.settings.pvp (host-owned, like the mini radar).
+// per second – only when something changed. Settings: S.settings.pvp (host-owned).
 import { G, S, U, V, bump, manual, saveUi, type Any } from '@/core/state'
 import { host, onHost } from '@/core/host'
 import { t, locale, fmt } from '@/core/i18n'
