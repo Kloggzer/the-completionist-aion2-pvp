@@ -250,12 +250,23 @@ export function Notify() {
 
 // ---------------------------------------------------------------- boss helper
 
+/** The boss helper's voice on its own (the 'bossmod' kind of the voice output); switching it on turns the voice output on. */
+function BossVoice() {
+  const on = !!U.tts && !U.ttsOff?.bossmod
+  return <Toggle label={t('set.bossVoice')} sub={U.tts ? t('set.bossVoice.sub') : t('set.bossVoice.subOff')} on={on} onChange={() => {
+    U.ttsOff = { ...U.ttsOff, bossmod: on }
+    if (!on) U.tts = true
+    saveUi(['tts', 'ttsOff']); bump()
+  }} />
+}
+
 export function Boss() {
   return <>
     <Group>
       <UToggle k="bossMod" />
       {U.bossMod && <>
         <BossRoleRow />
+        <BossVoice />
         <UToggle k="bossBars" /><UToggle k="bossCount" /><UToggle k="bossTargetMe" /><UToggle k="bossDangerOnly" />
         {BLAME && <><UToggle k="bossBlame" /><UToggle k="bossBlameLive" /></>}
       </>}

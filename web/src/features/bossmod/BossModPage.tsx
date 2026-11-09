@@ -1,10 +1,11 @@
-// "Boss-Helfer" page. The bar is the navigation: overview, then dungeon and boss pickers (a path you can jump along);
-// switching the helper on / off sits there too. Overview: the dungeons with their bosses, the last fights, the export.
-// A boss: one panel with its mode (on / bars only / off) and the test pull in the head, and two tabs – "Ablauf"
-// (timeline with your markers, phases and mechanics from the guide) and "Skills" (editor: name, what to do, callout,
-// banner / voice / bar / warning; U.bossSkills; the profile string to share at the end).
+// "Boss-Helfer" pages (the sidebar's Dungeon area: the overview and one page per dungeon, bossmod/dungeons.ts). The bar is a
+// path: Boss-Helfer › dungeon › boss, with the helper's voice and on / off at the right. Overview: setup, the last fights,
+// the export. Dungeon: its bosses (stages of one boss are one entry). Boss: one panel – name, mode (on / bars only / off),
+// test pull, the stage switch if it has stages – and two tabs: "Ablauf" (timeline, typical or a kept fight with markers;
+// phases and mechanics from the guide) and "Skills" (per skill one row: colour, name, what to do, icon switches for
+// banner / voice / bar / warning; the callout text below; the profile string to share at the end).
 import { useState } from 'react'
-import { ChevronRight, ClipboardCopy, Play, Skull, Square, Swords } from 'lucide-react'
+import { AlarmClock, BarChart3, ChevronRight, ClipboardCopy, Flag, Play, Skull, Square, Swords, Volume2, VolumeX, type LucideIcon } from 'lucide-react'
 import { G, U, V, bump, saveUi, useApp } from '@/core/state'
 import { emit } from '@/core/bus'
 import { host } from '@/core/host'
@@ -13,9 +14,10 @@ import { hkText } from '@/core/session'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { AppSelect } from '@/components/AppSelect'
-import { BarRight, CHIP, CHIP_ON, Empty, META, Page, Panel, PanelTabs, ROW, ROW_CLICK, SUB, Seg, TITLE } from '@/components/kit'
+import { BarRight, Empty, META, Page, Panel, PanelTabs, ROW, ROW_CLICK, SUB, Seg, TITLE } from '@/components/kit'
 import { toggleWinEdit } from '@/features/pvp'
 import { KINDS, alertOn, avoidable, barOn, findBoss, isBig, kindCol, phaseHp, predictable, skillName, voiceOn, warnLead, type BossMods, type BossStat, type Kind, type Role, type SkillCfg, type SkillStat } from './logic'
+import { bossName, currentDungeon, dungeonName, dungeons, entryOf } from './dungeons'
 import { BLAME, blameActive, blameOf, bossMode, canon, cfgs, guide, ownCfgs, role, stopTest, testPull, type BossMode, type FightLog } from './index'
 
 const mods = () => G.bossMods as BossMods | undefined
@@ -38,8 +40,15 @@ function setCfg(id: string, patch: Partial<SkillCfg>) {
 }
 const setU = (k: string, v: unknown) => { U[k] = v; saveUi([k]); emit('recompute'); bump() }
 
-function Chip({ on, onClick, children, tip }: { on: boolean; onClick: () => void; children: React.ReactNode; tip?: string }) {
-  return <button onClick={onClick} data-tip={tip} aria-pressed={on} className={cn(CHIP, 'h-6 px-2 text-[11.5px]', on && CHIP_ON)}>{children}</button>
+/** Icon switch of a skill row (banner, voice, bar, warning): constant width, the meaning in the tooltip. */
+function IconSwitch({ on, onClick, icon: I, tip, label, ...rest }: { on: boolean; onClick: () => void; icon: LucideIcon; tip: string; label?: string } & Record<`data-${string}`, string>) {
+  return (
+    <button onClick={onClick} data-tip={tip} aria-label={tip} aria-pressed={on} {...rest}
+      className={cn('flex h-7 min-w-7 flex-none items-center justify-center gap-1 rounded-md border px-1.5 text-[11.5px] tabular-nums transition-colors [&_svg]:size-3.5',
+        on ? 'border-gold/45 bg-gold/15 text-gold' : 'border-border text-dim hover:text-foreground')}>
+      <I />{label}
+    </button>
+  )
 }
 function Note({ children, action, ...rest }: { children: React.ReactNode; action?: React.ReactNode } & Record<`data-${string}`, string>) {
   return (
@@ -113,30 +122,18 @@ function FightRow({ f, i }: { f: FightLog; i: number }) {
 }
 
 function Overview() {
-  const d = mods(), fights: FightLog[] = U.bossFights || []
-  const byZone = new Map<number, [string, BossStat][]>()
-  for (const [id, b] of Object.entries(d?.bosses || {})) {
-    const z = b.zone || 0
-    byZone.set(z, [...(byZone.get(z) || []), [id, b]])
-  }
+  const fights: FightLog[] = U.bossFights || [], here = currentDungeon()
   return <>
-    {[...byZone.entries()].map(([z, list]) => (
-      <Panel key={z} title={dungeon(z)}>
-        {list.map(([id, b]) => {
-          const n = Object.entries(b.skills).filter(([k, s]) => alertOn(s, cfgs()[k])).length, mode = bossMode(+id)
-          return (
-            <div key={id} data-bm-boss={id} className={cn(ROW, ROW_CLICK, 'group min-h-11')} onClick={() => openBoss(+id)}>
-              <Swords className={cn('size-4 flex-none', mode === 'off' ? 'text-dim' : 'text-gold')} />
-              <div className="min-w-0 flex-1">
-                <div className={TITLE}>{b.name}</div>
-                <div className={META}>{t('bm.fights', { n: b.fights })} · {t('bm.alerts', { n })}{mode !== 'on' ? ' · ' + t('bm.mode.' + mode) : ''}</div>
-              </div>
-              <ChevronRight className="size-4 flex-none text-dim transition-colors group-hover:text-gold" />
-            </div>
-          )
-        })}
-      </Panel>
-    ))}
+    <Panel title={t('bm.dungeons')} data-bm-dungeons="">
+      {dungeons().map(d => (
+        <div key={d.name} data-bm-dng={d.name} className={cn(ROW, ROW_CLICK, 'group min-h-10')} onClick={() => toPage(d.name)}>
+          <span className="min-w-0 flex-1 truncate">{d.name}</span>
+          {here === d.name && <i data-tip={t('nav.here')} className="size-1.5 flex-none rounded-full bg-green shadow-[0_0_5px_var(--green)]" />}
+          <span className={META}>{t('bm.bossN', { n: d.bosses.length })}</span>
+          <ChevronRight className="size-4 flex-none text-dim transition-colors group-hover:text-gold" />
+        </div>
+      ))}
+    </Panel>
     <Panel title={t('bm.last')} data-bm-last="">
       {fights.length ? fights.map((f, i) => <FightRow key={f.at + ':' + i} f={f} i={i} />) : <Empty>{t('bm.noFights')}</Empty>}
     </Panel>
@@ -145,6 +142,30 @@ function Overview() {
       <div className={cn(SUB, 'mt-0.5')}>{t('bm.exportSub')}</div>
     </Note>
   </>
+}
+
+/** One dungeon: its bosses (a boss with stages is one row). */
+function DungeonPage({ name }: { name: string }) {
+  const d = dungeons().find(x => x.name === name)
+  if (!d) return <Empty>{t('bm.noFights')}</Empty>
+  return (
+    <Panel title={t('bm.bosses')} data-bm-dungeon={name}>
+      {d.bosses.map(e => {
+        const id = e.ids[0], b = findBoss(mods(), id)!, mode = bossMode(id)
+        const n = Object.entries(b.skills).filter(([k, s]) => alertOn(s, cfgs()[k])).length
+        return (
+          <div key={id} data-bm-boss={id} className={cn(ROW, ROW_CLICK, 'group min-h-11')} onClick={() => openBoss(id)}>
+            <Swords className={cn('size-4 flex-none', mode === 'off' ? 'text-dim' : 'text-gold')} />
+            <div className="min-w-0 flex-1">
+              <div className={TITLE}>{e.name}</div>
+              <div className={META}>{t('bm.fights', { n: e.fights })} · {t('bm.alerts', { n })}{e.ids.length > 1 ? ' · ' + t('bm.stages', { n: e.ids.length }) : ''}{mode !== 'on' ? ' · ' + t('bm.mode.' + mode) : ''}</div>
+            </div>
+            <ChevronRight className="size-4 flex-none text-dim transition-colors group-hover:text-gold" />
+          </div>
+        )
+      })}
+    </Panel>
+  )
 }
 
 // ---------------------------------------------------------------- boss detail
@@ -204,25 +225,25 @@ function SkillRow({ id, s, near }: { id: string; s: SkillStat; near?: number }) 
   const kinds = [{ value: '', label: t('boss.k.none') }, ...KINDS.map(k => ({ value: k, label: t('boss.k.' + k) }))]
   const lead = warnLead(s, cfg)
   return (
-    <div data-bm-skill={id} className={cn('flex flex-col gap-1.5 border-b border-border/50 px-3 py-2', near !== undefined && 'bg-gold/[0.06]', V.bmFocus === id && 'ring-1 ring-gold/60 ring-inset')}>
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="h-3 w-1.5 flex-none rounded-sm" style={{ background: kindCol(cfg) }} />
+    <div data-bm-skill={id} className={cn('flex flex-col gap-1 border-b border-border/50 px-3 py-2', near !== undefined && 'bg-gold/[0.06]', V.bmFocus === id && 'ring-1 ring-gold/60 ring-inset')}>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <span className="size-2.5 flex-none rounded-full" style={{ background: kindCol(cfg) }} />
         <input value={own?.name ?? ''} placeholder={cfg?.name || `Skill ${id}`} aria-label={t('bm.name')} data-bm-name={id}
           onChange={e => setCfg(id, { name: e.target.value })}
-          className="h-7 min-w-0 flex-[1_1_10rem] rounded-md border bg-background px-2 text-[13px] font-semibold outline-none focus:border-gold/60" />
-        <AppSelect value={cfg?.kind ?? ''} options={kinds} className="w-32 flex-none" onChange={v => setCfg(id, { kind: (v || undefined) as Kind | undefined })} />
+          className="h-7 min-w-0 flex-[1_1_9rem] rounded-md border border-transparent bg-transparent px-1.5 text-[13px] font-semibold outline-none hover:border-border focus:border-gold/60 focus:bg-background" />
+        <AppSelect value={cfg?.kind ?? ''} options={kinds} tip={t('bm.kind')} className="h-7 w-28 flex-none text-xs" onChange={v => setCfg(id, { kind: (v || undefined) as Kind | undefined })} />
+        <span className="flex flex-none items-center gap-1" data-bm-switches="">
+          <IconSwitch icon={Flag} on={alertOn(s, cfg)} tip={t('bm.alert')} onClick={() => setCfg(id, { alert: !alertOn(s, cfg) })} />
+          <IconSwitch icon={voiceOn(cfg) ? Volume2 : VolumeX} on={voiceOn(cfg)} tip={t('bm.voice')} onClick={() => setCfg(id, { voice: !voiceOn(cfg) })} />
+          {predictable(s) && <IconSwitch icon={BarChart3} on={barOn(s, cfg)} tip={t('bm.bar')} onClick={() => setCfg(id, { bar: !barOn(s, cfg) })} />}
+          {predictable(s) && <IconSwitch icon={AlarmClock} on={lead > 0} tip={t('bm.warnTip')} label={lead > 0 ? `${lead}s` : undefined} onClick={() => setCfg(id, { warn: lead > 0 ? 0 : 5 })} />}
+          {BLAME && <IconSwitch icon={Skull} on={avoidable(s, cfg)} tip={t('bm.avoidTip')} onClick={() => setCfg(id, { avoid: !avoidable(s, cfg) })} />}
+        </span>
       </div>
-      {near !== undefined && <div className="text-[11.5px] font-semibold text-gold" data-bm-near="">⚑ {t('bm.nearMark', { at: dur(near) })}</div>}
-      <div className={cn(SUB, 'text-[11.5px]')}>{facts} · <span className="tabular-nums">#{id}</span></div>
-      <div className="flex flex-wrap items-center gap-1">
-        <input value={own?.text ?? ''} placeholder={cfg?.text || (cfg?.kind ? t('boss.k.' + cfg.kind) : t('bm.textPh'))} aria-label={t('bm.text')} onChange={e => setCfg(id, { text: e.target.value })}
-          className="h-6 min-w-0 flex-[1_1_12rem] rounded-md border bg-background px-2 text-[12px] outline-none focus:border-gold/60" />
-        <Chip on={alertOn(s, cfg)} onClick={() => setCfg(id, { alert: !alertOn(s, cfg) })}>{t('bm.alert')}</Chip>
-        <Chip on={voiceOn(cfg)} onClick={() => setCfg(id, { voice: !voiceOn(cfg) })}>{t('bm.voice')}</Chip>
-        {predictable(s) && <Chip on={barOn(s, cfg)} onClick={() => setCfg(id, { bar: !barOn(s, cfg) })}>{t('bm.bar')}</Chip>}
-        {predictable(s) && <Chip on={lead > 0} tip={t('bm.warn')} onClick={() => setCfg(id, { warn: lead > 0 ? 0 : 5 })}>{t('bm.warn')}{lead > 0 ? ` ${lead} s` : ''}</Chip>}
-        {BLAME && <Chip on={avoidable(s, cfg)} tip={t('bm.avoidTip')} onClick={() => setCfg(id, { avoid: !avoidable(s, cfg) })}>{t('bm.avoid')}</Chip>}
-      </div>
+      {near !== undefined && <div className="pl-4 text-[11.5px] font-semibold text-gold" data-bm-near="">⚑ {t('bm.nearMark', { at: dur(near) })}</div>}
+      <div className={cn(SUB, 'pl-4 text-[11.5px]')}>{facts} · <span className="tabular-nums">#{id}</span></div>
+      <input value={own?.text ?? ''} placeholder={cfg?.text || (cfg?.kind ? t('boss.k.' + cfg.kind) : t('bm.textPh'))} aria-label={t('bm.text')} onChange={e => setCfg(id, { text: e.target.value })}
+        className="ml-4 h-7 min-w-0 rounded-md border bg-background px-2 text-[12px] outline-none focus:border-gold/60" />
     </div>
   )
 }
@@ -316,8 +337,14 @@ function Detail({ npc }: { npc: number }) {
       ? <Button size="sm" variant="outline" data-bm-stop="" onClick={stopTest}><Square />{t('bm.testStop')}</Button>
       : <Button size="sm" variant="outline" data-bm-test="" data-tip={t('bm.testTip')} onClick={() => testPull(npc)}><Play />{t('bm.test')}</Button>}
   </div>
+  const stages = entryOf(npc)?.boss.ids ?? [npc]
   return (
-    <Panel title={b.name} sub={dungeon(b.zone)} right={head} data-bm-detail={String(npc)}>
+    <Panel title={bossName(npc, b)} sub={dungeon(b.zone)} right={head} data-bm-detail={String(npc)}>
+      {stages.length > 1 && <div className="flex items-center gap-2 px-3 pb-2">
+        <span className={META}>{t('bm.stage')}</span>
+        <Seg size="sm" value={String(npc)} onChange={v => openBoss(+v)} item={v => ({ 'data-bm-stage': v })}
+          options={stages.map((id, i) => ({ value: String(id), label: String(i + 1) }))} />
+      </div>}
       <PanelTabs id="bm.tab" tabs={[{ value: 'flow', label: t('bm.tab.flow') }, { value: 'skills', label: t('bm.tab.skills', { n: list.length }) }]}>
         {tab => tab === 'flow'
           ? <>
@@ -355,29 +382,30 @@ function Detail({ npc }: { npc: number }) {
 
 // ---------------------------------------------------------------- navigation
 
-/** Open a boss (optionally with one of the kept fights). */
-function openBoss(npc: number, fight: number | null = null) { V.bmBoss = npc; V.bmFight = fight; V.bmFocus = null; bump() }
-const toOverview = () => { V.bmBoss = null; V.bmFight = null; V.bmFocus = null; bump() }
+/** Open a boss (optionally with one of the kept fights); its dungeon page becomes the current one. */
+function openBoss(npc: number, fight: number | null = null) {
+  V.bmBoss = npc; V.bmFight = fight; V.bmFocus = null
+  V.bmDungeon = entryOf(npc)?.dungeon.name ?? V.bmDungeon ?? null
+  bump()
+}
+const toPage = (dng: string | null) => { V.bmDungeon = dng; V.bmBoss = V.bmFight = V.bmFocus = null; bump() }
 
-/** The bar: overview › dungeon › boss as pickers (a path to jump along), the helper's switch at the right. */
+/** The bar: the path Boss-Helfer › dungeon › boss (each step goes back there), the helper's voice and on / off at the right. */
 function NavBar() {
-  const all = Object.entries(mods()?.bosses || {}), cur = V.bmBoss ? findBoss(mods(), V.bmBoss) : undefined
-  const zones = [...new Set(all.map(([, b]) => b.zone || 0))]
-  const zone = cur?.zone ?? null
-  const crumb = 'flex h-6 flex-none items-center rounded-md px-1.5 text-[12px] text-muted-foreground hover:bg-foreground/5 hover:text-foreground'
+  const b = V.bmBoss ? findBoss(mods(), V.bmBoss) : undefined, dng: string | null = V.bmDungeon ?? (b ? dungeonName(b.zone) : null)
+  const crumb = 'flex h-6 min-w-0 flex-none items-center truncate rounded-md px-1.5 text-[12px] text-muted-foreground hover:bg-foreground/5 hover:text-foreground'
+  const last = 'font-semibold text-foreground'
+  const voice = !!U.tts && !U.ttsOff?.bossmod
+  const sep = <ChevronRight className="size-3.5 flex-none text-dim" />
   return <>
-    <button onClick={toOverview} data-bm-nav="overview" className={cn(crumb, !V.bmBoss && 'font-semibold text-foreground')}>{t('bm.overview')}</button>
-    <ChevronRight className="size-3.5 flex-none text-dim" />
-    <AppSelect value={zone != null ? String(zone) : ''} tip={t('bm.pickDungeon')} className="h-6 max-w-48 text-xs" data-bm-nav="dungeon"
-      options={[...(zone == null ? [{ value: '', label: t('bm.pickDungeon') }] : []), ...zones.map(z => ({ value: String(z), label: dungeon(z) }))]}
-      onChange={v => { const first = all.find(([, b]) => String(b.zone || 0) === v); if (first) openBoss(+first[0]) }} />
-    {zone != null && <>
-      <ChevronRight className="size-3.5 flex-none text-dim" />
-      <AppSelect value={String(V.bmBoss)} tip={t('bm.pickBoss')} className="h-6 max-w-48 text-xs" data-bm-nav="boss"
-        options={all.filter(([, b]) => (b.zone || 0) === zone).map(([id, b]) => ({ value: id, label: b.name }))}
-        onChange={v => openBoss(+v)} />
-    </>}
+    <nav className="flex min-w-0 flex-[1_1_12rem] items-center gap-0.5" aria-label={t('bm.path')}>
+      <button onClick={() => toPage(null)} data-bm-nav="overview" className={cn(crumb, !dng && last)}>{t('tab.bossmod')}</button>
+      {dng && <>{sep}<button onClick={() => toPage(dng)} data-bm-nav="dungeon" className={cn(crumb, 'max-w-48', !b && last)}>{dng}</button></>}
+      {b && <>{sep}<span data-bm-nav="boss" className={cn(crumb, 'max-w-48 hover:bg-transparent', last)}>{bossName(V.bmBoss, b)}</span></>}
+    </nav>
     <BarRight>
+      <IconSwitch icon={voice ? Volume2 : VolumeX} on={voice} tip={t('set.bossVoice')} data-bm-voice={voice ? 'on' : 'off'}
+        onClick={() => { U.ttsOff = { ...U.ttsOff, bossmod: voice }; if (!voice) U.tts = true; saveUi(['tts', 'ttsOff']); bump() }} />
       <Button size="xs" variant={U.bossMod ? 'ghost' : 'default'} data-bm-power={U.bossMod ? 'on' : 'off'}
         className={cn(U.bossMod && 'text-green')} onClick={() => setU('bossMod', !U.bossMod)}>
         {U.bossMod ? t('bm.isOn') : t('bm.on')}
@@ -391,11 +419,11 @@ export function BossModTab() {
   return (
     <Page w="rows" bar={<NavBar />}>
       {!U.bossMod && <Note action={<Button size="sm" onClick={() => setU('bossMod', true)}>{t('bm.on')}</Button>}>{t('bm.off')}</Note>}
-      {U.bossMod && !U.bossSetupDone && <Setup />}
+      {U.bossMod && !U.bossSetupDone && !V.bmDungeon && !V.bmBoss && <Setup />}
       {U.bossMod && U.bossSetupDone && !U.tts && (
         <Note data-bm-tts-off="" action={<Button size="sm" onClick={() => setU('tts', true)}>{t('bm.ttsOn')}</Button>}>{t('bm.ttsOff')}</Note>
       )}
-      {V.bmBoss ? <Detail npc={V.bmBoss} /> : <Overview />}
+      {V.bmBoss ? <Detail npc={V.bmBoss} /> : V.bmDungeon ? <DungeonPage name={V.bmDungeon} /> : <Overview />}
     </Page>
   )
 }

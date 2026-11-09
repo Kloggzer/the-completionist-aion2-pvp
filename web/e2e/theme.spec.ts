@@ -23,7 +23,7 @@ for (const theme of ['light', 'dark'] as const) test('theme ' + theme, async ({ 
   await page.locator('nav [data-tip="Karte & Pets"]').click()
   await page.waitForTimeout(250) // colour transition of the nav item
   await page.screenshot({ path: `e2e/.out/shots/theme-${theme}-Settings.png` })
-  await page.locator('[data-tip="Einstellungen"]').click()
+  await page.locator('[data-settings-close]').click()
   await page.setViewportSize({ width: 360, height: 700 })
   await goPage(page, 'Übersicht')
   await settle(page)

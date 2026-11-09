@@ -1,10 +1,12 @@
-// Navigation: five areas (Today, Pets, Farming, Dungeon, Character) with their pages. Wide windows: a sidebar with every page
+// Navigation: five areas (Today, Pets, Farming, Dungeon, Character) with their pages; the Dungeon area lists the boss
+// helper's overview and every dungeon with recorded bosses (bossmod/dungeons.ts), the one you are in marked. Wide windows: a sidebar with every page
 // under its area; narrow windows (< 760 px) or the collapsed sidebar (U.navMini): area icons only, the pages of the
 // current area as a segmented control above the content (SubNav). Page keys are the tab keys (U.tab) plus the build
 // pages (dae.stats, dae.gear); an area remembers its last page (U.lastPage), however the page was reached.
 import { useEffect } from 'react'
-import { BarChart3, Castle, Clock, Gem, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Swords, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
-import { U, V, saveUi, bump } from '@/core/state'
+import { BarChart3, Castle, Clock, DoorOpen, Settings, Gem, Grid3x3, Layers, LayoutDashboard, ListChecks, MapPin, PanelLeftClose, PanelLeftOpen, PawPrint, Pickaxe, Shield, Skull, Store, Sun, Swords, Target, Trophy, UserRound, type LucideIcon } from 'lucide-react'
+import { S, U, V, saveUi, bump } from '@/core/state'
+import { host } from '@/core/host'
 import { goTab } from '@/core/nav'
 import { t } from '@/core/i18n'
 import { cn } from '@/lib/utils'
@@ -12,8 +14,10 @@ import { BADGE, Seg } from '@/components/kit'
 import { buyCount, freshOffers } from '@/features/merchant/logic'
 import { bs, setBuild, type Page as BuildPage } from '@/features/build/build'
 import { buyNow } from '@/features/market'
+import { currentDungeon, dungeons } from '@/features/bossmod/dungeons'
 
-type NavPage = { key: string; tab: string; build?: BuildPage; icon: LucideIcon; label: () => string; count?: () => number }
+/** `dng`: a boss-helper dungeon page (the bossmod tab showing that dungeon); `here`: a dot – you are there now. */
+type NavPage = { key: string; tab: string; build?: BuildPage; dng?: string; icon: LucideIcon; label: () => string; count?: () => number; here?: () => boolean }
 type Area = { key: string; icon: LucideIcon; pages: NavPage[] }
 
 const tabPage = (tab: string, icon: LucideIcon, count?: () => number): NavPage => ({ key: tab, tab, icon, label: () => t('tab.' + tab), count })
@@ -24,26 +28,38 @@ const merchBuy = () => (U.merch ? buyCount(freshOffers(U.merch, Date.now())) : 0
 
 // Badges count what is open and worth acting on now (missing pets, spots, merchant offers to buy); the achievements'
 // open count is always large and was noise.
-export const AREAS: Area[] = [
+const dungeonPages = (): NavPage[] => dungeons().map(d => ({
+  key: 'bm:' + d.name, tab: 'bossmod', dng: d.name, icon: DoorOpen, label: () => d.name, here: () => currentDungeon() === d.name,
+}))
+/** The areas: built again only when the dungeon list changes (callers compare areas by identity). */
+let areaCache: { dng: unknown; list: Area[] } | null = null
+export const areas = (): Area[] => {
+  const dng = dungeons()
+  if (areaCache?.dng !== dng) areaCache = { dng, list: buildAreas() }
+  return areaCache.list
+}
+const buildAreas = (): Area[] => [
   { key: 'today', icon: Sun, pages: [tabPage('home', LayoutDashboard), tabPage('check', ListChecks), tabPage('timer', Clock), tabPage('boss', Skull)] },
   { key: 'pets', icon: PawPrint, pages: [
     tabPage('targets', Target, () => V.targets.filter((x: { done: boolean }) => !x.done).length), tabPage('spots', MapPin, () => V.spots.length), tabPage('merchant', Store, merchBuy)] },
   { key: 'farm', icon: Pickaxe, pages: [tabPage('farm', Pickaxe)] },
-  { key: 'dungeon', icon: Castle, pages: [tabPage('bossmod', Swords)] },
+  { key: 'dungeon', icon: Castle, pages: [tabPage('bossmod', Swords), ...dungeonPages()] },
   { key: 'char', icon: UserRound, pages: [buildPage('dae', Grid3x3), buildPage('stats', BarChart3), buildPage('gear', Shield), tabPage('arc', Layers), tabPage('ach', Trophy), tabPage('market', Gem, buyNow)] },
 ]
 
-const known = (key: string) => AREAS.some(a => a.pages.some(p => p.key === key))
+const known = (key: string) => areas().some(a => a.pages.some(p => p.key === key))
 /** Key of the page shown now (an unknown build page, e.g. from an older save, counts as the Daevanion page). */
 export const navKey = () => {
+  if (U.tab === 'bossmod') return V.bmDungeon ? 'bm:' + V.bmDungeon : 'bossmod'
   if (U.tab !== 'dae') return U.tab
   const k = bs().page === 'dae' ? 'dae' : 'dae.' + bs().page
   return known(k) ? k : 'dae'
 }
-const areaOf = (key: string) => AREAS.find(a => a.pages.some(p => p.key === key)) || AREAS[0]
+const areaOf = (key: string) => { const all = areas(); return all.find(a => a.pages.some(p => p.key === key)) || all[0] }
 
 export function goPage(p: NavPage) {
   if (p.build) setBuild({ page: p.build })
+  if (p.tab === 'bossmod') { V.bmDungeon = p.dng ?? null; V.bmBoss = V.bmFight = V.bmFocus = null }
   goTab(p.tab)
 }
 function goArea(a: Area) {
@@ -69,7 +85,7 @@ export function Sidebar() {
   return (
     <nav data-tabs data-mini={mini ? 'on' : undefined} aria-label={t('nav.label')}
       className={cn('flex flex-none flex-col gap-0.5 overflow-y-auto border-r bg-sidebar p-1.5', mini ? 'w-12' : 'w-12 @min-[760px]/app:w-[176px] @min-[760px]/app:p-2')}>
-      {AREAS.map(a => {
+      {areas().map(a => {
         const inArea = areaOf(cur) === a, sum = a.pages.reduce((n, p) => n + (p.count?.() || 0), 0)
         return (
           <div key={a.key} className="flex flex-col gap-0.5">
@@ -90,6 +106,7 @@ export function Sidebar() {
                   <button key={p.key} data-nav={p.key} data-on={sel ? 'on' : undefined} onClick={() => goPage(p)} data-tip={p.label()} aria-current={sel ? 'page' : undefined}
                     className={cn(item, 'pl-3', sel && on)}>
                     <p.icon /><span className="min-w-0 truncate">{p.label()}</span><Badge n={n} on={sel} />
+                    {p.here?.() && <i data-here="" data-tip={t('nav.here')} className="ml-auto size-1.5 flex-none rounded-full bg-green shadow-[0_0_5px_var(--green)]" />}
                   </button>
                 )
               })}
@@ -98,6 +115,12 @@ export function Sidebar() {
         )
       })}
       <span className="flex-1" />
+      {/* the settings: an overlay over the content, opened from here (the header keeps the window controls) */}
+      <button data-settings-open={V.settingsOpen ? 'on' : 'off'} onClick={() => { if (S.site) host({ type: 'site', on: false }); V.settingsOpen = !V.settingsOpen; bump() }}
+        data-tip={t('hdr.settings')} aria-label={t('hdr.settings')} aria-pressed={!!V.settingsOpen}
+        className={cn(item, 'justify-center px-0', !mini && '@min-[760px]/app:justify-start @min-[760px]/app:px-2', V.settingsOpen && on)}>
+        <Settings /><span className={cn('hidden truncate', !mini && '@min-[760px]/app:inline')}>{t('hdr.settings')}</span>
+      </button>
       <button onClick={toggle} data-tip={t(mini ? 'nav.expand' : 'nav.collapse')} aria-label={t(mini ? 'nav.expand' : 'nav.collapse')} className={cn(item, 'hidden justify-center px-0 @min-[760px]/app:flex', !mini && '@min-[760px]/app:justify-start @min-[760px]/app:px-2')}>
         {mini ? <PanelLeftOpen /> : <><PanelLeftClose /><span className="truncate">{t('nav.collapse')}</span></>}
       </button>
@@ -108,7 +131,8 @@ export function Sidebar() {
 /** Pages of the current area as a segmented control: shown in narrow windows and with the sidebar collapsed. */
 export function SubNav() {
   const cur = navKey(), a = areaOf(cur)
-  if (a.pages.length < 2) return null
+  // the dungeons are many: there the boss helper's path in the page bar navigates instead of a row of tabs
+  if (a.pages.length < 2 || a.key === 'dungeon') return null
   return (
     <div data-subnav className={cn('flex flex-none border-b bg-card px-2.5 py-1.5', !U.navMini && '@min-[760px]/app:hidden')}>
       <Seg value={cur} onChange={k => goPage(a.pages.find(p => p.key === k)!)} className="[&>*]:flex-none @max-[560px]/app:[&>:not([data-pressed])]:flex-none @max-[560px]/app:[&>:not([data-pressed])>span]:hidden" item={v => ({ 'data-nav': v, 'data-on': v === cur ? 'on' : undefined })}

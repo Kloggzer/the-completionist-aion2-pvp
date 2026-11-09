@@ -35,7 +35,7 @@ test('page: last fights without the Petze, the guide and the skill editor', asyn
 
 test('live: callout, timer panel, and no Petze after the fight', async ({ page }) => {
   const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true, bossSkills: { 1801450: { name: 'Sprung', kind: 'dodge' } } } })
-  await expect(page.locator('[data-bm-boss]').first()).toBeVisible() // timelines loaded
+  await expect(page.locator('[data-bm-dng]').first()).toBeVisible() // timelines loaded
   const at = Date.now()
   await h.send({ type: 'bossHp', npc: ATIEL, ent: 7, hp: 1000, at })
   await h.send({ type: 'bossCast', npc: ATIEL, ent: 7, skill: 1801450, seq: 1, tgt: 3, me: true, name: 'Testdaeva', at })
@@ -89,6 +89,7 @@ test('setup, per boss mode, no Petze switch and a profile string', async ({ page
 
 test('test pull plays the timeline', async ({ page }) => {
   const h = await openApp(page, { ui: { tab: 'bossmod', bossMod: true } })
+  await page.locator('[data-bm-dng="Deus Research Base"]').click()
   await page.locator(`[data-bm-boss="${ATIEL}"]`).click()
   await page.locator('[data-bm-test]').click()
   await expect.poll(async () => (await h.posted('bossBars')).length, { timeout: 5000 }).toBeGreaterThan(0)
@@ -98,8 +99,9 @@ test('test pull plays the timeline', async ({ page }) => {
   expect((await h.posted('bossCall')).at(-1).title).toBe('')
 })
 
-test('navigation: a boss from the overview, Ablauf / Skills tabs, back via the bar', async ({ page }) => {
+test('navigation: overview › dungeon › boss, Ablauf / Skills tabs, back along the path', async ({ page }) => {
   await openApp(page, { ui: { tab: 'bossmod', bossMod: true, bossSetupDone: true, tts: true } })
+  await page.locator('[data-bm-dng="Deus Research Base"]').click()
   await page.locator(`[data-bm-boss="${ATIEL}"]`).click()
   const detail = page.locator(`[data-bm-detail="${ATIEL}"]`)
   await expect(detail).toBeVisible()
@@ -107,7 +109,10 @@ test('navigation: a boss from the overview, Ablauf / Skills tabs, back via the b
   await page.locator('[data-panel="skills"]').click()
   await expect(page.locator('[data-bm-skill]').first()).toBeVisible()
   await expect(page.locator('[data-bm-share]')).toBeVisible()
-  await page.locator('[data-bm-nav="overview"]').click()
+  // the path: the dungeon's boss list, then the overview with the dungeons
+  await page.locator('[data-bm-nav="dungeon"]').click()
   await expect(page.locator(`[data-bm-boss="${ATIEL}"]`)).toBeVisible()
   await expect(detail).toHaveCount(0)
+  await page.locator('[data-bm-nav="overview"]').click()
+  await expect(page.locator('[data-bm-dng="Deus Research Base"]')).toBeVisible()
 })

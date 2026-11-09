@@ -1,4 +1,4 @@
-import { AppWindow, Download, Globe, Pin, Settings, X, MousePointer2 } from 'lucide-react'
+import { AppWindow, Download, Globe, Pin, X, MousePointer2 } from 'lucide-react'
 import { G, S, U, V, bump, hasState, manual, useApp, type Any } from '@/core/state'
 import { host } from '@/core/host'
 import { selectMap, mapName } from '@/core/data'
@@ -74,7 +74,6 @@ export function Header() {
       {S.site && <IconBtn on data-tip={withKey(t('hdr.site'), 'site')} onClick={() => host({ type: 'site', on: false, map: U.map })}><Globe /></IconBtn>}
       {S.dock && <IconBtn on={S.dock.dock !== 'auto'} data-tip={t(S.dock.window ? 'dock.isWindow' : 'dock.isOverlay') + '\n' + t(S.dock.dock === 'auto' ? 'dock.auto' : 'dock.manual')}
         onClick={() => host({ type: 'dock', dock: S.dock.window ? 'overlay' : 'window' })}>{S.dock.window ? <AppWindow /> : <Pin />}</IconBtn>}
-      <IconBtn on={V.settingsOpen} data-tip={t('hdr.settings')} onClick={() => { if (S.site) host({ type: 'site', on: false }); V.settingsOpen = !V.settingsOpen; bump() }}><Settings /></IconBtn>
       <IconBtn data-tip={withKey(t('hdr.hide'), 'toggle')} onClick={() => host({ type: 'hide' })}><X /></IconBtn>
     </header>
   )

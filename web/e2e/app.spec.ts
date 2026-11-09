@@ -131,7 +131,7 @@ test('settings: every category opens, closes again', async ({ page }) => {
   }
   await shot(page, 'settings')
   await page.locator('[data-settings-close]').click()
-  await expect(page.getByText('Einstellungen', { exact: true })).toHaveCount(0)
+  await expect(page.locator('[data-settings-close]')).toHaveCount(0)
 })
 
 test('no radar: neither the map mode nor the mini radar (the position is too rough for it)', async ({ page }) => {
