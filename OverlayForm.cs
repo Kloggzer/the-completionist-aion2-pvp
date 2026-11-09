@@ -887,7 +887,7 @@ sealed class OverlayForm : Form
                 {
                     static JsonNode? At(JsonArray a, int i) => i < a.Count ? a[i] : null;
                     var rows = (m["rows"] as JsonArray ?? []).OfType<JsonArray>().Take(8).Select(r => new BossBarsForm.Bar(
-                        (string?)At(r, 0) ?? "", (double?)At(r, 1) ?? 0, (double?)At(r, 2) ?? 0, HexColor((string?)At(r, 3)), (string?)At(r, 4) ?? "")).ToArray();
+                        (string?)At(r, 0) ?? "", (double?)At(r, 1) ?? 0, (double?)At(r, 2) ?? 0, HexColor((string?)At(r, 3)), (string?)At(r, 4) ?? "", (string?)At(r, 5) ?? "")).ToArray();
                     if (rows.Length == 0 && m["title"] == null && bossBars == null) break; // nothing shown yet: no window needed
                     if (replayDir != null && (string?)m["title"] is { } bt && bt != bossBarsLog)
                         Log($"Boss-Balken: {bossBarsLog = bt} · HP {(int?)m["hp"]} % · {string.Join(", ", rows.Select(r => $"{r.Name} {r.Left:0}/{r.Total:0} s"))}");

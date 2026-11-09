@@ -15,7 +15,7 @@ import { TTS_KINDS, say } from '@/core/tts'
 import { toast } from '@/core/toast'
 import { inInstance } from '@/features/pvp'
 import {
-  addCast, addHit, alertOn, avoidable, bars, blame, dueGuidePhases, duePhases, dueWarnings, endCast, findBoss, findGuide, guideCfgs, hpPct,
+  addCast, addHit, alertOn, phaseBars, avoidable, bars, blame, dueGuidePhases, duePhases, dueWarnings, endCast, findBoss, findGuide, guideCfgs, hpPct,
   isDanger, kindCol, mainTarget, mergeCfgs, newFight, npcIds, phaseHp, phaseName, predictable, setHp, skillName, speakable, trackTarget,
   voiceOn, warnLead, wasReset, type Blame, type BossMods, type Cfgs, type Fight, type Guide, type GuideMech, type Hit, type Role, type SkillCfg,
 } from './logic'
@@ -352,7 +352,9 @@ function postBars(f: Fight, now: number, c: Cfgs) {
     type: 'bossBars', title: b?.name || String(f.npc), phase: phaseName(gb, hp), hp, phases,
     frenzy: gb?.frenzy ? Math.max(0, gb.frenzy - (now - f.pull) / 1000) : -1,
     target: f.target?.name || '', me: !!f.target?.me,
-    rows: bars(f, b, c, now).map(r => [r.name, Math.round(r.left * 10) / 10, r.total, r.col, c[r.skill]?.kind ? t('boss.b.' + c[r.skill].kind) : '']),
+    // time bars (next attacks), then the HP phases coming up (unit %)
+    rows: [...bars(f, b, c, now).map(r => [r.name, Math.round(r.left * 10) / 10, r.total, r.col, c[r.skill]?.kind ? t('boss.b.' + c[r.skill].kind) : '']),
+      ...phaseBars(f, gb).map(p => [p.name, p.left, p.total, p.col, '', '%'])].slice(0, 6),
     foot: live.length ? [[t('boss.blameLive', { list: live.map(x => `${x.name} ${x.hits}×`).join(' · ') }), '#e8c872']] : [],
   })
 }

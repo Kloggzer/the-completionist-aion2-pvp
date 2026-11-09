@@ -4,17 +4,16 @@ using System.Drawing.Text;
 
 namespace PetOverlay;
 
-// Boss helper panel (like DBM's timer bars, styled like the PvP list): header with the boss, its phase and the Frenzy
-// countdown, the HP bar with the phase marks, then the next attacks as tinted countdown bars (badge = what to do, colour
-// of the mechanic, pulsing under 5 s), footer with the aggro target and the live Petze (who got hit how often).
-// The page computes everything ('bossBars', 4 times a second, web/src/features/bossmod); bars and Frenzy count down
-// locally between updates. Hidden without a fight. Always click-through; in the edit mode of the small overlay windows
-// (OverlayForm.SetWinEdit) a sample shows, it can be dragged (WM_NCHITTEST -> HTCAPTION) and sized with the mouse wheel.
-// Per-pixel alpha (UpdateLayeredWindow) like the PvP list; never activated.
+// Boss helper timer bars (like DBM's bars, nothing else): the attacks that come next as tinted countdown bars (badge =
+// what to do, colour of the mechanic, pulsing under 5 s) and the HP phases coming up ("noch 3 %"), centred below the
+// middle of the game's screen. The page computes everything ('bossBars', 4 times a second, web/src/features/bossmod);
+// time bars count down locally between updates. Hidden without bars. Always click-through; in the edit mode of the
+// small overlay windows (OverlayForm.SetWinEdit) a sample shows, it can be dragged (WM_NCHITTEST -> HTCAPTION) and
+// sized with the mouse wheel. Per-pixel alpha (UpdateLayeredWindow); never activated.
 sealed class BossBarsForm : Form
 {
-    /// One timer: name, seconds left / full gap, mechanic colour, badge (short "what to do", e.g. "RAUS").
-    public sealed record Bar(string Name, double Left, double Total, Color Col, string Badge);
+    /// One bar: name, left / full (seconds, or HP % with Unit "%"), mechanic colour, badge (short "what to do", e.g. "RAUS").
+    public sealed record Bar(string Name, double Left, double Total, Color Col, string Badge, string Unit = "");
 
     static readonly Color Panel = Color.FromArgb(232, 20, 23, 31), Fg = Color.FromArgb(236, 238, 244), Muted = Color.FromArgb(150, 158, 176),
                           Track = Color.FromArgb(255, 38, 42, 54), HpCol = Color.FromArgb(255, 205, 70, 60), Red = Color.FromArgb(255, 255, 110, 100),
@@ -33,11 +32,9 @@ sealed class BossBarsForm : Form
     public event Action? Moved;
 
     float K => DeviceDpi / 96f * (float)s.BossBarsScale;
-    float W => 270 * K;
-    float HeadH => 44 * K;
-    float RowH => 22 * K;
-    float Gap => 3 * K;
-    float FootH => foot.Length * 15 * K + (target.Length > 0 ? 15 * K : 0);
+    float W => 300 * K;
+    float RowH => 24 * K;
+    float Gap => 4 * K;
 
     public BossBarsForm(Settings settings)
     {
@@ -48,15 +45,15 @@ sealed class BossBarsForm : Form
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         Size = Measure();
-        // first show: left of the middle of the game's screen
+        // first show: centred, a bit below the middle of the game's screen (the centre callout sits above the character)
         var game = Native.WindowRect(Native.MainWindowOf(s.ProcessName));
         var wa = (game.IsEmpty ? Screen.PrimaryScreen! : Screen.FromRectangle(game)).WorkingArea;
-        Location = Placement.Restore(s.BossBarsX, s.BossBarsY, Size, new Point(wa.Left + wa.Width * 16 / 100, wa.Top + wa.Height * 32 / 100),
+        Location = Placement.Restore(s.BossBarsX, s.BossBarsY, Size, new Point(wa.Left + (wa.Width - Size.Width) / 2, wa.Top + wa.Height * 60 / 100),
             Screen.AllScreens.Select(sc => sc.WorkingArea).ToList());
         tick.Tick += (_, _) =>
         {
             // the page stopped sending (reload, crash) during a fight: never stay up frozen
-            if (!edit && title.Length > 0 && DateTime.UtcNow - at > Stale) { title = ""; Apply(); return; }
+            if (!edit && title.Length > 0 && DateTime.UtcNow - at > Stale) { title = ""; bars = []; Apply(); return; }
             if (Visible) Render();
         };
     }
@@ -99,11 +96,11 @@ sealed class BossBarsForm : Form
 
     void Apply()
     {
-        if (title.Length > 0 || edit)
+        if (bars.Length > 0 && title.Length > 0 || edit)
         {
             Render();
             if (!Visible) { Show(); Native.KeepOnTop(Handle); }
-            tick.Enabled = title.Length > 0; // countdowns, Frenzy and the stale check
+            tick.Enabled = title.Length > 0; // countdowns and the stale check
         }
         else
         {
@@ -112,18 +109,16 @@ sealed class BossBarsForm : Form
         }
     }
 
-    bool Sample => title.Length == 0 && edit;
+    bool Sample => bars.Length == 0 && edit;
     Bar[] Shown() => Sample
         ? [new(L.T("Sprung", "Leap"), 3.4, 66.6, Color.FromArgb(255, 106, 92), L.T("WEG", "DODGE")),
            new(L.T("Ketten", "Chains"), 12.5, 44, Color.FromArgb(197, 139, 255), L.T("VERTEILEN", "SPREAD")),
-           new(L.T("Flächenschlag", "Slam"), 25, 33, Color.FromArgb(92, 224, 138), L.T("ZUSAMMEN", "STACK"))]
+           new(L.T("Phase 2", "Phase 2"), 4, 15, Color.FromArgb(232, 200, 114), "", "%")]
         : bars;
-    PvpForm.Line[] Foot() => Sample ? [new(L.T("Petze: Testdaeva 2× · Testdaevi 1×", "Blame: Testdaeva 2× · Testdaevi 1×"), Gold)] : foot;
 
     Size Measure()
     {
-        float foot = Sample ? 30 * K : FootH;
-        return new((int)W, (int)Math.Ceiling(HeadH + Shown().Length * (RowH + Gap) + (foot > 0 ? foot + 6 * K : 0) + 8 * K));
+        return new((int)W, (int)Math.Ceiling(Math.Max(1, Shown().Length) * (RowH + Gap) + (Sample ? 18 * K : 0) + 2 * K));
     }
 
     void Render()
@@ -153,46 +148,24 @@ sealed class BossBarsForm : Form
         bool sample = Sample;
         double gone = sample ? 0 : (DateTime.UtcNow - at).TotalSeconds;
 
-        // panel
-        using (var p = PvpForm.Rounded(new RectangleF(0.5f, 0.5f, w - 1, h - 1), 8 * k))
-        {
-            using (var pb = new SolidBrush(Panel)) g.FillPath(pb, p);
-            if (edit)
-                using (var pe = new Pen(Color.FromArgb(220, 240, 240, 255), 1f) { DashPattern = [4, 3] }) g.DrawPath(pe, p);
-        }
-        float x0 = 10 * k, x1 = w - 10 * k;
-
-        // header: boss · phase, Frenzy right
-        string head = sample ? "Atiel" : title, ph = sample ? L.T("Phase 2", "Phase 2") : phase;
-        double fz = sample ? 184 : frenzy >= 0 ? Math.Max(0, frenzy - gone) : -1;
-        float fzW = fz >= 0 ? 74 * k : 0;
-        g.DrawString(head, fh, fg, new RectangleF(x0, 4 * k, (x1 - x0 - fzW) * 0.62f, 18 * k), left);
-        if (ph.Length > 0)
-            using (var pbr = new SolidBrush(Gold)) g.DrawString(ph, fs, pbr, new RectangleF(x0 + (x1 - x0 - fzW) * 0.62f, 4 * k, (x1 - x0 - fzW) * 0.38f, 18 * k), right);
-        if (fz >= 0)
-            using (var zb = new SolidBrush(fz < 30 ? Red : Muted))
-                g.DrawString($"{L.T("Raserei", "Frenzy")} {(int)fz / 60}:{(int)fz % 60:00}", fs, zb, new RectangleF(x1 - fzW, 4 * k, fzW, 18 * k), right);
-        // HP bar with phase marks and the percentage
-        var hpR = new RectangleF(x0, 25 * k, x1 - x0 - 34 * k, 8 * k);
-        using (var tr = new SolidBrush(Track)) g.FillRectangle(tr, hpR);
-        int hpv = sample ? 72 : hp;
-        using (var hc = new SolidBrush(HpCol)) g.FillRectangle(hc, hpR.X, hpR.Y, hpR.Width * hpv / 100f, hpR.Height);
-        using (var pm = new Pen(Color.FromArgb(240, 255, 255, 255), 1.5f * k))
-            foreach (var p in sample ? new[] { 70, 30 } : phases)
-                g.DrawLine(pm, hpR.X + hpR.Width * p / 100f, hpR.Y - 2 * k, hpR.X + hpR.Width * p / 100f, hpR.Bottom + 2 * k);
-        g.DrawString($"{hpv} %", fs, fg, new RectangleF(hpR.Right, 20 * k, x1 - hpR.Right, 18 * k), right);
+        // edit mode: a dashed frame to grab
+        if (edit)
+            using (var p = PvpForm.Rounded(new RectangleF(0.5f, 0.5f, w - 1, h - 1), 6 * k))
+            using (var pe = new Pen(Color.FromArgb(220, 240, 240, 255), 1f) { DashPattern = [4, 3] }) g.DrawPath(pe, p);
+        float x0 = 4 * k, x1 = w - 4 * k;
 
         // timer bars
-        float y = HeadH;
+        float y = 1 * k;
         foreach (var b in Shown())
         {
-            double l = Math.Max(0, b.Left - gone);
-            var r = new RectangleF(x0 - 4 * k, y, x1 - x0 + 8 * k, RowH);
+            bool pct = b.Unit == "%";
+            double l = pct ? b.Left : Math.Max(0, b.Left - gone); // HP bars do not count down by time
+            var r = new RectangleF(x0, y, x1 - x0, RowH);
             using (var rp = PvpForm.Rounded(r, 4 * k))
             {
-                using (var rb = new SolidBrush(Track)) g.FillPath(rb, rp);
+                using (var rb = new SolidBrush(Color.FromArgb(215, Track))) g.FillPath(rb, rp);
                 float frac = b.Total > 0 ? (float)Math.Clamp(1 - l / b.Total, 0, 1) : 1;
-                bool soon = l < 5;
+                bool soon = pct ? l < 2 : l < 5;
                 int a = soon ? (Environment.TickCount64 / 250 % 2 == 0 ? 235 : 150) : 120;
                 g.SetClip(new RectangleF(r.X, r.Y, r.Width * frac, r.Height));
                 using (var fill = new SolidBrush(Color.FromArgb(a, b.Col))) g.FillPath(fill, rp);
@@ -211,26 +184,14 @@ sealed class BossBarsForm : Form
                 using (var bt = new SolidBrush(Color.FromArgb(20, 22, 28))) g.DrawString(b.Badge, fbadge, bt, br, center);
             }
             g.DrawString(b.Name, fb, fg, new RectangleF(bx + bw + 6 * k, y, r.Right - bx - bw - 54 * k, RowH), left);
-            using (var nb = new SolidBrush(l < 5 ? Color.FromArgb(255, 255, 230, 140) : Fg))
-                g.DrawString(l >= 10 ? $"{l:0}" : l.ToString("0.0", System.Globalization.CultureInfo.CurrentUICulture), fnum, nb, new RectangleF(r.Right - 50 * k, y, 44 * k, RowH), right);
+            string num = pct ? $"{l:0} %" : l >= 10 ? $"{l:0}" : l.ToString("0.0", System.Globalization.CultureInfo.CurrentUICulture);
+            using (var nb = new SolidBrush((pct ? l < 2 : l < 5) ? Color.FromArgb(255, 255, 230, 140) : Fg))
+                g.DrawString(num, fnum, nb, new RectangleF(r.Right - 56 * k, y, 50 * k, RowH), right);
             y += RowH + Gap;
         }
 
-        // footer: target, Petze
-        float fy = y + 3 * k;
-        if (!sample && target.Length > 0)
-        {
-            using (var tb = new SolidBrush(me ? Red : Muted))
-                g.DrawString((me ? L.T("Ziel: DU", "Target: YOU") : L.T("Ziel: ", "Target: ") + target), fs, tb, new RectangleF(x0, fy, x1 - x0, 15 * k), left);
-            fy += 15 * k;
-        }
-        foreach (var line in Foot())
-        {
-            using (var lb = new SolidBrush(line.Col)) g.DrawString(line.Text, fs, lb, new RectangleF(x0, fy, x1 - x0, 15 * k), left);
-            fy += 15 * k;
-        }
         if (sample)
-            g.DrawString(L.T("ziehen · Mausrad = Größe", "drag · wheel = size"), fs, muted, new RectangleF(x0, fy, x1 - x0, 15 * k), left);
+            g.DrawString(L.T("ziehen · Mausrad = Größe", "drag · wheel = size"), fs, muted, new RectangleF(x0, y, x1 - x0, 15 * k), left);
     }
 
     protected override void WndProc(ref Message m)

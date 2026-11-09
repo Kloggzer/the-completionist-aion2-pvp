@@ -307,5 +307,22 @@ export function dueGuidePhases(f: Fight, gb: GuideBoss | undefined): GuidePhase[
   return due
 }
 
+/** HP % ahead of a guide phase from which it shows as a bar ("noch 3 %"). */
+export const PHASE_AHEAD = 15
+
+/** Guide phases coming up as bars: within PHASE_AHEAD % above the boss's HP, not yet reached (nor their skill cast);
+ *  colour of the guide mechanic with the same name, else gold. */
+export function phaseBars(f: Fight, gb: GuideBoss | undefined): { name: string; left: number; total: number; col: string }[] {
+  if (!gb || f.maxHp === undefined) return []
+  const now = hpPct(f)
+  return gb.phases
+    .filter(p => !p.todo && now > p.hp && now - p.hp <= PHASE_AHEAD && !(p.skill && f.casts.some(c => c.skill === p.skill)))
+    .sort((a, b) => b.hp - a.hp)
+    .map(p => {
+      const m = gb.mechanics.find(x => x.name === p.name)
+      return { name: p.name, left: Math.round((now - p.hp) * 10) / 10, total: PHASE_AHEAD, col: m?.kind ? kindCol({ kind: m.kind }) : '#e8c872' }
+    })
+}
+
 /** Danger kinds: the centre callout pulses and a plain one cannot replace it. */
 export const isDanger = (k?: Kind) => k === 'dodge' || k === 'out' || k === 'in'

@@ -3,7 +3,7 @@ import data from '../../../public/bossmods.json'
 import {
   HP_LEAD, WARN, addCast, addHit, alertOn, avoidable, bars, blame, duePhases, dueWarnings, endCast, findBoss, isBig, newFight, npcIds, phaseHp,
   predictable, setHp, upcoming, warnLead, wasReset, findGuide, guideCfgs, mergeCfgs, mainTarget, trackTarget, phaseName, dueGuidePhases, isDanger,
-  speakable, type BossMods, type BossStat, type Guide,
+  speakable, phaseBars, PHASE_AHEAD, type BossMods, type BossStat, type Guide,
 } from './logic'
 
 // Atiel (Deus Research Base, 2343601): 3 fights in captures/20261027-170912 (tools/boss_timeline.py).
@@ -224,5 +224,27 @@ describe('boss guide', () => {
   it('danger per kind', () => {
     expect(isDanger('dodge')).toBe(true)
     expect(isDanger('stack')).toBe(false)
+  })
+})
+
+describe('boss mod phase bars', () => {
+  const gb = { name: 'Rahu', phases: [{ hp: 66, name: 'Port-Phase' }, { hp: 50, name: 'Arena teilen' }, { hp: 97, name: 'Bombe', skill: 1802740 }],
+    mechanics: [{ name: 'Arena teilen', kind: 'dodge' as const, skills: [1802860] }] }
+  it('shows the phases within PHASE_AHEAD % above the HP, nearest first, with the mechanic colour', () => {
+    const f = fight()
+    setHp(f, 1000); setHp(f, 690)
+    expect(phaseBars(f, gb)).toEqual([{ name: 'Port-Phase', left: 3, total: PHASE_AHEAD, col: '#e8c872' }])
+    setHp(f, 600)
+    const bs = phaseBars(f, gb)
+    expect(bs.map(b => b.name)).toEqual(['Arena teilen'])
+    expect(bs[0].left).toBe(10)
+    expect(bs[0].col).not.toBe('#e8c872')
+  })
+  it('drops a phase once reached or its skill was cast', () => {
+    const f = fight()
+    setHp(f, 1000)
+    expect(phaseBars(f, gb).map(b => b.name)).toEqual(['Bombe'])
+    addCast(f, 1802740, 1000)
+    expect(phaseBars(f, gb)).toEqual([])
   })
 })
