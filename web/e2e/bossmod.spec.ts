@@ -24,7 +24,8 @@ test('page: last fights without the Petze, the guide and the skill editor', asyn
   await expect(page.locator('[data-bm-timeline] circle').first()).toBeVisible()
   await expect(page.locator('[data-bm-guide]')).toContainText('Phase 2')
   await expect(page.locator('[data-bm-guide]')).toContainText('Werte folgen')
-  // the skill cast right before the marker is highlighted, naming it saves the own setting
+  // Skills tab: the skill cast right before the marker is highlighted, naming it saves the own setting
+  await page.locator('[data-panel="skills"]').click()
   await expect(page.locator('[data-bm-skill="1801450"]')).toHaveClass(/bg-gold/)
   await page.locator('[data-bm-name="1801450"]').fill('Sprung')
   const ui = (await h.posted('ui')).map((m: { patch: Record<string, unknown> }) => m.patch).filter(p => p.bossSkills).at(-1)
@@ -67,6 +68,7 @@ test('setup, per boss mode, no Petze switch and a profile string', async ({ page
   await page.locator('[data-bm-setup]').getByRole('button', { name: 'Fertig' }).click()
   await expect(page.locator('[data-bm-setup]')).toHaveCount(0)
   await page.locator('[data-fight="0"]').click()
+  await page.locator('[data-panel="skills"]').click()
   // the skill editor has no Petze switch, the fight no Petze line
   await expect(page.locator('[data-bm-skill="1801450"]').getByRole('button', { name: 'Petze' })).toHaveCount(0)
   await expect(page.locator('[data-bm-blame]')).toHaveCount(0)
@@ -94,4 +96,18 @@ test('test pull plays the timeline', async ({ page }) => {
   await page.locator('[data-bm-stop]').click()
   await expect(page.locator('[data-bm-test]')).toBeVisible()
   expect((await h.posted('bossCall')).at(-1).title).toBe('')
+})
+
+test('navigation: a boss from the overview, Ablauf / Skills tabs, back via the bar', async ({ page }) => {
+  await openApp(page, { ui: { tab: 'bossmod', bossMod: true, bossSetupDone: true, tts: true } })
+  await page.locator(`[data-bm-boss="${ATIEL}"]`).click()
+  const detail = page.locator(`[data-bm-detail="${ATIEL}"]`)
+  await expect(detail).toBeVisible()
+  await expect(detail).toContainText('Typischer Ablauf')
+  await page.locator('[data-panel="skills"]').click()
+  await expect(page.locator('[data-bm-skill]').first()).toBeVisible()
+  await expect(page.locator('[data-bm-share]')).toBeVisible()
+  await page.locator('[data-bm-nav="overview"]').click()
+  await expect(page.locator(`[data-bm-boss="${ATIEL}"]`)).toBeVisible()
+  await expect(detail).toHaveCount(0)
 })

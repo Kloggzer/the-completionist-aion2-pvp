@@ -1,5 +1,5 @@
 {
- "_info": "Boss helper guide (tools/boss_guide.py, then by hand). kind: dodge|out|in|stack|spread|interrupt|tank|info; skills: the boss's skill ids (Boss-Helfer page / recordings); todo: placeholder, real values follow.",
+ "_info": "Boss helper guide (tools/boss_guide.py, then by hand). kind: dodge|out|in|move|stack|spread|interrupt|tank|info; skills: the boss's skill ids (Boss-Helfer page / recordings); todo: placeholder, real values follow.",
  "bosses": {
   "2300310": {
    "name": "Silver Blade Rotan",
@@ -575,7 +575,7 @@
      "name": "Bombe",
      "kind": "info",
      "text": "Bombe",
-     "hint": "Bei ~97 % spuckt er einem Spieler eine Bombe ins Gesicht (1802740). Sie bleibt auf ihm; ~40 s später und dann alle 20 s geht sie an den nächsten (1802715) – der muss in Reichweite des Trägers stehen. 3× verpatzt oder Träger tot: Bomben-Wipe (1802720).",
+     "hint": "Bei ~97 % spuckt er einem Spieler eine Bombe ins Gesicht (1802740). Sie bleibt auf ihm; ~40 s später und dann alle 20 s geht sie an den nächsten (1802715) – der muss in Reichweite des Trägers stehen. 3× verpatzt oder Träger tot: Bomben-Explosion (1802720).",
      "skills": [
       1802740
      ],
@@ -596,9 +596,9 @@
      "avoid": false
     },
     {
-     "name": "Bomben-Wipe",
+     "name": "Bomben-Explosion",
      "kind": "info",
-     "hint": "Der Raid-Wipe, wenn die Bombe 3× nicht übergeben wurde oder ihr Träger stirbt: in allen 14 Fällen der letzte Cast des Pulls (14 von 49 Wipes).",
+     "hint": "Kommt, wenn die Bombe 3× nicht übergeben wurde oder ihr Träger stirbt: 1,2 s später sterben mehrere auf einmal. In den Aufnahmen vom 7.11. griff Rahu danach jedes Mal nicht mehr an (14 von 49 Pulls).",
      "skills": [
       1802720
      ],
@@ -607,7 +607,7 @@
     },
     {
      "name": "Auge – Spalte",
-     "kind": "stack",
+     "kind": "move",
      "hint": "1802805 (Animation) – 2,4 s später das Auge (Objekt 2920720, 8,7 s; in allen 87 Wellen): alle in die Spalte, der mit dem Auge erst in letzter Sekunde. Dieselbe Animation kündigt bei ~65 % stattdessen den Port an.",
      "skills": [],
      "avoid": false,
@@ -618,7 +618,7 @@
     },
     {
      "name": "Arena teilen",
-     "kind": "dodge",
+     "kind": "move",
      "text": "Alle in eine Hälfte",
      "hint": "Bei ~50 % teilt er die Arena: alle zusammen in einen Teil.",
      "skills": [

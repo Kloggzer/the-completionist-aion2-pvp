@@ -1,9 +1,10 @@
-// "Boss-Helfer" page: setup card (role, voice, place the windows), the last fights with the Petze (counted again with
-// today's settings) and wipe info, the dungeon bosses with a timeline (bossmods.json), and per boss: on / bars only /
-// off, timeline with your markers (click a cast: its skill), guide (phases, mechanics), skill editor (name, what to
-// do, callout, banner / voice / bar / warning / Petze; U.bossSkills), a profile string to share, test pull, export.
+// "Boss-Helfer" page. The bar is the navigation: overview, then dungeon and boss pickers (a path you can jump along);
+// switching the helper on / off sits there too. Overview: the dungeons with their bosses, the last fights, the export.
+// A boss: one panel with its mode (on / bars only / off) and the test pull in the head, and two tabs – "Ablauf"
+// (timeline with your markers, phases and mechanics from the guide) and "Skills" (editor: name, what to do, callout,
+// banner / voice / bar / warning; U.bossSkills; the profile string to share at the end).
 import { useState } from 'react'
-import { ChevronLeft, ClipboardCopy, Play, Skull, Square, Swords } from 'lucide-react'
+import { ChevronRight, ClipboardCopy, Play, Skull, Square, Swords } from 'lucide-react'
 import { G, U, V, bump, saveUi, useApp } from '@/core/state'
 import { emit } from '@/core/bus'
 import { host } from '@/core/host'
@@ -12,7 +13,7 @@ import { hkText } from '@/core/session'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { AppSelect } from '@/components/AppSelect'
-import { CHIP, CHIP_ON, Empty, META, Page, Panel, ROW, ROW_CLICK, SUB, Seg, TITLE } from '@/components/kit'
+import { BarRight, CHIP, CHIP_ON, Empty, META, Page, Panel, PanelTabs, ROW, ROW_CLICK, SUB, Seg, TITLE } from '@/components/kit'
 import { toggleWinEdit } from '@/features/pvp'
 import { KINDS, alertOn, avoidable, barOn, findBoss, isBig, kindCol, phaseHp, predictable, skillName, voiceOn, warnLead, type BossMods, type BossStat, type Kind, type Role, type SkillCfg, type SkillStat } from './logic'
 import { BLAME, blameActive, blameOf, bossMode, canon, cfgs, guide, ownCfgs, role, stopTest, testPull, type BossMode, type FightLog } from './index'
@@ -98,7 +99,7 @@ function BlameChips({ log, limit = 5 }: { log: FightLog; limit?: number }) {
 const outcome = (f: FightLog) => f.died ? t('bm.died') : f.low !== undefined ? t('bm.wipeAt', { hp: f.low, phase: f.phase ? ' · ' + f.phase : '' }) : t('bm.wipe')
 
 function FightRow({ f, i }: { f: FightLog; i: number }) {
-  const open = () => { V.bmBoss = canon(f.npc); V.bmFight = i; bump() }
+  const open = () => openBoss(canon(f.npc), i)
   return (
     <div data-fight={i} className={cn(ROW, ROW_CLICK, 'min-h-11 flex-wrap gap-y-1 py-1.5')} onClick={open}>
       <Skull className={cn('size-4 flex-none', f.died ? 'text-green' : 'text-red')} />
@@ -119,25 +120,26 @@ function Overview() {
     byZone.set(z, [...(byZone.get(z) || []), [id, b]])
   }
   return <>
-    <Panel title={t('bm.last')} data-bm-last="">
-      {fights.length ? fights.map((f, i) => <FightRow key={f.at + ':' + i} f={f} i={i} />) : <Empty>{t('bm.noFights')}</Empty>}
-    </Panel>
     {[...byZone.entries()].map(([z, list]) => (
       <Panel key={z} title={dungeon(z)}>
         {list.map(([id, b]) => {
           const n = Object.entries(b.skills).filter(([k, s]) => alertOn(s, cfgs()[k])).length, mode = bossMode(+id)
           return (
-            <div key={id} data-bm-boss={id} className={cn(ROW, ROW_CLICK, 'min-h-11')} onClick={() => { V.bmBoss = +id; V.bmFight = null; bump() }}>
+            <div key={id} data-bm-boss={id} className={cn(ROW, ROW_CLICK, 'group min-h-11')} onClick={() => openBoss(+id)}>
               <Swords className={cn('size-4 flex-none', mode === 'off' ? 'text-dim' : 'text-gold')} />
               <div className="min-w-0 flex-1">
                 <div className={TITLE}>{b.name}</div>
                 <div className={META}>{t('bm.fights', { n: b.fights })} · {t('bm.alerts', { n })}{mode !== 'on' ? ' · ' + t('bm.mode.' + mode) : ''}</div>
               </div>
+              <ChevronRight className="size-4 flex-none text-dim transition-colors group-hover:text-gold" />
             </div>
           )
         })}
       </Panel>
     ))}
+    <Panel title={t('bm.last')} data-bm-last="">
+      {fights.length ? fights.map((f, i) => <FightRow key={f.at + ':' + i} f={f} i={i} />) : <Empty>{t('bm.noFights')}</Empty>}
+    </Panel>
     <Note data-bm-export="" action={<Button size="sm" variant="outline" disabled={!V.bossRecs?.n} onClick={() => host({ type: 'bossExport' })}>{t('set.bossExport.btn')}</Button>}>
       <b>{t('bm.export')}</b> · {V.bossRecs ? t('set.bossExport.sub', { n: V.bossRecs.n, mb: num(V.bossRecs.mb) }) : '–'}
       <div className={cn(SUB, 'mt-0.5')}>{t('bm.exportSub')}</div>
@@ -148,6 +150,7 @@ function Overview() {
 // ---------------------------------------------------------------- boss detail
 
 const goSkill = (id: string) => {
+  U.open = { ...U.open, 'bm.tab': 'skills' }
   V.bmFocus = id
   if (!V.bmAll && !document.querySelector(`[data-bm-skill="${id}"]`)) V.bmAll = true
   bump()
@@ -164,15 +167,15 @@ function Timeline({ b, fight, ids }: { b: BossStat; fight?: FightLog; ids: strin
     for (let i = 0, at = s.first; i < Math.round(s.n) && at <= end; i++, at += s.gap?.[1] ?? end) out.push(at)
     return out
   }
-  const W = 600, lane = 18, top = 6, h = top + ids.length * lane + 20
-  const x = (s: number) => 120 + (Math.max(0, s) / end) * (W - 130)
+  const W = 1000, lane = 20, top = 6, h = top + ids.length * lane + 20
+  const x = (s: number) => 150 + (Math.max(0, s) / end) * (W - 160)
   return (
     <svg viewBox={`0 0 ${W} ${h}`} className="w-full text-muted-foreground" data-bm-timeline="" role="img" aria-label={t('bm.timeline')}>
       {ids.map((id, i) => {
         const y = top + i * lane + lane / 2, cfg = cfgs()[id]
         return (
           <g key={id}>
-            <text x={4} y={y + 4} fontSize="11" fill="currentColor" className="cursor-pointer" onClick={() => goSkill(id)}>{skillName(+id, cfg).slice(0, 18)}</text>
+            <text x={4} y={y + 4} fontSize="11" fill="currentColor" className="cursor-pointer" onClick={() => goSkill(id)}>{skillName(+id, cfg).slice(0, 22)}</text>
             <line x1={120} x2={W - 10} y1={y} y2={y} stroke="currentColor" strokeOpacity="0.15" />
             {casts(id).map((at, k) => (
               <circle key={k} cx={x(at)} cy={y} r={5} fill={kindCol(cfg)} fillOpacity={cfg?.kind ? 1 : 0.7} className="cursor-pointer" onClick={() => goSkill(id)}>
@@ -224,13 +227,15 @@ function SkillRow({ id, s, near }: { id: string; s: SkillStat; near?: number }) 
   )
 }
 
-/** The guide (bossguide.json): Frenzy, phases, mechanics with what to do and their skill ids; placeholders marked. */
-function GuidePanel({ npc }: { npc: number }) {
+/** The guide (bossguide.json): Frenzy, phases, mechanics with what to do and their skill ids; placeholders marked.
+ *  Nothing when the boss has no guide or an empty one. */
+function Guide({ npc }: { npc: number }) {
   const g = guide(npc)
   const todo = <span className="ml-1.5 rounded-sm bg-gold/15 px-1 text-[10.5px] font-semibold text-gold">{t('bm.todo')}</span>
-  if (!g) return <Panel title={t('bm.guide')}><Empty>{t('bm.noGuide')}</Empty></Panel>
+  if (!g || !g.phases.length && !g.mechanics.length && !g.frenzy) return null
   return (
-    <Panel title={t('bm.guide')} sub={g.frenzy ? t('bm.frenzy', { t: dur(g.frenzy) }) : undefined} data-bm-guide="">
+    <div data-bm-guide="" className="border-t border-border/50 pt-1">
+      <div className={cn(META, 'px-3 pt-1.5')}>{t('bm.guide')}{g.frenzy ? ' · ' + t('bm.frenzy', { t: dur(g.frenzy) }) : ''}</div>
       {g.phases.map(p => (
         <div key={p.name + p.hp} className={cn(ROW, 'min-h-8')}>
           <span className="w-12 flex-none text-right font-semibold tabular-nums text-gold">{p.hp} %</span>
@@ -238,7 +243,7 @@ function GuidePanel({ npc }: { npc: number }) {
         </div>
       ))}
       {/* mechanics as compact chips: colour + badge = what to do, the hint below, dot = values follow */}
-      <div className="flex flex-wrap gap-1.5 px-3 py-2.5" data-bm-mechs="">
+      {g.mechanics.length > 0 && <div className="flex flex-wrap gap-1.5 px-3 py-2.5" data-bm-mechs="">
         {g.mechanics.map(m => (
           <span key={m.name} data-bm-mech={m.name}
             data-tip={[m.hint, m.cast ? t('bm.cast', { s: num(m.cast) }) : '', m.skills.length ? t('bm.mechSkills', { ids: m.skills.join(', ') }) : t('bm.mechNoSkills'), m.todo ? t('bm.todo') : ''].filter(Boolean).join('\n')}
@@ -249,8 +254,8 @@ function GuidePanel({ npc }: { npc: number }) {
             {m.todo && <span className="size-1.5 flex-none rounded-full bg-gold" aria-label={t('bm.todo')} />}
           </span>
         ))}
-      </div>
-    </Panel>
+      </div>}
+    </div>
   )
 }
 
@@ -276,14 +281,15 @@ function Share({ npc, b }: { npc: number; b: BossStat }) {
     } catch { setMsg(t('bm.share.bad')) }
   }
   return (
-    <Panel title={t('bm.share')} sub={msg || undefined} data-bm-share="">
-      <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5">
+    <div data-bm-share="" className="border-t border-border/50 px-3 pt-2 pb-2.5">
+      <div className={cn(META, 'pb-1.5')}>{t('bm.share')}{msg ? ' · ' + msg : ''}</div>
+      <div className="flex flex-wrap items-center gap-1.5">
         <Button size="sm" variant="outline" onClick={exp}><ClipboardCopy />{t('bm.share.copy')}</Button>
         <input value={text} onChange={e => setText(e.target.value)} placeholder={t('bm.share.ph')} aria-label={t('bm.share.ph')} data-bm-import=""
           className="h-8 min-w-0 flex-[1_1_12rem] rounded-md border bg-background px-2 text-[12px] outline-none focus:border-gold/60" />
         <Button size="sm" variant="outline" disabled={!text.trim()} onClick={imp}>{t('bm.share.import')}</Button>
       </div>
-    </Panel>
+    </div>
   )
 }
 
@@ -291,8 +297,7 @@ function Detail({ npc }: { npc: number }) {
   const b = findBoss(mods(), npc)
   const fights: FightLog[] = U.bossFights || []
   const fight = V.bmFight != null ? fights[V.bmFight] : fights.find(f => canon(f.npc) === npc)
-  const back = <Button size="sm" variant="ghost" onClick={() => { V.bmBoss = null; V.bmFight = null; V.bmFocus = null; bump() }}><ChevronLeft />{t('bm.back')}</Button>
-  if (!b) return <Panel>{back}<Empty>{t('bm.noFights')}</Empty></Panel>
+  if (!b) return <Panel><Empty>{t('bm.noFights')}</Empty></Panel>
   const shown = fight && canon(fight.npc) === npc ? fight : undefined
   // skills cast within 3 s before one of your markers: the likely ones to name – always listed, first
   const near = new Map<string, number>()
@@ -304,42 +309,87 @@ function Detail({ npc }: { npc: number }) {
   const testing = V.bmTest?.npc === npc
   const mode = bossMode(npc)
   const setMode = (v: BossMode) => { U.bossBoss = { ...U.bossBoss, [canon(npc)]: v }; saveUi(['bossBoss']); bump() }
+  const head = <div className="flex flex-wrap items-center gap-1.5">
+    <Seg size="sm" value={mode} onChange={setMode} item={v => ({ 'data-bm-mode': v })}
+      options={(['on', 'bars', 'off'] as BossMode[]).map(v => ({ value: v, label: t('bm.mode.' + v), tip: t('bm.mode') }))} />
+    {testing
+      ? <Button size="sm" variant="outline" data-bm-stop="" onClick={stopTest}><Square />{t('bm.testStop')}</Button>
+      : <Button size="sm" variant="outline" data-bm-test="" data-tip={t('bm.testTip')} onClick={() => testPull(npc)}><Play />{t('bm.test')}</Button>}
+  </div>
+  return (
+    <Panel title={b.name} sub={dungeon(b.zone)} right={head} data-bm-detail={String(npc)}>
+      <PanelTabs id="bm.tab" tabs={[{ value: 'flow', label: t('bm.tab.flow') }, { value: 'skills', label: t('bm.tab.skills', { n: list.length }) }]}>
+        {tab => tab === 'flow'
+          ? <>
+            <div className="px-3 pt-2 pb-2">
+              {/* a kept fight, else the typical times (first use of each skill, over all recorded fights) */}
+              <div className={cn(META, 'pb-1')}>{shown
+                ? <>{t('bm.tab.fight', { at: hm(shown.at), dur: dur(shown.dur) })} · <span className={shown.died ? 'text-green' : 'text-red'}>{outcome(shown)}</span></>
+                : t('bm.tab.typical', { n: b.fights })}</div>
+              <Timeline b={b} fight={shown} ids={lanes} />
+            </div>
+            {shown && BLAME && (
+              <div className="flex flex-wrap items-center gap-1 px-3 pb-2.5" data-bm-blame="">
+                <span className={cn(META, 'mr-1')}>{t('bm.blame')}:</span>
+                <BlameChips log={shown} limit={10} />
+                {blameOf(shown).length > 0 && (
+                  <Button size="sm" variant="ghost" data-tip={t('bm.blameCopyTip')}
+                    onClick={() => copy(t('boss.sayBlame', { list: blameOf(shown).map(x => `${x.name} ${x.hits}×`).join(', ') }))}><ClipboardCopy /></Button>
+                )}
+              </div>
+            )}
+            <Guide npc={npc} />
+          </>
+          : <>
+            {list.map(([id, s]) => <SkillRow key={id} id={id} s={s} near={near.get(id)} />)}
+            <div className="flex justify-end px-3 py-1.5">
+              <Button size="sm" variant="ghost" onClick={() => { V.bmAll = !all; bump() }}>
+                {all ? t('bm.showMain') : t('bm.showAll', { n: Object.keys(b.skills).length })}</Button>
+            </div>
+            <Share npc={npc} b={b} />
+          </>}
+      </PanelTabs>
+    </Panel>
+  )
+}
+
+// ---------------------------------------------------------------- navigation
+
+/** Open a boss (optionally with one of the kept fights). */
+function openBoss(npc: number, fight: number | null = null) { V.bmBoss = npc; V.bmFight = fight; V.bmFocus = null; bump() }
+const toOverview = () => { V.bmBoss = null; V.bmFight = null; V.bmFocus = null; bump() }
+
+/** The bar: overview › dungeon › boss as pickers (a path to jump along), the helper's switch at the right. */
+function NavBar() {
+  const all = Object.entries(mods()?.bosses || {}), cur = V.bmBoss ? findBoss(mods(), V.bmBoss) : undefined
+  const zones = [...new Set(all.map(([, b]) => b.zone || 0))]
+  const zone = cur?.zone ?? null
+  const crumb = 'flex h-6 flex-none items-center rounded-md px-1.5 text-[12px] text-muted-foreground hover:bg-foreground/5 hover:text-foreground'
   return <>
-    <Panel title={b.name} sub={dungeon(b.zone)} right={<div className="flex flex-wrap gap-1">{back}
-      {testing
-        ? <Button size="sm" variant="outline" data-bm-stop="" onClick={stopTest}><Square />{t('bm.testStop')}</Button>
-        : <Button size="sm" variant="outline" data-bm-test="" data-tip={t('bm.testTip')} onClick={() => testPull(npc)}><Play />{t('bm.test')}</Button>}
-    </div>}>
-      <div className="flex flex-wrap items-center gap-2 px-3 pb-2">
-        <span className={META}>{t('bm.mode')}</span>
-        <Seg size="sm" value={mode} onChange={setMode} item={v => ({ 'data-bm-mode': v })}
-          options={(['on', 'bars', 'off'] as BossMode[]).map(v => ({ value: v, label: t('bm.mode.' + v) }))} />
-      </div>
-      <div className="px-3 pb-2"><Timeline b={b} fight={shown} ids={lanes} /></div>
-      {shown && BLAME && (
-        <div className="flex flex-wrap items-center gap-1 px-3 pb-2.5" data-bm-blame="">
-          <span className={cn(META, 'mr-1')}>{outcome(shown)} · {t('bm.blame')}:</span>
-          <BlameChips log={shown} limit={10} />
-          {blameOf(shown).length > 0 && (
-            <Button size="sm" variant="ghost" data-tip={t('bm.blameCopyTip')}
-              onClick={() => copy(t('boss.sayBlame', { list: blameOf(shown).map(x => `${x.name} ${x.hits}×`).join(', ') }))}><ClipboardCopy /></Button>
-          )}
-        </div>
-      )}
-    </Panel>
-    <GuidePanel npc={npc} />
-    <Panel title={t('bm.skills')} right={<Button size="sm" variant="ghost" onClick={() => { V.bmAll = !all; bump() }}>
-      {all ? t('bm.showMain') : t('bm.showAll', { n: Object.keys(b.skills).length })}</Button>}>
-      {list.map(([id, s]) => <SkillRow key={id} id={id} s={s} near={near.get(id)} />)}
-    </Panel>
-    <Share npc={npc} b={b} />
+    <button onClick={toOverview} data-bm-nav="overview" className={cn(crumb, !V.bmBoss && 'font-semibold text-foreground')}>{t('bm.overview')}</button>
+    <ChevronRight className="size-3.5 flex-none text-dim" />
+    <AppSelect value={zone != null ? String(zone) : ''} tip={t('bm.pickDungeon')} className="h-6 max-w-48 text-xs" data-bm-nav="dungeon"
+      options={[...(zone == null ? [{ value: '', label: t('bm.pickDungeon') }] : []), ...zones.map(z => ({ value: String(z), label: dungeon(z) }))]}
+      onChange={v => { const first = all.find(([, b]) => String(b.zone || 0) === v); if (first) openBoss(+first[0]) }} />
+    {zone != null && <>
+      <ChevronRight className="size-3.5 flex-none text-dim" />
+      <AppSelect value={String(V.bmBoss)} tip={t('bm.pickBoss')} className="h-6 max-w-48 text-xs" data-bm-nav="boss"
+        options={all.filter(([, b]) => (b.zone || 0) === zone).map(([id, b]) => ({ value: id, label: b.name }))}
+        onChange={v => openBoss(+v)} />
+    </>}
+    <BarRight>
+      <Button size="xs" variant={U.bossMod ? 'ghost' : 'default'} data-bm-power={U.bossMod ? 'on' : 'off'}
+        className={cn(U.bossMod && 'text-green')} onClick={() => setU('bossMod', !U.bossMod)}>
+        {U.bossMod ? t('bm.isOn') : t('bm.on')}
+      </Button>
+    </BarRight>
   </>
 }
 
 export function BossModTab() {
   useApp()
   return (
-    <Page w="rows">
+    <Page w="rows" bar={<NavBar />}>
       {!U.bossMod && <Note action={<Button size="sm" onClick={() => setU('bossMod', true)}>{t('bm.on')}</Button>}>{t('bm.off')}</Note>}
       {U.bossMod && !U.bossSetupDone && <Setup />}
       {U.bossMod && U.bossSetupDone && !U.tts && (

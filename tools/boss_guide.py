@@ -24,7 +24,7 @@ def main():
     a2d = json.load(open(os.path.join(ROOT, "bosses.json"), encoding="utf-8"))["dungeons"]
     by_name = {b["boss"]: (d, b) for d, v in a2d.items() for b in v["bosses"]}
     guide = json.load(open(GUIDE, encoding="utf-8")) if os.path.exists(GUIDE) else {}
-    guide.setdefault("_info", "Boss helper guide (tools/boss_guide.py, then by hand). kind: dodge|out|in|stack|spread|interrupt|tank|info; "
+    guide.setdefault("_info", "Boss helper guide (tools/boss_guide.py, then by hand). kind: dodge|out|in|move|stack|spread|interrupt|tank|info; "
                               "skills: the boss's skill ids (Boss-Helfer page / recordings); todo: placeholder, real values follow.")
     bosses = guide.setdefault("bosses", {})
     for npc, m in sorted(mods.items()):

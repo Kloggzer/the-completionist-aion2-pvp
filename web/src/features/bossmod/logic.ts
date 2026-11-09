@@ -17,13 +17,14 @@ export type BossStat = { name: string; zone?: number; fights: number; kills?: nu
 /** `aliases`: other modes' npc ids of a boss -> the id with the timeline (same name in Abyss Logs, tools/boss_timeline.py). */
 export type BossMods = { bosses: Record<string, BossStat>; aliases?: Record<string, string> }
 
-/** What to do against a skill (DBM's warning types). dodge / out / in / spread are avoidable: being hit = a mistake. */
-export const KINDS = ['dodge', 'out', 'in', 'stack', 'spread', 'interrupt', 'tank', 'info'] as const
+/** What to do against a skill (DBM's warning types; move = go to a place, e.g. one half of the arena). dodge / out / in /
+ *  spread are avoidable: being hit = a mistake. */
+export const KINDS = ['dodge', 'out', 'in', 'move', 'stack', 'spread', 'interrupt', 'tank', 'info'] as const
 export type Kind = typeof KINDS[number]
 const AVOIDABLE: Kind[] = ['dodge', 'out', 'in', 'spread']
 /** Bar / banner colour per kind (hex, the native windows draw them); every kind also has a text badge. */
 export const KIND_COL: Record<Kind, string> = {
-  dodge: '#ff6a5c', out: '#ff9f43', in: '#4cc3ff', stack: '#5ce08a', spread: '#c58bff', interrupt: '#ffd25e', tank: '#7f9cff', info: '#9aa6bd',
+  dodge: '#ff6a5c', out: '#ff9f43', in: '#4cc3ff', move: '#2fd0c0', stack: '#5ce08a', spread: '#c58bff', interrupt: '#ffd25e', tank: '#7f9cff', info: '#9aa6bd',
 }
 /** The player's role (U.bossRole): the tank gets no "target on you", only the tank hears tank callouts; auto = the one
  *  who holds the boss most of the time (mainTarget). */
@@ -325,4 +326,4 @@ export function phaseBars(f: Fight, gb: GuideBoss | undefined): { name: string; 
 }
 
 /** Danger kinds: the centre callout pulses and a plain one cannot replace it. */
-export const isDanger = (k?: Kind) => k === 'dodge' || k === 'out' || k === 'in'
+export const isDanger = (k?: Kind) => k === 'dodge' || k === 'out' || k === 'in' || k === 'move'
