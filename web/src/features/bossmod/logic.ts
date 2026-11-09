@@ -72,7 +72,9 @@ export const skillName = (id: number, cfg?: SkillCfg) => cfg?.name || `Skill ${i
 export const speakable = (cfg?: SkillCfg) => !!(cfg?.text || cfg?.kind || cfg?.name)
 export const alertOn = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.alert ?? isBig(s)
 export const warnLead = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.warn ?? (isBig(s) && predictable(s) ? WARN : 0)
-export const barOn = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.bar ?? predictable(s)
+/** Timer bar: set by hand, else for predictable skills that say something (a name, a kind, a callout) – bars of bare
+ *  skill ids ('Skill 1801186') were noise in the fight. */
+export const barOn = (s: SkillStat | undefined, cfg?: SkillCfg) => cfg?.bar ?? (predictable(s) && speakable(cfg))
 export const voiceOn = (cfg?: SkillCfg) => cfg?.voice ?? true
 /** Counts for the Petze: set by hand, else by kind (guide / own setting). Unmarked skills never count: hits of 3 of 5
  *  players can be a missed mechanic or plain raid damage – blaming the wrong people is worse than saying nothing. */

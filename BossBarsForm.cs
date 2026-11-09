@@ -163,7 +163,7 @@ sealed class BossBarsForm : Form
                 using (var rb = new SolidBrush(Color.FromArgb(215, Track))) g.FillPath(rb, rp);
                 float frac = b.Total > 0 ? (float)Math.Clamp(1 - l / b.Total, 0, 1) : 1;
                 bool soon = pct ? l < 2 : l < 5;
-                int a = soon ? (Environment.TickCount64 / 250 % 2 == 0 ? 235 : 150) : 120;
+                int a = soon ? (Environment.TickCount64 / 250 % 2 == 0 ? 235 : 160) : 165;
                 g.SetClip(new RectangleF(r.X, r.Y, r.Width * frac, r.Height));
                 using (var fill = new SolidBrush(Color.FromArgb(a, b.Col))) g.FillPath(fill, rp);
                 g.ResetClip();

@@ -23,8 +23,8 @@ sealed class BossCallForm : Form
     public event Action? Moved;
 
     float K => DeviceDpi / 96f * (float)s.BossCallScale;
-    float W => 420 * K;
-    float H => 74 * K;
+    float W => 360 * K;
+    float H => 44 * K;
 
     public BossCallForm(Settings settings)
     {
@@ -121,26 +121,28 @@ sealed class BossCallForm : Form
         // danger: the frame pulses
         bool pulse = (danger || sample) && Environment.TickCount64 / 220 % 2 == 0;
 
-        var r = new RectangleF(3 * k, 3 * k, w - 6 * k, h - 6 * k);
-        // the overlays' card: stripe and edge in the mechanic's colour, the edge pulses for danger
-        OverlayStyle.Card(g, r, k, c, Color.FromArgb(pulse ? 255 : 170, c), pulse ? 3f : 2f);
+        // compact: one line – the instruction (bold), the boss / cast small behind it, the seconds right; a thin line runs down
+        var r = new RectangleF(2 * k, 2 * k, w - 4 * k, h - 4 * k);
+        OverlayStyle.Card(g, r, k, c, Color.FromArgb(pulse ? 255 : 170, c), pulse ? 2.5f : 1.5f);
 
-        using var ft = new Font("Segoe UI", 24f * k, FontStyle.Bold, GraphicsUnit.Pixel);
-        using var fs = new Font("Segoe UI Semibold", 12.5f * k, GraphicsUnit.Pixel);
-        using var fn = new Font("Segoe UI", 22f * k, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var ft = new Font("Segoe UI", 18f * k, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var fs = new Font("Segoe UI Semibold", 11.5f * k, GraphicsUnit.Pixel);
+        using var fn = new Font("Segoe UI", 18f * k, FontStyle.Bold, GraphicsUnit.Pixel);
         using var left0 = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         using var right = new StringFormat(left0) { Alignment = StringAlignment.Far };
-        float tx = r.X + 26 * k, numW = seconds > 0 || sample ? 64 * k : 0;
-        using (var fg = new SolidBrush(OverlayStyle.Fg)) g.DrawString(t, ft, fg, new RectangleF(tx, r.Y + 6 * k, r.Right - tx - numW - 10 * k, 32 * k), left0);
-        using (var sb = new SolidBrush(OverlayStyle.Muted)) g.DrawString(st, fs, sb, new RectangleF(tx, r.Y + 38 * k, r.Right - tx - numW - 10 * k, 18 * k), left0);
+        float tx = r.X + 12 * k, numW = seconds > 0 || sample ? 46 * k : 0, room = r.Right - tx - numW - 12 * k, lineY = r.Y, lineH = r.Height - 4 * k;
+        float tw = Math.Min(room, g.MeasureString(t, ft, int.MaxValue, left0).Width);
+        using (var fg = new SolidBrush(OverlayStyle.Fg)) g.DrawString(t, ft, fg, new RectangleF(tx, lineY, tw + 1, lineH), left0);
+        if (st.Length > 0 && room - tw > 40 * k)
+            using (var sb = new SolidBrush(OverlayStyle.Muted)) g.DrawString(st, fs, sb, new RectangleF(tx + tw + 8 * k, lineY + 1 * k, room - tw - 8 * k, lineH), left0);
         if (numW > 0)
             using (var nb = new SolidBrush(c))
-                g.DrawString(left >= 10 ? $"{left:0}" : left.ToString("0.0", System.Globalization.CultureInfo.CurrentUICulture), fn, nb, new RectangleF(r.Right - numW - 12 * k, r.Y, numW, r.Height - 8 * k), right);
-        // bar running down at the bottom
+                g.DrawString(left >= 10 ? $"{left:0}" : left.ToString("0.0", System.Globalization.CultureInfo.CurrentUICulture), fn, nb, new RectangleF(r.Right - numW - 10 * k, lineY, numW, lineH), right);
+        // a thin line along the bottom running down
         if (frac > 0)
         {
-            var bar = new RectangleF(tx, r.Bottom - 11 * k, r.Right - tx - 14 * k, 4 * k);
-            using (var tr = new SolidBrush(Color.FromArgb(70, 255, 255, 255))) g.FillRectangle(tr, bar);
+            var bar = new RectangleF(r.X + 10 * k, r.Bottom - 5 * k, r.Width - 20 * k, 2.5f * k);
+            using (var tr = new SolidBrush(Color.FromArgb(60, 255, 255, 255))) g.FillRectangle(tr, bar);
             using (var fb = new SolidBrush(c)) g.FillRectangle(fb, bar.X, bar.Y, bar.Width * (float)Math.Clamp(frac, 0, 1), bar.Height);
         }
         if (edit) OverlayStyle.EditFrame(g, new RectangleF(0.5f, 0.5f, w - 1, h - 1), k);
