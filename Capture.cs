@@ -38,6 +38,35 @@ abstract class PetSource : IDisposable
     public event Action<uint, List<(uint id, bool alive, float x, float z, long ts)>>? BossTable;
     // Weekly usage counters at login (0xacff): id -> used this period; id 2 = daily dungeon entries (14 per week).
     public event Action<Dictionary<byte, uint>, long>? UsageReceived;
+    // Hidden Cube keys of the logged-in character (the key items, bound / timed / tradeable): counted from the full
+    // inventory at login (0x1156: per record u32 uid, …, u32 item id, i64 count – the id is found by its value) and kept
+    // current by the stack updates (0x1b56). Verified on research-packets 2026-11-03: 7 at login, 6 after opening a cube;
+    // characters without keys send none (0).
+    public event Action<int>? CubeKeysReceived;
+    static readonly HashSet<uint> CubeKeyItems = [600900001, 600900002, 600900003, 610900001, 630900003, 660900003];
+    readonly Dictionary<uint, long> cubeKeyStacks = new(); // stack uid -> count
+
+    void CubeKeysFromLogin(byte[] b)
+    {
+        cubeKeyStacks.Clear();
+        for (int i = 8; i + 12 <= b.Length; i++)
+        {
+            uint id = BitConverter.ToUInt32(b, i);
+            if (!CubeKeyItems.Contains(id)) continue;
+            long n = BitConverter.ToInt64(b, i + 4);
+            if (n is > 0 and < 10000) cubeKeyStacks[BitConverter.ToUInt32(b, i - 8)] = n;
+        }
+        CubeKeysReceived?.Invoke((int)cubeKeyStacks.Values.Sum());
+    }
+
+    void CubeKeysFromUpdate(List<(uint Uid, uint Id, long Count)> inv)
+    {
+        bool any = false;
+        foreach (var (uid, id, count) in inv)
+            if (CubeKeyItems.Contains(id)) { any = true; if (count > 0) cubeKeyStacks[uid] = count; else cubeKeyStacks.Remove(uid); }
+        if (any) CubeKeysReceived?.Invoke((int)cubeKeyStacks.Values.Sum());
+    }
+
     // Kinah earned today toward the daily cap of 1 000 000 (0xa5ff at login, 0xa6ff on every gain): u64 value, u64 time (ms).
     // Verified on research-packets 2026-11-03: rises by the loot of each kill, stops at exactly 1 000 000, per character.
     public event Action<long, bool>? KinahDayReceived; // value, at login
@@ -251,6 +280,8 @@ abstract class PetSource : IDisposable
             MerchantReceived?.Invoke(merch.tab, merch.items);
         else if (op == 0x2ce3 && body.Length > 100 && PetFrames.PvpHistory(body) is { Count: > 0 } matches)
             PvpHistoryReceived?.Invoke(matches);
+        else if (op == 0x1156 && body.Length > 1000)
+            CubeKeysFromLogin(body);
         else if ((op == 0xa5ff || op == 0xa6ff) && body.Length == 16)
             KinahDayReceived?.Invoke((long)BitConverter.ToUInt64(body, 0), op == 0xa5ff);
         else if (op == 0x0b61 && PetFrames.ParseEntryCharges(body) is { } entries)
@@ -391,7 +422,7 @@ abstract class PetSource : IDisposable
         else if (op == 0x3336 && PlayerFrames.ParseOwn(body) is { } own) OwnInfoReceived?.Invoke(own);
         else if (op == 0x5636 && PlayerFrames.OwnCp(body) is > 0 and var cp) OwnCpReceived?.Invoke(cp);
         else if (op == 0xa9ff && PlayerFrames.Ap(body) is >= 0 and var ap) ApReceived?.Invoke(ap);
-        else if (op == 0x1b56 && PlayerFrames.Inventory(body) is { Count: > 0 } inv) InventoryReceived?.Invoke(inv);
+        else if (op == 0x1b56 && PlayerFrames.Inventory(body) is { Count: > 0 } inv) { InventoryReceived?.Invoke(inv); CubeKeysFromUpdate(inv); }
         else if (op is 0x92 or 0xd92 or 0x2292 && PlayerFrames.ParseParty(body) is { Count: > 0 } party) PartyReceived?.Invoke(party, op == 0x92);
         else if (op == 0x1f92 && body.Length == 1) PartyLeft?.Invoke();
         else if (op == 0x0140) players.Clear();
